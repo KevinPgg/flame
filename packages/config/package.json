@@ -1,0 +1,10 @@
+{
+  "name": "@project-flame/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

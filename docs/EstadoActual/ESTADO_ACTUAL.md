@@ -1,0 +1,129 @@
+# Flame — Estado Actual
+
+**Fecha:** 2026-07-15 · Consolida `ESTADO_ACTUAL_2026-07-07.md` (general) y
+`ESTADO_ACTUAL_MOBILE_2026-07-08.md` (mobile).
+
+> **Convención del proyecto:** `Flme_comp/` es el **baseline intacto de producción** y manda
+> sobre cualquier otra copia. El resto del árbol (`apps/`, `packages/`, `supabase/`) es la
+> copia de trabajo levantada para el **entorno local de pruebas** (Supabase de desarrollo,
+> Clerk test, Stripe test). El objetivo del entorno es reproducir el estado real de la app,
+> no evolucionarla por su cuenta. Arquitectura de producción: `docs/arquitectura/ARQUITECTURA.md`.
+
+---
+
+## 1. Producción (= `Flme_comp/`)
+
+Plataforma de ticketing en producción (`www.flme.co` + app iOS v1.0.13 en App Store),
+funcionalmente muy completa: descubrimiento, checkout con holds, RSVP con códigos/preguntas,
+precios por etapas, promo codes, promoter tracking, multi-organización, co-hosts, equipos con
+roles, scanner QR, payouts Stripe Connect multi-país.
+
+**Semáforo (validado contra el grafo de código, 2026-07-07):**
+
+| Área | Estado | Nota |
+| --- | --- | --- |
+| Funcionalidad core (compra/ticket/QR) | 🟢 | Camino de pago muy endurecido, con tests |
+| Backend / Supabase / RLS | 🟢 | 66 migraciones, RLS con Clerk trabajado a fondo |
+| Paridad iOS ↔ Web | 🟡 | 19+ items "crucial" pendientes de portar a web (`docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`): #16 miembros de equipo, #17 fork dashboard por rol, #18 event assignment/co-host, #15 form builder… |
+| TypeScript mobile | 🟡 | Baseline tolerado ~103–109 errores `tsc`; regla: 0 nuevos en archivos tocados |
+| Tests | 🟡 | Web bien (17 archivos, pago/holds/stages); mobile sin tests unitarios (solo tsc + QA manual) |
+| Deuda documental | 🟠 | ~147 `.md` en `docs/` con solapamiento/legacy |
+| Datafast (legacy) | 🟠 | Deprecado pero presente en env/rutas/código |
+
+**Riesgos estructurales conocidos:**
+
+1. **N+1 en revenue de organizador** — el dashboard enriquece cada evento con un
+   `fetchEventPurchases` individual, en la ruta API y de nuevo en SSR (~2 consultas por
+   evento por carga). Escala linealmente con el número de eventos. Fix identificado, no
+   implementado: `fetchEventPurchasesForEvents` (una consulta batch por lote de ids).
+2. **Logger y auth mobile: acoplamiento extremo sin red de seguridad** — `error`/`warn` del
+   logger Supabase mobile tienen fan-in 301/90 y `getAuthenticatedClient`/`useOptionalAuth`
+   26/69, con **cero tests en mobile**. Un cambio de firma o comportamiento en uno de esos
+   archivos toca cientos de call-sites y nadie lo detecta hasta runtime (un solo archivo de
+   auth roto tumba toda la app — visto en el incidente del 2026-07-15).
+3. **Zod 4 (web) vs Zod 3 (mobile)** — los schemas compartidos en `packages/lib` pueden
+   validar distinto por plataforma (Zod 4 cambió errores, defaults y strictness): el mismo
+   dato puede pasar en web y fallar en mobile o viceversa, sin error de compilación que lo
+   delate. Latente hasta que un schema use una feature divergente.
+4. **Trampa `www` vs no-`www`** — `fetch()` descarta `Authorization` en el redirect 307 de
+   `flme.co` → `www.flme.co` (cambio de host) → 401 "session expired" en mobile. Ya causó
+   incidentes en producción y es estructural porque nada lo previene: cualquier URL nueva
+   sin `www` en configs/webhooks lo reintroduce en silencio. Mitigación pendiente: regla de
+   lint/test sobre configs.
+
+**Mobile en producción:** SOLO iOS. No hay pipeline Android (sin `build:android`, submit solo
+`ios` en `eas.json`). Limitación de alcance de negocio, no técnica.
+
+**Métricas de referencia (2026-07-07):** 557 archivos TS · 82 rutas API web · 66 migraciones ·
+45 hooks mobile · 17 archivos de test web · iOS v1.0.13.
+
+---
+
+## 2. Entorno de desarrollo — estado a 2026-07-15
+
+| Pieza | Estado |
+| --- | --- |
+| Supabase local | 🟢 Corriendo (127.0.0.1:54321), 66 migraciones + seed de prod normalizado y anonimizado (~54k filas, PII limpiada). `clerk_id` del seed siguen siendo de prod salvo remapeos manuales |
+| Web local | 🟢 `localhost:3000` con `.env` completo (Clerk test, Stripe test, webhook `stripe listen`) |
+| Clerk (test) | 🟢 Instancia `upright-peacock-32.clerk.accounts.dev`, webhook vía ngrok. ⚠️ **Sin JWT template `supabase`** → causa del bug activo de mobile (ver §4) |
+| Stripe (test) | 🟡 Connect activado; Ecuador choca con Accounts v2 (`recipient` agreement) → workaround: orgs de prueba con país US |
+| Mobile Android local | 🟢 Build local `expo run:android` compila, instala y conecta a Metro (EAS descartado: sin staging, cola free tier). Cadena nativa resuelta: JDK 17 pineado, hoisted node_modules, adb reverse |
+| Mobile runtime JS | 🔴 Bug activo: `fetchUserProfile` falla por JWT template (ver §4). Previo (React duplicado 19.1.0/19.1.4) con fix indicado vía `pnpm.overrides` |
+
+## 3. Divergencias de la copia de trabajo vs `Flme_comp/` (diff real, 2026-07-15)
+
+### 3.1 Adaptaciones de entorno (intencionales, mantener)
+
+| Archivo | Cambio | Motivo |
+| --- | --- | --- |
+| `apps/{web,mobile}/.env` | creados | Supabase local, Clerk/Stripe test, IP LAN para device |
+| `apps/mobile/eas.json` | Stripe pk_test propia + perfil `development-staging` | claves de la cuenta de pruebas de Kevin |
+| `apps/mobile/app.config.ts` | EAS projectId propio (`75f6c24d…`) | el original pertenece a otra cuenta (hello@flme.co) |
+| `apps/mobile/app.json` | plugin `expo-build-properties` (`packagingOptions.exclude` META-INF) | conflicto de jars en build Android |
+| `apps/mobile/package.json` | `expo-build-properties` añadido; versiones realineadas por `expo install --fix` | build Android local |
+| `apps/web/next.config.ts` | `remotePatterns` http 127.0.0.1/localhost:54321 (solo `NODE_ENV !== production`) | `next/image` con storage local |
+| `apps/web/.../StripePaymentForm.tsx` | log de campos primitivos del error de Stripe | el overlay de Next serializa el error cross-origin como `{}` |
+| `packages/lib/src/stripe/connect-countries.ts` | `DEFAULT_CONNECT_COUNTRY` EC → **US** | workaround Stripe Accounts v2 + EC en cuenta test |
+| `.npmrc` raíz + `pnpm-lock.yaml` | `node-linker=hoisted`, lockfile regenerado | MAX_PATH de Windows en build nativo RN |
+| `apps/mobile/android/` | prebuild local (gitignored) | incluye pin `org.gradle.java.home` → JDK 17 en `gradle.properties` (se pierde con `expo prebuild` limpio) |
+| `supabase/seed/` | dump de prod normalizado/anonimizado | datos realistas sin PII |
+
+### 3.2 Divergencia funcional NO alineada a producción (revertir — causa el bug §4)
+
+| Archivo | Qué se cambió |
+| --- | --- |
+| `apps/mobile/lib/supabase-auth.ts` | `getToken({ template: "supabase" })` → `getToken()` (third-party auth nativa). ⚠️ Archivo además **corrupto en disco** (truncado, termina a media cadena) |
+| `apps/mobile/hooks/useUserRole.ts` | Ídem sin template. ⚠️ **Corrupto** (relleno con bytes nulos al final) |
+| `supabase/config.toml` | Añadido `[auth.third_party.clerk]` con el dominio de Clerk dev |
+
+Producción usa el **JWT template `supabase` de Clerk** (ver `ARQUITECTURA.md` §4), no la
+integración third-party. La migración se hizo sin considerar el escenario real de `Flme_comp`.
+Ambos archivos conservan exactamente el mismo tamaño en bytes que el original — patrón de
+escritura in-place fallida (posible artefacto de sync); verificar el contenido real local.
+
+## 4. Bugs abiertos
+
+1. **🔴 Mobile — `fetchUserProfile` / auth Supabase:** `No JWT template exists with name:
+   supabase` en la instancia Clerk dev. Fix alineado a prod: restaurar los 2 archivos de auth
+   desde `Flme_comp`, quitar `[auth.third_party.clerk]` de `config.toml`, y crear el JWT
+   template `supabase` en el Clerk dev (HS256, secret del Supabase local, claim
+   `role: "authenticated"`). Pasos detallados dados en la sesión 2026-07-15.
+2. **🔴 Promoter code desconectado del checkout (web, B1/B2):** el input de promoter en
+   `/purchase` es cosmético — nunca se envía; el server siempre prioriza `hold.promoter_code`.
+   Atribución de ventas incorrecta en ambos sentidos. Confirmado por código
+   (`2026-07-09-analisis-stripe-holds-promotor-bug.md`).
+3. **🟠 B3–B10 (auditoría 2026-07-09, pendientes de confirmación de Kevin):** webhook no
+   valida `expires_at` del hold; crear hold mata el hold previo del usuario (ghost order);
+   página de éxito web se rinde a ~13 s; `complete-hold` código muerto; sin countdown de hold;
+   carrera en `usage_limit` de promos; RSVP mobile autoriza tarjeta antes del POST; doble
+   camino de validación de promoter.
+4. **🟡 Stripe EC + Accounts v2:** no se puede crear cuenta Connect `recipient` para EC en la
+   cuenta test (API v1 vs plataforma v2). Workaround activo: país US.
+5. **🟡 React duplicado en bundle mobile** (`useContext of null`): fix indicado
+   (overrides `react`/`react-dom` 19.1.4) pendiente de confirmar.
+
+## 5. Recomendaciones vigentes (de prod, siguen aplicando)
+
+Alta: cerrar paridad organizador web (#16/#17/#18) · UI compartida real en `packages/ui` ·
+bajar baseline `tsc` mobile. Media: retirar Datafast · batch `fetchEventPurchasesForEvents` ·
+tests mobile + RLS en CI · unificar Zod. Higiene: regla lint `www.flme.co`.

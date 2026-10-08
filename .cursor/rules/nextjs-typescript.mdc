@@ -1,0 +1,206 @@
+---
+description: Next.js/TypeScript development best practices for Flame Events
+globs: ["**/*.ts", "**/*.tsx", "app/**/*"]
+---
+
+You are an expert in Next.js App Router, TypeScript, Supabase, and Stripe. Your role is to ensure code is type-safe, modular, testable, and aligned with modern best practices.
+
+### General Responsibilities:
+
+- Guide the development of type-safe, maintainable, and performant TypeScript code.
+- Enforce modular design and separation of concerns.
+- Promote test-driven development, robust error handling, and scalable patterns.
+
+### Architecture Patterns:
+
+- Use **server components by default**; add "use client" only when needed (hooks, events, browser APIs).
+- Apply **separation of concerns**: API routes for business logic, components for UI, lib/ for utilities.
+- Use **dependency injection** through function parameters, not global imports where possible.
+- Prefer **composition over inheritance**; favor small, purpose-specific components and functions.
+- Keep **business logic in lib/** separate from presentation in components.
+
+### Project Structure:
+
+- `app/` - Next.js App Router pages and API routes
+- `app/api/` - API endpoints (REST)
+- `app/components/` - React components (shared UI)
+- `app/lib/` - Business logic, utilities, and services
+- `app/styles/` - CSS modules and global styles
+- `__tests__/` - Test files
+- `supabase/` - Database migrations and functions
+
+### Development Best Practices:
+
+- Write **short, focused functions** with a single responsibility.
+- Always **handle errors explicitly** with try/catch and proper error messages.
+- Use **TypeScript strictly** - no `any` types, define interfaces for all data shapes.
+- Leverage **async/await** consistently; avoid mixing with .then() chains.
+- **Validate all inputs** at API boundaries before processing.
+- Use **environment variables** for configuration; never hardcode secrets.
+
+### Security and Resilience:
+
+- Apply **input validation** rigorously on all API routes.
+- Use **Clerk for authentication**; always verify userId before database operations.
+- Implement **row-level security (RLS)** in Supabase for data access control.
+- Validate **ownership** before allowing updates/deletes (user owns the resource).
+- Use **idempotency keys** for payment operations to prevent duplicates.
+- Implement **rate limiting** on sensitive endpoints.
+
+### Stripe Integration:
+
+- Always use **PaymentIntents** for payment processing.
+- Store **minimal metadata** - no PII in Stripe metadata.
+- Implement **webhook signature verification** for all Stripe webhooks.
+- Handle **payment failures gracefully** with clear user messaging.
+- Use **Connect accounts** for marketplace payouts to organizers.
+- Calculate **fees server-side only** - never trust client-sent amounts.
+
+### Supabase Integration:
+
+- Use **supabaseAdmin** (service role) only in API routes, never client-side.
+- Implement **database transactions** for multi-step operations.
+- Use **RLS policies** for automatic access control.
+- Write **migrations** for all schema changes (in supabase/migrations/).
+- Use **typed queries** with generated types from Supabase.
+
+### Testing:
+
+**Test Types & Location:**
+
+- `__tests__/*.test.ts` - Unit tests (fast, no external dependencies)
+- `__tests__/*.integration.test.tsx` - Component integration tests
+- `__tests__/api/**/*.test.ts` - API route tests
+- `__tests__/integration/*.test.ts` - Database integration tests (require Supabase dev branch)
+
+**Configuration:**
+
+- `vitest.config.ts` - Main test config (unit + component tests)
+- `vitest.integration.config.ts` - Integration tests with real database
+- `__tests__/setup.ts` - Global mocks (Next.js navigation, browser APIs)
+
+**Mocking Patterns:**
+
+```typescript
+// Mock Next.js navigation in setup.ts
+vi.mock("next/navigation", () => ({
+  useSearchParams: vi.fn(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), ... }),
+  usePathname: () => "/",
+}));
+
+// Mock Stripe in individual test files
+vi.mock("@/app/lib/stripe/stripe", () => ({
+  stripe: { paymentIntents: { create: vi.fn(), ... } },
+}));
+
+// Mock Supabase admin client
+vi.mock("@/app/lib/supabase/server", () => ({
+  supabaseAdmin: { from: vi.fn(() => ({ select: vi.fn(), ... })) },
+}));
+```
+
+**Critical Mock Gotchas (Jan 2026 Fixes):**
+
+1. **Use `vi.clearAllMocks()` NOT `vi.resetAllMocks()`** in `beforeEach`:
+   - `resetAllMocks` clears mock implementations, breaking mocks defined at module level
+   - `clearAllMocks` only clears call history, preserving implementations
+   - If using `clearAllMocks`, re-setup mocks with specific return values in `beforeEach`:
+
+   ```typescript
+   beforeEach(() => {
+     vi.clearAllMocks();
+     // Re-setup mocks that need specific return values
+     (getEventMarkup as ReturnType<typeof vi.fn>).mockResolvedValue({
+       percent: 10,
+       fixedCents: 0,
+     });
+   });
+   ```
+
+2. **Component tests need ALL fetch mocks in correct order:**
+   - For paid tickets: validate API mock → create-payment-intent mock → render
+   - For promo code: another create-payment-intent mock (promo calls same endpoint)
+
+   ```typescript
+   // 1. Mock validate API (e.g., /api/holds/details)
+   (global.fetch as any).mockResolvedValueOnce({ ok: true, json: () => ({...}) });
+   // 2. Mock create-payment-intent (for initial load)
+   (global.fetch as any).mockResolvedValueOnce({ ok: true, json: () => ({
+     clientSecret: "...", paymentIntentId: "...", amounts: {...}
+   }) });
+   render(<Component />);
+   // 3. Mock create-payment-intent again (for promo code application)
+   (global.fetch as any).mockResolvedValueOnce({ ok: true, json: () => ({...}) });
+   ```
+
+3. **Mock response format must match actual API response:**
+   - Promo code application uses `create-payment-intent` endpoint, NOT a separate validation API
+   - Response must include: `clientSecret`, `paymentIntentId`, `amounts`, `promotionalCodeId`
+   - For free tickets (100% promo): `amounts.total: 0` triggers free ticket flow
+
+**Best Practices:**
+
+- Write **unit tests** for business logic (lib/ functions).
+- Write **API route tests** to verify endpoint behavior.
+- Use **mocks for external services** (Stripe, Supabase) in unit tests.
+- Use `vi.mockResolvedValueOnce` for sequential API call mocks.
+- Separate **fast unit tests** from slower integration tests.
+- Test **edge cases**: invalid inputs, missing data, error conditions.
+- Focus on **critical paths**: payments, ticket creation, user flows.
+- **Skip browser-dependent tests** (camera, MediaDevices) for E2E with Playwright.
+
+**Database Integration Tests:**
+
+- Require `SUPABASE_URL` pointing to a test/dev branch (not production).
+- Safety check skips tests if URL doesn't contain "test" or "dev".
+- For Supabase **preview branches** (random project refs like `abc123xyz.supabase.co`), bypass safety check:
+  ```bash
+  TEST_DATABASE_CONFIRMED=true pnpm test:run
+  ```
+- Run with: `pnpm test:integration`
+
+**Running Tests:**
+
+```bash
+pnpm test:run                           # All unit + component tests
+pnpm test:watch                         # Watch mode
+pnpm test:integration                   # Database integration tests
+TEST_DATABASE_CONFIRMED=true pnpm test:run  # With preview branch (bypasses safety check)
+```
+
+**Documentation:** See `docs/testing/` for detailed guides on test environments, specific test suites, and troubleshooting.
+
+### Error Handling:
+
+- Return **consistent error responses** from API routes:
+  ```typescript
+  return NextResponse.json({ error: "Message" }, { status: 400 });
+  ```
+- Log errors with **context** (userId, eventId, action).
+- Use **Sentry** for error tracking in production.
+- Never expose **internal error details** to clients.
+
+### Performance:
+
+- Use **server components** to reduce client-side JavaScript.
+- Implement **caching** where appropriate (revalidate, cache headers).
+- Use **database indexes** for frequently queried columns.
+- Minimize **API calls** - batch operations when possible.
+- Use **Suspense and streaming** for better loading states.
+
+### Code Style:
+
+- Use **camelCase** for variables/functions, **PascalCase** for components/types.
+- Prefer **const** over let; never use var.
+- Use **destructuring** for cleaner code.
+- Keep **components small** - extract sub-components when > 100 lines.
+- Use **meaningful names** that describe purpose, not implementation.
+
+### Key Conventions:
+
+1. Prioritize **readability, simplicity, and maintainability**.
+2. Design for **change**: isolate business logic from framework code.
+3. Ensure all behavior is **testable and documented**.
+4. **Validate early, fail fast** - catch errors at boundaries.
+5. **Security first** - assume all inputs are malicious.

@@ -1,0 +1,2 @@
+ALTER TABLE rsvps ADD COLUMN IF NOT EXISTS payment_requires_follow_up BOOLEAN DEFAULT FALSE;
+

@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+/* Global base overrides */
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background: #000b12;
+  color: #f9fbfe;
+}
+::selection {
+  background: #ff0000;
+  color: #f9fbfe;
+}

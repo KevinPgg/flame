@@ -1,0 +1,414 @@
+---
+description: Flame Design System - design tokens, typography, component patterns, and NativeWind conventions extracted from Figma. Living document updated as new screens are built.
+alwaysApply: true
+---
+
+# Flame Design System
+
+**Figma Source:** https://www.figma.com/design/XTTWqwDXeC8aPHG6RpEdQ2/Flame-Final
+
+## Color Tokens
+
+| Token         | Value                    | Usage                                               |
+| ------------- | ------------------------ | --------------------------------------------------- |
+| `background`  | `#000B12`                | App background                                      |
+| `surface`     | `#08131A`                | Footer, elevated surfaces                           |
+| `card`        | `rgba(255,255,255,0.06)` | Glass card backgrounds                              |
+| `card-border` | `rgba(255,255,255,0.3)`  | Card/FAQ active borders                             |
+| `white-100`   | `#F9FBFE`                | Primary text, light buttons                         |
+| `white-80`    | `rgba(255,255,255,0.8)`  | Secondary body text                                 |
+| `white-70`    | `rgba(255,255,255,0.7)`  | Footer section headers                              |
+| `white-60`    | `rgba(255,255,255,0.6)`  | Strong borders / focus rings (e.g. Stripe Elements) |
+| `white-50`    | `rgba(255,255,255,0.5)`  | Muted labels                                        |
+| `white-30`    | `rgba(255,255,255,0.3)`  | Borders, dividers                                   |
+| `white-20`    | `rgba(255,255,255,0.2)`  | Subtle borders                                      |
+| `white-10`    | `rgba(255,255,255,0.1)`  | Elevated surfaces, icon circles, inactive pill chips |
+| `white-5`     | `rgba(255,255,255,0.05)` | Stat card bg + border, event card bg, subtle card/button bg |
+| `primary`     | `#FF0000`                | Main brand red                                      |
+| `primary-900` | `#CB0000`                | Dark red ("Today" badge)                            |
+| `dark`        | `#041C2B`                | Text on light buttons                               |
+
+**Raw CSS strings (no Tailwind):** APIs that need hex/rgba literals (e.g. Stripe `appearance`, chart libs) must use `flameColors` and `flameColorWhite` from `@project-flame/lib` — same values as `packages/ui/tailwind.config.js`. Do not duplicate one-off hex in app code.
+
+## Typography (Poppins)
+
+| Name              | Size | Line Height | Weight | NativeWind Classes               |
+| ----------------- | ---- | ----------- | ------ | -------------------------------- |
+| H3 Medium         | 24px | 32px        | 500    | `text-2xl leading-8 font-medium` |
+| H4 SemiBold       | 18px | 100%        | 600    | `text-lg font-semibold`          |
+| Body Regular      | 16px | 22px        | 400    | `text-base leading-[22px]`       |
+| Subtitle1 Regular | 14px | 20px        | 400    | `text-sm leading-5`              |
+| Subtitle1 Light   | 14px | 20px        | 300    | `text-sm leading-5 font-light`   |
+| Subtitle2 Medium  | 12px | 16px        | 500    | `text-xs leading-4 font-medium`  |
+| Subtitle2 Light   | 12px | 16px        | 300    | `text-xs leading-4 font-light`   |
+
+All text uses `font-poppins` family classes. Weights are set via NativeWind custom font family mappings in the tailwind config (`fontFamily.poppins-*`).
+
+## Spacing & Radius
+
+| Token    | Value  | Usage                        |
+| -------- | ------ | ---------------------------- |
+| `pill`   | 40px   | Pill buttons, tags           |
+| `card`   | 16px   | Cards, FAQ items             |
+| `badge`  | 12px   | Date badges                  |
+| `circle` | 9999px | Category thumbnails, avatars |
+
+## Component Conventions
+
+- **Location:** All shared components live in `packages/ui/src/components/`.
+- **Barrel export:** Every component is re-exported from `packages/ui/src/index.tsx`.
+- **Props:** Accept `className?: string` for NativeWind overrides via the consumer.
+- **Naming:** PascalCase filenames matching the component name (e.g., `EventCard.tsx`).
+- **Icons (mobile):** Use `@expo/vector-icons` only (Ionicons, Feather, MaterialCommunityIcons). Never import SVGs directly.
+- **Icons (web):** Use `react-icons` for parity with mobile. Import from `react-icons/fi` (Feather), `react-icons/io5` (Ionicons), `react-icons/si` (Simple Icons for brand logos e.g. SiInstagram, SiX). Same icon families as mobile — FiCalendar matches Feather calendar, IoLogoInstagram matches Ionicons.
+- **Images:** Use the `FlameImage` wrapper (`packages/ui/src/components/FlameImage.tsx`) for remote images. It is built on `expo-image` and provides: (1) 300ms cross-fade transition; (2) `memory-disk` cache policy for aggressive caching; (3) optional `blurhash` placeholder prop; (4) `contentFit` (maps to expo-image's API). Use `source={{ uri }}` for remote URLs. Prefer `FlameImage` over RN `Image` or `ImageBackground` in new code.
+- **Font family:** Use custom `fontFamily` tokens: `font-poppins`, `font-poppins-light`, `font-poppins-medium`, `font-poppins-semibold`, `font-poppins-bold`.
+- **RefreshControl (pull-to-refresh):** Use `CustomRefreshControl` from `@project-flame/ui`. RN 0.81+ ignores tintColor at mount on iOS (New Architecture); `CustomRefreshControl` works around this by initialising with `"transparent"` then applying `#FFFFFF` after 500ms. The initial value MUST be `"transparent"` — using `"white"` fails because both `"white"` and `"#FFFFFF"` normalise to the same C++ `SharedColor` value, so the bridge skips the update. Do NOT use raw `RefreshControl` — tintColor won't apply. See https://github.com/facebook/react-native/issues/53987. Documented in MARCH_2026_FIXES.md #147, #151–153.
+- **ActivityIndicator on dark backgrounds:** Use literal `#FFFFFF` for full-screen or in-content loading spinners on dark screens (bg-background, surface). Do NOT use `colors["white-100"]` (#F9FBFE) — it renders faint. Same rule as RefreshControl.
+- **Dark text on light buttons (FlameText gotcha):** `FlameText` has a hardcoded default `text-white-100` class. Passing `text-dark` via className may not reliably override it in NativeWind. For button labels on white/light backgrounds (`bg-white-100`), use raw `<Text>` with `style={{ color: colors.dark }}` instead of `FlameText`. This matches the pattern used by all other buttons in the app. See MARCH_2026_FIXES.md #327.
+- **Text inputs and search fields (dark surfaces only):** Use `bg-white-5 border border-white-10` on all text inputs and search bars (pill or card radius depending on context). White-filled inputs (`bg-[#F6F6F6]` / `bg-white-100`) were removed from dark screens because they draw excessive focus and break visual hierarchy. Reference patterns: create-event inputs (`bg-white-5 border border-white-10 rounded-pill p-4`) and `TicketSearchBar`. Placeholder text uses `text-white-50`; input text uses `text-white-100`.
+
+## NativeWind Patterns
+
+```tsx
+// Correct: className prop on RN components
+<View className="bg-background flex-1 px-4">
+  <Text className="text-white-100 text-lg font-poppins-semibold">Title</Text>
+</View>
+
+// Correct: Horizontal scroll list
+<FlatList
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+  data={items}
+  renderItem={({ item }) => <EventCard {...item} />}
+/>
+```
+
+## Navigation Architecture
+
+**IMPORTANT: The app uses a bottom tab navigator, NOT a hamburger menu.** The Figma design files may still show a hamburger menu icon in the header, but this has been replaced with a persistent bottom tab bar. The global `Header` component (in `_layout.tsx`) renders only the Flame logo + notification bell — no hamburger menu.
+
+- **Tab Bar:** Floating pill rendered by `CustomTabBar` in `RoleResolutionGate`. Role-conditional tabs (attendee vs organizer).
+- **User tabs:** Home, My Tickets, Create (action), Search/Discover, Settings.
+- **Org tabs:** Home, Dashboard, Create Event, RSVP, Settings.
+- **Tab bar style:** Floating pill (56px tall, 24px horizontal margin, 8px above safe area). Layered: `BlurView` (expo-blur, dark tint) → semi-transparent surface overlay → hairline white-15 border. `white-100` active color with 4px dot indicator, `white-50` inactive, no labels, Ionicons 26px.
+- **Tab bar visibility:** Always visible on all screens. Full-screen modals (sign-in, scanner) natively cover it via `react-native-screens`. On detail screens, no tab is highlighted (all inactive) which is standard behavior.
+- **Tab bar bottom padding:** **All screens** (tab screens AND detail/stack screens) must use `getTabBarPaddingBottom(insets.bottom)` from `CustomTabBar` for `contentContainerStyle.paddingBottom` so content scrolls above the floating pill. Screens with additional floating CTAs (e.g., event detail "Buy Tickets" pill) must add extra padding for those elements.
+- **Detail screens** (event/[id], ticket/[id], org-event-detail, rsvp-detail, events) live outside `(tabs)/` and push over the tabs via Stack navigation. The tab bar remains visible underneath.
+- **Upgrade path (SDK 55):** Replace `BlurView` with `expo-glass-effect` `GlassView` for native iOS 26 Liquid Glass. Or adopt `NativeTabs` from `expo-router/unstable-native-tabs` for a fully native tab bar.
+
+When implementing new screens from Figma, ignore the hamburger menu icon and use the bottom tab navigator pattern instead.
+
+## Screen Structure Pattern
+
+```
+ScrollView (flex-1 bg-background)
+  ├── Header (persistent in _layout.tsx, not per-screen)
+  ├── DashboardBar (normal flow — per #146; not absolute so RefreshControl spinner appears below bar)
+  ├── Section components (gap varies by screen type — see below)
+  └── Footer
+```
+
+### Section Spacing by Screen Type
+
+**CRITICAL: Do NOT blindly apply `gap-[70px]` to all screens.** The section gap depends on the screen's purpose and must be computed from Figma positions. The 70px value is specific to the home/marketing screen.
+
+| Screen Type                        | Example Screens               | Typical Gap             | Rationale                                                                                                          |
+| ---------------------------------- | ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Marketing / Discovery**          | Home, Events Listing          | `gap-[70px]`            | Independent content blocks (hero, categories, spotlight, FAQ) need large breathing room. Users scan vertically.    |
+| **Dashboard / Task**               | Org Dashboard                 | `gap-[30px]`            | Related but distinct zones (stats → event list). Moderate gap groups related content while maintaining separation. |
+| **Form / List**                    | RSVP Management, Create Event | `gap-6` (24px)          | Header, search, and results are one interaction flow. Standard internal spacing.                                   |
+| **Dense List / Detail**            | RSVP Detail, Ticket Detail    | `gap-[14px]` or `gap-2` | Stats bar and cards are one continuous data stream. Tight spacing communicates tight relationships.                |
+| **Detail with independent blocks** | Org Event Detail              | `gap-[70px]`            | Banner, action buttons, expandable cards are truly independent interaction zones.                                  |
+
+**Rule: Always compute section gaps from Figma absolute positions.** If the Figma shows 30px between two sections, use `gap-[30px]` — do not "correct" it to 70px.
+
+## Figma-to-Code Implementation Protocol
+
+### Role
+
+You are a deterministic UI implementation engine. Your ONLY task is to convert the provided Figma screen into an Expo (React Native + NativeWind) implementation that matches the design EXACTLY. You are NOT a designer. Do NOT improve, simplify, or interpret the design. If something is unclear or missing, STOP and ask.
+
+**CRITICAL RULE: UI First, Logic Second.** During the initial screen implementation phase (Phase 4), you MUST ONLY build the UI structure, styling, and navigation. Do not add any real API calls, complex state management, or functional logic. Use static mock data only. When logic integration begins (Phase 5 / Phase 7 logic porting), you MUST follow the **Web-to-Mobile Logic Porting Protocol** in `project-flame-master.mdc` Section 9 — read the corresponding web source files first, document the flow, then port methodically. NEVER write mobile logic from scratch; the web app is the proven source of truth.
+
+### Source of Truth (Strict Priority)
+
+1. **Figma file** (absolute source of truth — always wins)
+2. Existing design tokens and components in this document
+3. Expo / React Native constraints
+
+If there is any conflict, Figma ALWAYS wins. Do NOT guess or invent missing values.
+
+### Step 1: Extract from Figma (MANDATORY — do both)
+
+Always call **both** tools on the provided Figma node before writing any code:
+
+1. `get_screenshot` — Visual ground truth. Every pixel decision is verified against this.
+2. `get_design_context` — Extracts exact values: positions (top/left), sizes (width/height), padding, gap, colors, font families, font sizes, line heights, border radii, opacities, and shadow definitions.
+
+### Step 2: Explore Existing Codebase
+
+Before creating anything, understand what already exists:
+
+- Read the target app's file structure (`app/`, `components/`, `hooks/`)
+- Read existing screen implementations to learn the established patterns (scroll structure, header overlay, data fetching, section spacing)
+- Read `packages/ui/src/index.tsx` to know which shared components are available
+- Read relevant hooks (e.g., `useAppEvents`) to understand data shape and fetching patterns
+- Read `data/mock.ts` for existing mock data patterns
+
+### Step 3: Analyze Figma Layout Mathematically
+
+Convert Figma's absolute positions into ScrollView-relative layout:
+
+- **Header offset:** The Header is a persistent, non-overlay component rendered in the root `_layout.tsx`. It occupies space in the normal layout flow, so **no per-screen `mt-[81px]` offset is required**. See the Screen Structure Pattern above — the Header sits above the `Stack`/`Tabs` navigator, and each screen's content begins immediately below it. Only the `HeroCarousel` (home screen) intentionally uses negative margin to bleed behind the header.
+- **Gaps between sections:** Subtract absolute positions. Example: if section B starts at `top: 415` and section A ends at `365` (top 81 + height 284), the gap is `415 - 365 = 50px` → use `mt-[50px]`.
+- **Internal positioning:** If Figma shows content at `top: 51px` inside a 284px container, use `pt-[51px]` on the content wrapper (NOT `justify-center`).
+- **Never eyeball spacing.** Always compute from Figma's absolute coordinates.
+
+### Step 4: Map Figma Values to Design Tokens
+
+Before hardcoding any value, check if a design token already exists:
+
+| Figma Value               | Token             | NativeWind Class                       |
+| ------------------------- | ----------------- | -------------------------------------- |
+| `#000B12`                 | `background`      | `bg-background`                        |
+| `#08131A`                 | `surface`         | `bg-surface`                           |
+| `rgba(255,255,255,0.06)`  | `card`            | `bg-card`                              |
+| `#F9FBFE`                 | `white-100`       | `text-white-100`                       |
+| `#CB0000`                 | `primary-900`     | `text-primary-900`                     |
+| `rounded 16px`            | `card`            | `rounded-card`                         |
+| `rounded 40px`            | `pill`            | `rounded-pill`                         |
+| `Poppins SemiBold 16px`   | —                 | `text-base font-poppins-semibold`      |
+| `Poppins Light 12px/16px` | `subtitle2-light` | `text-xs leading-4 font-poppins-light` |
+
+- If a token exists: **use it**.
+- If no token exists: **hardcode the exact Figma value** (e.g., `bg-[#F6F6F6]`, `text-[#292D32]`).
+- Do NOT create new tokens unless explicitly asked.
+
+### Step 5: Component Decisions
+
+- **Reuse** existing `packages/ui` components ONLY if their visual output matches Figma 100%.
+- **Create new** shared components in `packages/ui/src/components/` when the Figma shows a pattern that will be reused across screens (e.g., `EventListCard` for horizontal event cards distinct from the vertical `EventCard`).
+- **Create local** screen-specific components in `apps/mobile/components/<screen>/` for layouts unique to that screen (e.g., `EventsHero`, `CategoryFilterPills`).
+- If an existing component does NOT match visually, create a local implementation. Do NOT force-fit.
+- Every new shared component must be exported from `packages/ui/src/index.tsx`.
+
+### Step 6: Implementation Checklist
+
+For every element in the Figma, verify 1:1 match on:
+
+- [ ] **Layout:** flex direction, alignment, justify, wrapping
+- [ ] **Spacing:** exact padding, margin, gap values (compute from Figma positions)
+- [ ] **Sizing:** width, height (use Figma values, e.g., `w-[358px]`, `h-[284px]`, `size-[100px]`)
+- [ ] **Typography:** font family, weight, size, line height, color, transform (uppercase)
+- [ ] **Colors:** background, text, border, overlay opacity
+- [ ] **Borders:** width, color, radius
+- [ ] **Icons:** correct icon name from `@expo/vector-icons`, correct size, correct color
+- [ ] **Hierarchy:** layer order, z-index, absolute positioning matches Figma stacking
+- [ ] **Shadows:** translate `box-shadow` from Figma (note: subtle shadows on dark backgrounds are often invisible in RN — skip if imperceptible)
+
+### Step 7: Data & Logic Integration
+
+**During Phase 4 (UI Only):** Use mock data only. Add new mock data constants to `apps/mobile/data/mock.ts` following existing patterns. Do NOT add API calls, hooks with real data fetching, or complex state machines.
+
+**During Phase 5 / Phase 7 (logic porting):** Follow the **Web-to-Mobile Logic Porting Protocol** (`project-flame-master.mdc` Section 9) and the **Web Parity Gate** (`project-flame-master.mdc` Section 9.1). Key rules:
+
+- **Read the corresponding web hook/component BEFORE writing any mobile hook.** The web file is the source of truth for what API calls to make, what parameters to send, and what edge cases to handle. Consult the Reference Mapping Table in `docs/project-migrations/IOS_MIGRATION.md` Section 7 for exact file paths.
+- **Import shared logic from `@project-flame/lib`** — never reimplement fee calculations, validations, or formatting.
+- Use the existing "Load Once, Cache Locally" pattern via `useAppEvents()` or similar hooks.
+- If the new screen needs additional data fields (e.g., `timeRange`), extend existing interfaces with **optional** fields to maintain backward compatibility.
+- Filter/sort in memory using `useMemo` — never add new Supabase queries for client-side filtering.
+- **NEVER write logic from scratch.** Port it from the web, adapting only the minimal platform-specific parts (Stripe PaymentSheet instead of Elements, Expo Router instead of Next.js Router, etc.).
+- **Apply Industry Standards to technical patterns, not just UI.** When porting data fetching, caching, loading, or real-time patterns, benchmark against Eventbrite/Ticketmaster/Airbnb (see `project-flame-master.mdc` Section 3). Key conventions: single batch API call per screen (avoid staggered loading from multiple parallel queries), server-authoritative calculations (revenue from actual orders), unified loading states, real-time polling for availability. If mobile adopts a better pattern than the current web implementation, log it in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`.
+
+### Step 8: Final Verification
+
+After implementation, mentally walk through the Figma screenshot top-to-bottom and verify:
+
+1. Header position and overlay behavior
+2. Background effects (glow blobs, overlays)
+3. Every section's vertical position relative to the previous section
+4. Every text string's font weight, size, color, and casing
+5. Every icon's name, size, and color
+6. Every interactive element's touch target and state
+7. Footer placement and content
+
+### Failure Conditions — STOP and Ask
+
+- A Figma value is missing or ambiguous
+- A design system component does not visually match
+- A behavior is not defined in Figma (e.g., animation, gesture)
+- Two rules conflict
+
+---
+
+## Monorepo Dependency Rules (pnpm + Metro)
+
+- **`packages/ui` must NOT have `react`, `react-native`, `nativewind`, or `tailwindcss` as direct dependencies.** They must be `peerDependencies` to avoid duplicate copies in the bundle.
+- **React version divergence:** `apps/web` uses React 19.1.4 and `apps/mobile` uses React 19.1.0. pnpm's `auto-install-peers` resolves peer deps to the highest available version in the monorepo, which creates `packages/ui/node_modules/react` → React 19.1.4 (wrong for mobile). This causes "Invalid hook call" errors at runtime.
+- **Metro symlink cleanup (primary fix):** `apps/mobile/metro.config.js` deletes duplicate singleton symlinks (`react`, `react-native`, `nativewind`, `react-native-css-interop`) from `packages/*/node_modules/` at Metro startup. This prevents Metro's hierarchical lookup from finding the wrong copies before reaching `extraNodeModules`.
+- **`extraNodeModules` (safety net):** `metro.config.js` maps all singleton packages to absolute paths in `apps/mobile/node_modules/` as a fallback.
+- **Why `resolveRequest` alone fails:** Metro's hierarchical node_modules lookup runs **before** checking `nodeModulesPaths` or `extraNodeModules`. Overriding `nodeModulesPaths` in the context does not disable hierarchical lookup.
+- **Why `blockList` alone fails:** Metro resolves symlinks to real paths (`.pnpm/react@19.1.4/...`) before checking blockList. Regex patterns matching `packages/*/node_modules/react/` never match the resolved real paths.
+- **Explicit transitive deps:** If Metro can't find a transitive dependency (e.g., `react-native-css-interop`), add it as an explicit dependency in `apps/mobile/package.json`. pnpm doesn't hoist transitive deps like npm/yarn.
+- **Never add React-dependent packages to `packages/ui/dependencies`** — always use `peerDependencies` for anything that touches React.
+- **Future improvement:** Align React versions across apps (via `pnpm.overrides` in root `package.json`) to eliminate the version mismatch entirely. Currently blocked because web and mobile target different Expo/Next.js SDK versions.
+
+---
+
+## Web (Next.js / Tailwind) Conventions
+
+> Source of truth for all Phase 9+ web work. Derived from `docs/prompts/prompts_phases_web_design.md`.
+
+### Goal
+
+The web app **exactly replicates the mobile app's layout, structure, and content** — same sections in the same order, same information displayed, same card layouts, same empty/loading/error states. The only structural differences: web has a persistent top Navbar (no tab bar), and web has a Footer on the home page. Everything else is an exact match to mobile.
+
+**Design source of truth order:**
+1. Active mobile screen (`apps/mobile/`) — read this first for any screen
+2. `flame-design-system.mdc` — tokens, conventions
+3. `packages/ui/tailwind.config.js` — exact token values
+
+### Max-Width Container (all pages, no exceptions)
+
+```html
+<div class="max-w-[800px] mx-auto px-4">
+  <!-- content -->
+</div>
+```
+
+Every section on every web page wraps in `max-w-[800px] mx-auto`. Layouts stay single-column — no grid rewrites. This was established in P9 and applies to all future screens.
+
+### FlameText Variant → Web Tailwind Mapping
+
+Mobile uses `<FlameText variant="...">` — always look up the exact web equivalent. **Do NOT guess sizes or weights.**
+
+| Mobile `FlameText` variant | Web Tailwind equivalent                         | Common use                          |
+| -------------------------- | ----------------------------------------------- | ----------------------------------- |
+| `h3`                       | `text-2xl leading-8 font-poppins-medium`        | Section headers                     |
+| `h4`                       | `text-lg font-poppins-semibold`                 | Card titles, event names            |
+| `body`                     | `text-base leading-[22px] font-poppins`         | Description text, paragraphs        |
+| `subtitle1`                | `text-sm leading-5 font-poppins`                | CTA links, nav labels, org names    |
+| `subtitle1-light`          | `text-sm leading-5 font-poppins-light`          | Secondary labels                    |
+| `subtitle2`                | `text-xs leading-4 font-poppins-medium`         | Price display, badge text           |
+| `subtitle2-light`          | `text-xs leading-4 font-poppins-light`          | Date, time, location metadata       |
+
+> **Common bug:** Using `text-sm font-poppins` for card titles (`h4` = `text-lg font-poppins-semibold`) and using `font-poppins` (400) where `subtitle2-light` needs `font-poppins-light` (300). Caught in P9-3 and P9-4 — do not repeat.
+
+### Web Token Classes
+
+All tokens from `packages/ui/tailwind.config.js` work identically on web after the preset is wired.
+
+| Token Class      | Value                    | Usage                              |
+| ---------------- | ------------------------ | ---------------------------------- |
+| `bg-background`  | `#000B12`                | Page/body background               |
+| `bg-surface`     | `#08131A`                | Footer, elevated surfaces          |
+| `bg-card`        | `rgba(255,255,255,0.06)` | Glass card backgrounds             |
+| `bg-white-5`     | `rgba(255,255,255,0.05)` | Subtle card/button bg              |
+| `bg-white-10`    | `rgba(255,255,255,0.1)`  | Inactive pill chips, icon circles  |
+| `bg-white-100`   | `#F9FBFE`                | Solid CTA buttons                  |
+| `text-white-100` | `#F9FBFE`                | Primary text, light button labels  |
+| `text-white-80`  | `rgba(255,255,255,0.8)`  | Secondary/body text                |
+| `text-white-50`  | `rgba(255,255,255,0.5)`  | Muted labels, metadata             |
+| `text-dark`      | `#041C2B`                | Text on white/light buttons        |
+| `border-white-20`| `rgba(255,255,255,0.2)`  | Subtle glass card borders          |
+| `border-white-30`| `rgba(255,255,255,0.3)`  | Glass card borders, dividers       |
+| `border-white-60`| `rgba(255,255,255,0.6)`  | Strong focus / selected borders    |
+| `rounded-card`   | `16px`                   | Cards, containers                  |
+| `rounded-pill`   | `40px`                   | Buttons, tag chips                 |
+| `text-primary`   | `#FF0000`                | RSVP/status badges on images + inline form validation/error UI  |
+
+> ⚠️ **Red rule:** `text-primary` / `bg-primary` (#FF0000) is the brand red, reserved for two uses: (1) RSVP/status badges overlaid on event images, and (2) inline form validation + error UI (per-field error text, invalid-field borders, error banners, error icons — e.g. `CheckoutMainSheet`'s required-field gate and `checkoutError` banner). CTAs always use `bg-white-100 text-dark`. Never use red for non-error buttons, decorative borders, or non-validation highlights. The legacy magenta `error` token (`#EA3370`) lives on in shared `packages/ui` for web parity — prefer `primary` on mobile.
+
+### Component Patterns
+
+**Primary CTA button:**
+```html
+<button class="bg-white-100 text-dark font-poppins-semibold rounded-pill px-7 py-3 hover:opacity-90 transition-opacity">
+```
+
+**Ghost button:**
+```html
+<button class="border border-white-30 text-white-100 font-poppins-medium rounded-pill px-7 py-3 hover:bg-white-10 transition-colors">
+```
+
+**Glass card:**
+```html
+<div class="bg-white-5 border border-white-20 rounded-card backdrop-blur-md">
+```
+
+**Floating pill CTA (event detail "Buy Tickets" pattern):**
+```html
+<div class="fixed bottom-6 left-6 right-6 z-50 max-w-[800px] mx-auto">
+  <button class="w-full h-14 bg-white-100 text-dark font-poppins-semibold rounded-pill hover:opacity-90 transition-opacity">
+    Buy Tickets
+  </button>
+</div>
+```
+Hides when `window.scrollY > window.innerHeight * 0.15` (scroll listener, `showPill` state).
+
+**EventMeta icon row (calendar, location, RSVP badge):**
+```html
+<div class="flex items-center gap-4">
+  <div class="w-9 h-9 rounded-full bg-white-10 flex items-center justify-center flex-shrink-0">
+    <FiCalendar size={20} class="text-white-100" />
+  </div>
+  <span class="text-xs leading-4 font-poppins-light text-white-100">...</span>
+</div>
+```
+
+### NativeWind → Web Tailwind Translation
+
+Tailwind classes are **identical** after the preset is wired. The only differences are HTML elements and layout primitives:
+
+| Mobile (NativeWind)            | Web (Tailwind)                          |
+| ------------------------------ | --------------------------------------- |
+| `<View>`                       | `<div>`                                 |
+| `<Text>`                       | `<p>`, `<span>`, `<h1>`–`<h4>`, etc.   |
+| `<ScrollView>`                 | `<div class="overflow-y-auto">` or page scroll |
+| `<FlatList horizontal>`        | `<div class="flex gap-4 overflow-x-auto">` |
+| `<FlatList>` (vertical)        | `<div class="flex flex-col gap-2">`     |
+| `<FlameImage source={{ uri }}>` | `<Image>` from `next/image`            |
+| `flex-1` (full height fill)    | `min-h-screen` or `w-full`             |
+| `SafeAreaView` / insets        | Ignored on web                          |
+| `<Pressable>`                  | `<button>` or `<a>`                    |
+| `@expo/vector-icons` Feather   | `react-icons/fi` (FiCalendar, etc.)    |
+
+### Mandatory Design System Rules (Pre-Submit Checklist)
+
+These are **not nitpicks** — all must pass before merging:
+
+| Check | Rule |
+| ----- | ---- |
+| No `style={}` | Use Tailwind classes (`mt-[50px]` not `style={{ marginTop: 50 }}`). Exception: rare cases Tailwind cannot express (e.g. complex `clip-path`). |
+| No hardcoded hex | Use `bg-surface` not `#08131A`. Check token table above first. |
+| Icons: `react-icons` only | No inline SVG. Use `FiCalendar`, `FiMapPin`, etc. from `react-icons/fi` (Feather), `react-icons/io5` (Ionicons), `react-icons/si` (brand logos). |
+| Images: `next/image` only | No raw `<img>`. Use `next/image` with `sizes` and `alt`. |
+| Tailwind classes only | No CSS module classes. No legacy `flame-*` class names. |
+| 800px container on all sections | `max-w-[800px] mx-auto px-4` — no exceptions. |
+
+### Web vs Mobile Structural Differences
+
+| Feature | Mobile | Web |
+| ------- | ------ | --- |
+| Navigation | Bottom tab bar (`CustomTabBar`) | Persistent top Navbar |
+| Home footer | Not present | Present (iOS links to it) |
+| Image component | `<FlameImage>` (expo-image) | `<Image>` from `next/image` |
+| Icons | `@expo/vector-icons` (Feather, Ionicons) | `react-icons` (fi, io5, si) |
+| Font loading | Expo font loaders (`Poppins_600SemiBold`) | Google Fonts in `layout.tsx` |
+| Sticky bottom CTA | `CheckoutCTA` inline, floating pill | Inline pill + floating "Buy Tickets" pill |
+| Safe area insets | `useSafeAreaInsets()` | Not needed |
+
+### Legacy vs Active Mobile Screens
+
+Always port the **active** mobile screen. Never port legacy screens.
+
+| Mobile file | Status | Web equivalent |
+| ----------- | ------ | -------------- |
+| `apps/mobile/app/(tabs)/index.tsx` → `HomeFeedList` | ✅ ACTIVE | `apps/web/app/page.tsx` |
+| `apps/mobile/components/home/LegacyHomeContent.tsx` | ❌ LEGACY — do NOT port | — |
+| `apps/mobile/app/events.tsx` → `EventsScreenBody` | ✅ ACTIVE | `apps/web/app/events/page.tsx` |
+| `apps/mobile/app/(tabs)/dashboard.tsx` | ✅ ACTIVE | `apps/web/app/account/` |
+| `apps/mobile/app/(tabs)/org-dashboard.tsx` | ✅ ACTIVE | `apps/web/app/organizer/` |

@@ -1,0 +1,10 @@
+{
+  "extends": "@project-flame/config/react-native.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

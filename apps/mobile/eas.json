@@ -1,0 +1,84 @@
+{
+  "cli": {
+    "version": ">= 14.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TqZTtDQ5jvGx8QZf22qy84Q4dnyPT0BtVRFpXlXfxyKngcwCMMXnLkVrgWnNv0AwA5Nsc2Mx9INfsvCf1lpVqT300GdmlXYjq"
+      }
+    },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.flme.co",
+        "EXPO_PUBLIC_APP_URL": "https://www.flme.co",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TqZTtDQ5jvGx8QZf22qy84Q4dnyPT0BtVRFpXlXfxyKngcwCMMXnLkVrgWnNv0AwA5Nsc2Mx9INfsvCf1lpVqT300GdmlXYjq"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging.flme.co",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TqZTtDQ5jvGx8QZf22qy84Q4dnyPT0BtVRFpXlXfxyKngcwCMMXnLkVrgWnNv0AwA5Nsc2Mx9INfsvCf1lpVqT300GdmlXYjq"
+      }
+    },
+    "development-staging": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development-staging",
+      "environment": "preview",
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging.flme.co", 
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TqZTtDQ5jvGx8QZf22qy84Q4dnyPT0BtVRFpXlXfxyKngcwCMMXnLkVrgWnNv0AwA5Nsc2Mx9INfsvCf1lpVqT300GdmlXYjq"
+      }
+    },
+    "testflight": {
+      "autoIncrement": true,
+      "channel": "testflight",
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.flme.co",
+        "EXPO_PUBLIC_APP_URL": "https://www.flme.co",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TqZTtDQ5jvGx8QZf22qy84Q4dnyPT0BtVRFpXlXfxyKngcwCMMXnLkVrgWnNv0AwA5Nsc2Mx9INfsvCf1lpVqT300GdmlXYjq"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.flme.co",
+        "EXPO_PUBLIC_APP_URL": "https://www.flme.co"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "hello@flme.co",
+        "ascAppId": "6761443120",
+        "appleTeamId": "6LD6F5HM59"
+      }
+    }
+  }
+}

@@ -1,0 +1,545 @@
+---
+description: Master guide for Project Flame migration, monorepo setup, and development standards.
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Project Flame Master Guide: Monorepo Migration & Development Standards
+
+This is the central source of truth for Project Flame's migration to a monorepo architecture (Web + iOS), integrating Stripe, and maintaining high development standards.
+
+## 1. Executive Summary & Migration Goals
+
+**Goal:** Migrate to a **Monorepo (Turborepo)** architecture to support a new **Native iOS App (Expo)** alongside the existing **Next.js Web App**, while modernizing payments to **Stripe**.
+
+**Timeline:** 8 Weeks (Target: March 5, 2026).
+
+### Core Architecture
+
+- **Monorepo Manager:** `Turborepo`
+- **Apps:**
+  - `apps/web`: Existing Next.js App Router application.
+  - `apps/mobile`: New Expo (React Native) application.
+- **Shared Packages:**
+  - `packages/ui`: Shared UI components (NativeWind/Tailwind).
+  - `packages/lib`: Shared business logic, Supabase client, types.
+  - `packages/config`: Shared TSConfig, ESLint, etc.
+- **Backend:** Supabase (Auth, DB, Edge Functions).
+- **Payments:** Stripe (PaymentIntents, Connect).
+
+---
+
+## 2. Documentation & Workflow Protocol
+
+**Principle:** Code and documentation are a single atomic unit. **Every code change MUST include corresponding doc updates.**
+
+### PR Review & Comment Triage
+
+When reviewing PR comments, issues, or any list of changes, apply this decision tree:
+
+1. **Critical (breaks the app, data loss, security)?** → **Fix immediately**, regardless of category.
+2. **Standard Bugs & Code Quality (functional bugs, clear logic errors, anti-patterns)?** → **Fix in the current PR.** We must deliver working, clean code.
+3. **Edge cases or optimizations (uncommon scenarios, performance enhancements that don't break the core app)?** → **Defer.** Add to `docs/todos/EDGE_CASES_TODOS.MD` with context and reproduction steps.
+4. **Accessibility (non-critical)?** → **Defer.** Add to `docs/todos/ACCESSIBILITY_TODOS.md` (or `WEB_ACCESSIBILITY_TODOS.md` for Phase 9 Web Design PRs only) with component name, issue description, and suggested fix.
+5. **Nitpicks & Optional ("nice to have", opinionated refactors, minor styling)?** → **DO NOT FIX in the current PR.** Defer to backlog to prevent scope creep. Log it in a tracking file (e.g., `docs/todos/NITPICKS_TODOS.md`, or `WEB_NITPICKS_TODOS.md` for Phase 9 Web Design PRs only).
+
+### Phase 1: Context & Diagnosis (Pre-Code)
+
+1. **Consult Docs:** Check `docs/` and `stripe-implementation/` for relevant guides.
+2. **Identify Drift:** Verify current code matches documentation. If the change touches logic that is documented elsewhere in `docs/` (features, guides, migration docs), flag those files for update.
+3. **Triage Comments:** Classify each item per the decision tree above.
+
+### Phase 2: Implementation (Code + Docs)
+
+1. **Fix Code:** Apply changes following patterns in this guide.
+2. **Update Docs IMMEDIATELY:**
+   - Log **every** fix in the active changelog: `docs/fixes/<MONTH>_<YEAR>_FIXES.md` (or the current month's file).
+   - **Check for stale docs:** If a fix changes behavior documented in `docs/features/`, `docs/guides/`, `docs/project-migrations/`, or any other reference doc, **update that doc** so it reflects the new behavior. Do not leave outdated docs behind.
+   - Append deferred items to their respective todo files (`ACCESSIBILITY_TODOS.md`, `NITPICKS_TODOS.md`, `EDGE_CASES_TODOS.MD`; for Phase 9 Web Design: `WEB_ACCESSIBILITY_TODOS.md`, `WEB_NITPICKS_TODOS.md`).
+   - **Prefer updating existing docs over creating new ones.** Do NOT create new MD files for feature summaries, polish lists, or reference materials — consolidate into existing docs (changelog, IOS_MIGRATION.md, or relevant feature/guide). Only create a new doc when there is no suitable existing file (e.g., a major new subsystem with no current documentation); new docs must be justified and approved.
+
+### Phase 3: Completion Gate
+
+- [ ] Every comment addressed (fixed, or triaged to the correct todo file)?
+- [ ] Code fixes applied and working?
+- [ ] Active changelog updated with numbered entries?
+- [ ] Deferred items logged in `ACCESSIBILITY_TODOS.md` / `NITPICKS_TODOS.md` / `EDGE_CASES_TODOS.MD` (or `WEB_*_TODOS.md` for Phase 9 Web Design)?
+- [ ] No stale docs — reference guides updated if behavior changed?
+- [ ] No new MD files created unless no suitable existing document exists — new docs must be justified and approved?
+- [ ] If PR ports mobile logic from web (or changes logic with a web equivalent): Web Parity Gate (Section 9.1) is fully completed and attached in PR description.
+
+---
+
+## 3. Development Standards
+
+### General Principles
+
+- **TypeScript Strictly:** No `any`. Define interfaces for all data shapes. Use Zod for validation.
+- **Functional Programming:** Prefer pure functions, composition over inheritance.
+- **Error Handling:** Explicit try/catch. Return consistent error responses from APIs.
+- **Security:** Validate all inputs. Verify ownership/auth before DB operations.
+- **Industry Standards Benchmarking:** See subsection below.
+
+### Industry Standards Benchmarking
+
+**Principle:** Before building or significantly modifying any feature — whether user-facing UI or underlying technical implementation — consider how industry-leading platforms solve the same problem. We are building a ticketing and event platform. Our UX, data architecture, and engineering patterns should meet or exceed the bar set by established products. Do NOT invent novel patterns when proven ones exist. This applies equally to visual design, interaction patterns, data fetching strategies, caching, loading architecture, API design, real-time updates, and error handling.
+
+**Reference Apps (by domain relevance):**
+
+| App | UI/UX Benchmark | Technical Benchmark |
+| --- | --- | --- |
+| **Ticketmaster** | Ticket purchasing flow, ticket wallet/QR display, event discovery, seat/tier selection, pricing breakdowns, transfer/resale patterns | Real-time seat/availability polling (every few seconds during checkout), consolidated event data APIs, optimistic UI for seat holds |
+| **Eventbrite** | Event creation & management, RSVP/registration flows, organizer dashboards, attendee lists, promo codes, check-in/scanning | Single batch API call for organizer dashboard data, server-side revenue calculation from actual orders, paginated attendee lists with server-side filtering |
+| **Airbnb** | Booking/checkout UX (multi-step with clear progress), search & filtering, host (organizer) dashboards, trust signals, error recovery, empty states, pull-to-refresh patterns | Consolidated listing data fetched in one call (host dashboard), aggressive client-side caching with stale-while-revalidate, skeleton loading states (never staggered partial content) |
+| **StubHub** | Pricing display conventions (fees shown upfront vs. at checkout), purchase confirmation, order history | Price derived from actual transaction amounts (not current listing price), order history fetched server-side with correct historical pricing |
+| **Dice** | Clean mobile-first event discovery, minimal ticket wallet UX, dark-theme event apps | Lightweight single-query event feed, offline-first caching |
+| **Luma** | Modern event creation UX, RSVP management, invite flows, clean minimal design | Webhook-driven real-time updates, optimistic RSVP state |
+| **Stripe Dashboard** | Payment dashboards, payout management, Connect onboarding flows, data tables with filters | Batch data fetching (single API call per dashboard view), server-authoritative amounts (never trust client-calculated totals), polling for payment status updates |
+
+**When to benchmark:**
+
+1. **New features:** Before designing or implementing a new screen/flow, briefly check how 2–3 of the above apps handle the equivalent feature. Note patterns that are consistent across apps — those are industry conventions users expect.
+2. **Fixing UX issues:** If a flow feels clunky or a user reports confusion, check how reference apps handle the same interaction. Adopt proven patterns rather than guessing.
+3. **Edge cases:** When handling error states, empty states, loading states, or uncommon scenarios (refunds, failed payments, sold-out events), reference how Ticketmaster/Eventbrite handle them — they've already solved these at scale.
+4. **Checkout & payment flows:** Always benchmark against Airbnb and Ticketmaster for multi-step purchase flows. Key conventions: clear price breakdowns before final confirmation, explicit fee disclosure, one-tap retry on failure, order confirmation with next steps.
+5. **Data fetching & loading:** When building screens that aggregate data from multiple sources (dashboards, detail views, management screens), benchmark against Eventbrite and Stripe Dashboard. Key conventions: single batch API call per screen (not multiple parallel requests that cause staggered loading), unified loading state (skeleton or spinner — never partially populated cards), server-authoritative calculations (revenue from actual orders, not `price * quantity`).
+6. **Real-time data:** When building screens where data can change due to concurrent users (ticket availability, seat maps, RSVP counts), benchmark against Ticketmaster. Key conventions: active polling during checkout (5–15 seconds), stale-while-revalidate for browse screens, clear "data refreshed" indicators when counts change.
+7. **Caching & offline:** When building mobile screens, benchmark against Airbnb and Dice. Key conventions: cache at the right granularity (org-level for dashboard data so navigating between events is instant), pull-to-refresh everywhere, staleTime that balances freshness vs. network cost.
+
+**How to apply (practical rules):**
+
+- **Adopt conventions, don't copy UI or architecture.** We have our own design system and stack. The benchmarking is about patterns — both interaction patterns (flow structure, information hierarchy, edge-case handling) AND technical patterns (data fetching, caching, loading, API design, real-time updates). Not visual design, not specific tech stack choices.
+- **If every major app does X, we do X.** UI examples: fee breakdown before payment, success screen with "View Tickets" CTA, pull-to-refresh on data screens, empty states instead of blank screens. Technical examples: single batch API call for dashboard data, server-authoritative revenue (from actual order amounts), real-time availability polling during checkout, unified loading state (no staggered partial content).
+- **If you're unsure how a flow or data pattern should work**, describe the uncertainty and reference how 2–3 benchmark apps handle it before proposing a solution.
+- **Document deviations.** If we intentionally diverge from an industry convention (e.g., simplified flow for our market, or a different caching strategy), note the reasoning in the PR description or a doc comment so it's a conscious choice, not an oversight.
+- **Mobile can lead.** If the mobile implementation adopts a better industry pattern than the current web implementation (e.g., consolidated data fetching), implement it on mobile and log the improvement in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` so web can adopt it later.
+
+### Next.js (Web)
+
+- **Server Components:** Default. Use "use client" only when necessary.
+- **Routing:** App Router (`app/`).
+- **State:** Zustand for global state, TanStack Query for server state.
+- **Styling:** Tailwind CSS.
+
+### Expo (Mobile)
+
+- **Framework:** Expo Managed Workflow.
+- **Styling:** **NativeWind** (Tailwind for Native).
+  - _Note:_ While Tamagui is an option, NativeWind is selected for the migration to ensure speed and shared knowledge.
+- **Navigation:** Expo Router (File-based, matches Next.js).
+- **Components:** Use `packages/ui` for shared components where possible.
+- **Icons:** Use **`@expo/vector-icons`** for all icons in the mobile app.
+- **Data Fetching:** Use **TanStack Query** with the **"Load Once, Cache Locally"** pattern. Fetch all relevant data (e.g., all published events) in a single query at startup or screen load, then filter/sort in memory. This ensures instant navigation and data consistency. _Note:_ Fetching all events is fine for small catalogs but will increase initial load time, bandwidth, and memory as the catalog grows. Once the event count exceeds a threshold (e.g., 100-200 events), consider switching to pagination or lazy loading. Be mindful of cache invalidation complexity when paginating.
+
+### Database (Supabase)
+
+- **Access:** Use RLS policies for security.
+- **Admin:** Use `supabaseAdmin` only in API routes/Edge Functions.
+- **Migrations:** All schema changes must be in `supabase/migrations/`.
+- **Migration workflow (MANDATORY):** Whenever you create or add a new local migration file, you MUST:
+  1. **Apply via MCP:** Call the Supabase MCP `apply_migration` tool (user-supabase-all-flame) with `project_id`, `name` (snake_case, matching filename), and `query` (the SQL contents). Use `list_projects` to get the project ID if needed.
+  2. **Rename local file (timestamp gotcha):** The MCP tool auto-assigns its own timestamp — it never uses the local filename's timestamp. After every `apply_migration` call you MUST:
+     - Call `list_migrations` to get the remote `version` that was actually assigned.
+     - Rename the local `.sql` file to match: `mv supabase/migrations/<old-timestamp>_<name>.sql supabase/migrations/<remote-version>_<name>.sql`.
+     - Verify with `ls supabase/migrations/*.sql | sort` that all local timestamps match remote versions.
+  If you skip the apply step, the migration is not in the database. If you skip the rename step, `supabase db push` will see the local file as unapplied and try to re-run it, causing duplicate-policy/function errors.
+- **Helpers:** Use `get_user_organizations()` (SECURITY DEFINER) in RLS policies to avoid infinite recursion when checking organization membership. Use `get_owned_organizations()` (SECURITY DEFINER) for owner-level checks. **Never** write RLS policies where `organization_members` ↔ `organizations` reference each other — always use these helpers.
+- **Clerk JWT compatibility:** All RLS policies must use `auth.jwt() ->> 'sub'` (not `auth.uid()`) to identify the current user. `auth.uid()` tries to cast the Clerk user ID string (e.g. `user_abc123`) to a UUID and fails with `22P02`. When joining to `users`, use `users.clerk_id::text = (auth.jwt() ->> 'sub'::text)`. For org-ownership checks, use the `get_owned_organizations()` / `get_user_organizations()` SECURITY DEFINER helpers — never `organization_members.user_id = auth.uid()`.
+
+---
+
+## 4. UI & Design Strategy
+
+**Design System:**
+
+- **Tooling:** Use **Figma MCP** to extract design tokens and layouts directly from Figma files.
+- **Framework:** Tailwind CSS (Web) and NativeWind (Mobile).
+- **Shared UI:** All new components must be built in `packages/ui` to be shared between Web and Mobile.
+
+**Figma Workflow:**
+
+1.  **User Input:** User provides the Figma URL for a specific screen or feature.
+2.  **Extraction:** Agent uses `user-Figma` tools to extract design tokens (colors, typography) and layout structure.
+3.  **Implementation:** Agent implements the design in `packages/ui` (atoms) or `apps/mobile` (screens) matching the Figma reference.
+
+**Migration Strategy (Hybrid Approach):**
+
+1.  **Mobile (Greenfield):** Build `apps/mobile` from scratch using the **new design** and **NativeWind** immediately. Do not port old designs.
+2.  **Web (Incremental):**
+    - Keep existing CSS Modules for legacy pages initially.
+    - Refactor pages one-by-one to replace old components with new shared `packages/ui` components.
+    - Goal: Eventually eliminate all CSS Modules in favor of Tailwind.
+
+---
+
+## 5. Stripe Integration Standards
+
+- **PaymentIntents:** Always use PaymentIntents.
+- **Metadata:** Store minimal metadata. **NO PII** in Stripe metadata.
+- **Webhooks:** Verify signatures for ALL webhooks. Handle idempotency.
+- **Connect:** Use Connect accounts for organizer payouts.
+- **Fees:** Calculate fees **server-side only**. Never trust client-sent amounts.
+  - **Where markup lives:** Per-event overrides on the `events` table — `markup_percent` (e.g. `10` = 10%) and `markup_fixed_cents` (e.g. `99` = $0.99). To change markup for a specific event, update those two columns on that event row. Defaults are `10` + `99` (`DEFAULT_PLATFORM_FEE_PERCENT` / `DEFAULT_FIXED_FEE_CENTS` in `packages/lib/src/stripe/fees.ts`); rows without overrides fall through to those defaults.
+  - **Server reads via `getEventMarkup(eventId, currency)`** in `apps/web/app/lib/stripe/fees.ts` — used by `create-payment-intent` and the RSVP request flow. This is the source of truth for what Stripe authorizes and what's stored in `rsvps.total_amount_cents` / `orders.total_cents`.
+  - **Clients must mirror the same per-event markup when displaying pre-PaymentIntent estimates** (e.g. mobile checkout sheet). The `get_event_with_tiers` RPC forwards both columns; do **NOT** hardcode `DEFAULT_*` constants in any user-visible total or the sheet will silently diverge from the Stripe authorization on custom-markup events. See `APRIL_2026_FIXES.md` #151.
+  - **Displaying historical/stored prices (org Sent lists, My Tickets, RSVP management, revenue dashboards):** Use the shared helpers in `@project-flame/lib`, not hand-rolled fee math. Pick by data shape: `getOrderDisplayCents(order)` for user-facing per-order display (branches on `payment_provider`); `getBasePriceFromTicket(amount, createdAt, fee_percentage?)` for the organizer's per-ticket base price; `calculateOrganizerBasePrice(order)` for revenue aggregation. **Do NOT call `extractBasePriceHistorical` directly in new code** — it is fee-inclusive-input only and assumes the legacy 7% + IVA shape; calling it on a modern (post-2026-01-15 `STRIPE_CONNECT_MIGRATION_DATE`) row invents a phantom markup that was never there (the $25 → $23.14 bug class). The other three helpers have the migration-date guard built in. **Before writing any new pricing display, read the consolidated decision tree and prior-fix index in `MAY_2026_FIXES.md` #2 → "Pattern note — when to use which pricing helper"** — five separate fixes (Feb #2173, Mar #298, Apr #151, Apr #441, May #2) trace to this one root cause. If you find a sixth instance, log it under that note rather than starting fresh, and consider whether the helpers themselves need a new branch.
+
+---
+
+## 6. Testing Strategy
+
+**Framework:** Vitest
+**Config:** `vitest.config.ts` (Unit/Component), `vitest.integration.config.ts` (DB Integration).
+
+### Test Types
+
+1.  **Unit Tests (`__tests__/*.test.ts`):** Business logic, utils. Fast, mocked dependencies.
+2.  **Component Tests (`__tests__/*.integration.test.tsx`):** UI rendering, user flows. Mock APIs.
+3.  **API Tests (`**/__tests__/api/**/*.test.ts`):** Endpoint verification.
+4.  **DB Integration (`__tests__/integration/*.test.ts`):** Real DB queries (requires test env).
+
+### Mocking Best Practices (Jan 2026)
+
+- **Clear Mocks:** Use `vi.clearAllMocks()` in `beforeEach` (not `resetAllMocks` which kills implementations).
+- **Sequential Mocks:** Use `vi.mockResolvedValueOnce` for flows with multiple fetch calls (e.g., validate -> payment intent).
+- **Response Shape:** Ensure mocks match actual API responses exactly.
+
+---
+
+## 7. Monorepo Structure & Shared Logic
+
+- **`apps/web`**: The existing Next.js app.
+- **`apps/mobile`**: The new Expo app.
+- **`supabase/`**: Shared database (at repo root, NOT inside apps/web).
+- **`packages/`**:
+  - **`packages/lib`** (✅ Completed): Shared business logic, types, and utilities.
+  - **`packages/ui`**: Shared UI components.
+  - **`packages/config`**: Shared TSConfig, ESLint.
+
+### `packages/lib` Contents (Extracted Feb 2026)
+
+| Module         | What's Included                                    | Import Example                                              |
+| -------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| **types**      | `Event`, `TicketTier`, `TicketStage`, `QRCodeData` | `import { Event } from "@project-flame/lib"`                |
+| **pricing**    | Fee calculations, markup constants, IVA            | `import { calculateFinalPrice } from "@project-flame/lib"`  |
+| **stripe**     | `calculateFee`, cancellable status constants       | `import { calculateFee } from "@project-flame/lib"`         |
+| **validators** | Cedula validation, quantity validation             | `import { validateCedula } from "@project-flame/lib"`       |
+| **utils**      | `formatCurrency`, timezone, availability, event-date filtering | `import { formatCurrency } from "@project-flame/lib"` |
+| **supabase**   | Client factory functions                           | `import { createSupabaseClient } from "@project-flame/lib"` |
+
+### Import Guidelines
+
+- **New features**: Always import from `@project-flame/lib` first.
+- **Existing code**: Gradually migrate imports when touching files.
+- **Platform-specific**: Keep hooks, React components, and API routes in their respective apps.
+
+### Mobile Architecture (Independent Client)
+
+Mobile is an **independent client** of the same Supabase backend. It does NOT depend on the web server for normal operation.
+
+1. Uses shared **business logic** from `packages/lib` (pricing, validation, types)
+2. **Reads**: Queries Supabase directly using an authenticated client (`lib/supabase-auth.ts`). RLS policies scope data to the current user.
+3. **Writes needing server secrets** (Stripe, email): Calls web API endpoints or Supabase Edge Functions.
+4. Has its own **UI layer** with React Native components
+
+| Web Code             | Mobile Alternative                                                      |
+| -------------------- | ----------------------------------------------------------------------- |
+| `supabase/server.ts` | `lib/supabase-auth.ts` — authenticated client via Clerk JWT for reads   |
+| `hooks/*`            | Own hooks in `apps/mobile/hooks/` querying Supabase directly            |
+| `email/*`            | Triggers via web API calls (needs server-side secrets)                  |
+| Server-side Stripe   | Uses Stripe React Native SDK; web API for PaymentIntent creation only   |
+
+**Clerk + Supabase Auth (Required):**
+Mobile uses a Clerk-issued JWT (template: `"supabase"`) signed with Supabase's JWT secret.
+This lets RLS policies verify the user via `auth.jwt() ->> 'sub'` matching `users.clerk_id`.
+Setup: Clerk Dashboard → JWT Templates → name `supabase`, signing key = Supabase JWT Secret.
+
+### Critical Rule: Port, Never Rewrite
+
+**NEVER write mobile business logic from scratch.** The web app (`apps/web`) is the proven, working implementation. Every piece of mobile logic MUST be methodically ported from the corresponding web code by reading the web files first, then adapting only what's necessary for React Native. "Reimagining" or "rewriting" the same flow — even with good intentions — introduces subtle bugs (fee calculations off by cents, missing edge cases, wrong state transitions) that are expensive to catch in review. See **Section 9: Web-to-Mobile Logic Porting Protocol** for the mandatory process.
+
+### Metro + pnpm Resolution (Critical Pattern)
+
+**Problem:** `apps/web` uses React 19.1.4 and `apps/mobile` uses React 19.1.0. pnpm's `auto-install-peers` creates `packages/ui/node_modules/react` → React 19.1.4. Metro's hierarchical lookup finds this **wrong** copy first, causing "Invalid hook call" errors.
+
+**Solution (in `apps/mobile/metro.config.js`):**
+
+1. **Symlink cleanup at startup:** Deletes `react`, `react-native`, `nativewind`, `react-native-css-interop` symlinks from `packages/*/node_modules/` so Metro's hierarchical lookup can't find them.
+2. **`extraNodeModules`:** Maps singleton packages to absolute paths in `apps/mobile/node_modules/`.
+3. **`nodeModulesPaths`:** Points to `apps/mobile/node_modules` (primary) and root `node_modules` (fallback).
+
+**What does NOT work:**
+
+- `resolveRequest` alone — hierarchical lookup runs before it.
+- `blockList` — Metro checks resolved real paths, not symlink paths.
+- `disableHierarchicalLookup` — breaks transitive dep resolution in pnpm's `.pnpm` store.
+
+**Rules:**
+
+- **Never add `react`, `react-native`, `nativewind` to `packages/ui/dependencies`.** Always `peerDependencies`.
+- If Metro can't resolve a transitive dep, add it as an explicit dependency in `apps/mobile/package.json`.
+- When adding a new shared package to `packages/`, add its name to the `packageNames` array in `metro.config.js`.
+- **New Dependency Rule:** If adding a package like `@tanstack/react-query`, ensure it is explicitly mapped in `extraNodeModules` in `metro.config.js` to avoid resolution errors.
+
+---
+
+## 8. Migration Roadmap Checklist
+
+### Phase 1: Monorepo Foundation (Week 1)
+
+**Goal:** Establish the Turborepo structure and isolate the existing web app.
+
+- [x] Initialize Turborepo workspace.
+- [x] Move Next.js to `apps/web`.
+- [x] Create `apps/mobile` (Expo Managed Workflow).
+- [x] Setup `packages/lib`, `packages/ui`, & `packages/config`.
+- [x] Extract shared business logic to `packages/lib` (65 tests passing).
+- [x] Fix Supabase preview branching (folder at root, dashboard config).
+
+### Phase 2: Design System Extraction (Weeks 1-2)
+
+**Goal:** Connect Figma to code and establish the "Source of Truth" for design.
+
+- [x] Use Figma MCP to extract design tokens (colors, typography, spacing).
+- [x] Configure `packages/ui/tailwind.config.js` with extracted tokens.
+- [x] Ensure both `apps/web` and `apps/mobile` consume the shared config.
+
+### Phase 3: Component Library "Atoms" (Week 2)
+
+**Goal:** Build the building blocks before the screens.
+
+- [x] Buttons (PillButton: Primary, Secondary, Ghost).
+- [ ] Input Fields (Text, Email, Password).
+- [x] Cards (EventCard, SpotlightCard, EventListCard).
+- [x] Typography (FlameText with Poppins weight support).
+- [x] Additional atoms: CategoryPill, SectionHeader, FAQItem.
+- [ ] Verify components against Figma using screenshots.
+
+### Phase 4: UI Design First - Mobile Screens (Weeks 3-4)
+
+**Goal:** Build the UI for all remaining iOS app screens using the new design and shared components based strictly on Figma. **No functional logic (API calls, complex state) should be added in this phase.**
+
+- [x] **Home Screen:** Main feed and layout (mock data, 9 section components).
+- [x] **Events Listing Screen:** Search, category filter pills, vertical EventListCard list, Figma-matched.
+- [x] **Event Details Screen:** Single event view (from Figma), TicketTierCard with visual states, back nav, info rows, ticket selection UI.
+- [x] **Ticket Selection & Purchase Flow:** Quantity selector, checkout bottom sheet UI, promo code input UI.
+- [x] **User Dashboard UI:** Ticket Wallet (QR Codes) UI, Profile Settings UI. _(Completed Feb 23, 2026 — see FEB_2026_FIXES.md #139–167.)_
+- [x] **Organizer Dashboard UI:** Event Management UI, Stats UI. _(Completed Feb 23, 2026 — see FEB_2026_FIXES.md #155–166, #169–170.)_ Scanner (Camera) screen completed in Phase 5B (Feb 26, merged Mar 3).
+- [x] **Authentication UI:** Sign-in/Sign-up screens UI. _(Completed Feb 18, 2026 — see FEB_2026_FIXES.md #34, #48, #61.)_
+
+### Phase 5A: Audit Existing Logic Against Web (Week 5)
+
+**Goal:** Review all already-integrated mobile logic against the web source-of-truth. These features were built before the Logic Porting Protocol was established and may have drift from the working web implementation. Fix any discrepancies.
+
+**Timing:** The Checkout audit is the highest-priority item in the entire migration and SHOULD begin immediately — it does not depend on Phase 4 UI completion. Run it in parallel with remaining Phase 4 UI work (User Dashboard UI, Organizer Dashboard UI, Auth UI). The other audits (Event Details, Auth) can wait until Phase 4 finishes.
+
+**All audits MUST follow the Logic Porting Protocol (Section 9).** Read the corresponding web files first, then compare mobile implementation line-by-line.
+
+- [x] **Home Screen Data Integration:** Connected to Supabase, "Load Once" pattern, RLS recursion fix. **Audit complete (Feb 24, 2026) — see FEB_2026_FIXES.md #186.** Fixed: (1) extracted `isEventActive`/`filterActiveEvents`/`filterPastEvents`/`separateEventsByDate` to `@project-flame/lib`; (2) `description` added to `EventCardData` and mobile search filter to match web's `EventsCatalog`.
+- [x] **Navigation:** Stack navigator with native iOS swipe-back gesture. _(No logic to audit — platform-specific)_
+- [x] **Event Details Logic Audit:** Compare `hooks/useEventDetails.ts` against web's `components/EventDetail.tsx` + `lib/hooks/useTicketAvailability.ts`. Verify tier status computation, pricing display, availability logic. **Audit complete (Feb 24, 2026) — see FEB_2026_FIXES.md #188.** Fixed: `isTierAvailable` in `@project-flame/lib` was missing `quantity_reserved` from sold-out calculation; 4 new tests added (89 total passing). Mobile `getTierStatus`, `maxQuantity`, `findFirstAvailableStage` usage, `formatCentsAsPrice`, error handling all confirmed correct. Edge cases deferred to `EDGE_CASES_TODOS.MD` #37–40.
+- [x] **Checkout Logic Audit (HIGHEST PRIORITY): COMPLETE (Feb 24, 2026) — see FEB_2026_FIXES.md #190, #191.** Two bugs fixed: (1) RSVP paid flow now passes `stageId` to `create-payment-intent`; (2) Hold now cancelled via `POST /api/holds/cancel` on PaymentSheet dismissal and post-hold errors. All shared lib imports confirmed. Web RSVP source-of-truth is `EventDetail.tsx` → `RsvpPaymentModal.tsx` (same-session inline payment). `StripePurchaseFlow.tsx` is legacy (token-based post-approval payment — inactive, do not reference for new work). Edge cases #41–44 deferred to `EDGE_CASES_TODOS.MD`.
+- [x] **Auth Logic Audit:** Compare `hooks/useSignInHandlers.ts` against web's Clerk setup (`lib/auth.ts`, `lib/user-sync.ts`), OAuth flow, error states. **Audit complete (Feb 24, 2026) — see FEB_2026_FIXES.md #194.** No code changes needed. Confirmed: Google OAuth (useSSO + warmup), email sign-in/sign-up, error extraction, double-submission guard, useOptionalAuth (Rules of Hooks), token cache (expo-secure-store), ClerkProvider setup — all correct. `sync-current-user` call is N/A (web doesn't call it on sign-in either; route is a stub; real sync is JIT via `resolveDbUserFromClerkId`). Edge case #47 deferred to `EDGE_CASES_TODOS.MD`.
+
+### Phase 5B: New Logic Integration (Weeks 5-6)
+
+**Goal:** Integrate logic for remaining screens. **Every implementation MUST follow the Logic Porting Protocol (Section 9)** — read the web source files, document the flow, then port methodically. No writing from scratch. No exceptions.
+
+- [x] **User Dashboard Logic:** Fetch tickets, display real QR codes, update profile data. _(Web source: `UserDashboard.tsx`, `useUserTickets.ts`, `useUserProfile.ts`)_ _(Complete Feb 24, 2026 — see FEB_2026_FIXES.md #196.)_
+- [x] **Organizer Dashboard Logic:** Manage events, fetch stats, implement scanner logic. _(Web source: `OrganizerDashboard.tsx`, `useOrganizerData.ts`, `QRScannerApp.tsx`)_ _(Complete — Tasks 2A–2D: Dashboard wiring Feb 27 #271–#281, RSVP Feb 25 #213, QR Scanner Feb 26 merged Mar 3, Event CRUD Feb 26 #247–#265.)_
+- [x] **Authentication Logic:** Connect remaining Clerk auth flows. _(Web source: `lib/auth.ts`, `lib/user-sync.ts`, `api/auth/sync-current-user/route.ts`)_ **Complete Mar 3, 2026 — see FEB_2026_FIXES.md #290.**
+
+### Phase 6: Web Integration - Hybrid Approach (Ongoing)
+
+**Goal:** Incrementally update the Web App to the new design.
+
+- [ ] Replace old CSS Module components with `packages/ui` components.
+- [ ] Refactor pages one by one to use shared components.
+- [ ] E2E Testing.
+- [ ] App Store Submission.
+
+**Phase 9 (Web Design Update — Mar 2026+):** Tailwind + Flame tokens, 800px max-width. Read `docs/prompts/prompts_phases_web_design.md`. Order: P9-1–P9-5 first (Foundation, Navbar, Home, Events, Event Detail+Checkout), then P9-6–P9-8 (Dashboard, Polish).
+
+**Note:** iOS-specific phases (Phase 6 iOS Polish complete Mar 2026, Phase 7 Production Readiness complete Mar 7 2026) are tracked in `docs/project-migrations/IOS_MIGRATION.md`. Phase 7 task prompts and PR review prompts are in `docs/prompts/prompts_phases.md`.
+
+---
+
+## 9. Web-to-Mobile Logic Porting Protocol
+
+**CRITICAL RULE: NEVER write mobile logic from scratch.** The web app is the proven, working implementation. Every piece of mobile business logic MUST be methodically ported from the corresponding web code. "Reimagining" or "rewriting" the same flow introduces subtle bugs (fee calculations off by cents, missing edge cases, wrong state transitions) that are hard to catch in review.
+
+This protocol is the **Phase 5 equivalent** of the Figma-to-Code Implementation Protocol (Phase 4). It applies to ALL logic integration work — both auditing existing code (Phase 5A) and building new features (Phase 5B).
+
+### Step 1: Identify Web Source Files (MANDATORY)
+
+Before writing ANY mobile logic, consult the **Reference Mapping Table** in `docs/project-migrations/IOS_MIGRATION.md` Section 7 to identify the exact web files that implement this feature. Read **ALL** of them. If the mapping table doesn't cover a feature, search `apps/web/` for the equivalent before proceeding.
+
+### Step 2: Document the Web Flow
+
+After reading the web files, document (mentally or in a comment):
+
+1. Every **API endpoint** called (method, path, request body shape, response shape).
+2. Every **shared lib function** used (`calculateFee`, `formatCentsAsPrice`, `validateCedula`, etc.).
+3. Every **state transition** (idle → loading → success / error).
+4. Every **edge case** handled (free purchase, 100% promo discount, RSVP vs. direct purchase, sold out tiers, expired sales, etc.).
+5. Every **validation** performed (quantity limits, per-user limits, promo code format, auth checks).
+
+### Step 3: Identify Shared vs. Platform-Specific
+
+| Layer | Approach |
+| --- | --- |
+| **Types & Interfaces** | Import from `@project-flame/lib`. NEVER redefine. |
+| **Pricing / Fee Calculations** | Import from `@project-flame/lib`. NEVER recalculate or approximate. |
+| **Validation** | Import from `@project-flame/lib`. NEVER rewrite. |
+| **Shared Logic Extraction (New)** | If you find business logic in `apps/web` that *should* be shared but isn't in `@project-flame/lib` yet, **STOP**. Extract it to `packages/lib` first, add a test, then update both Web and Mobile to use the new shared function. NEVER copy-paste raw business logic. |
+| **Reads (tickets, profile, role, events, org data)** | Query Supabase directly using `lib/supabase-auth.ts` (authenticated client). Port the **query shape** and **business logic** from the web route, NOT the API call itself. RLS policies handle user-scoping. |
+| **Writes needing server secrets (Stripe, email, admin ops)** | Use `lib/api.ts` to call web API routes (or Supabase Edge Functions). |
+| **Stripe SDK** | Web uses Stripe Elements; mobile uses PaymentSheet. This is the ONLY acceptable divergence in the payment flow. PaymentIntent creation still goes through the web API. |
+| **React Hooks** | Mobile creates its own hooks, but the LOGIC inside must mirror the web hook step-by-step. |
+| **UI Components** | Platform-specific (React Native / NativeWind). Not covered by this protocol — see Figma-to-Code protocol. |
+
+### Step 4: Port the Logic
+
+Write the mobile hook/function by following the web implementation step-by-step:
+
+1. **Same data access** — For reads, port the Supabase query shape (`.select()`, `.eq()`, `.in()`, joins) from the web route into the mobile hook using `lib/supabase-auth.ts`. For writes needing server secrets, use the same web API endpoints via `lib/api.ts`.
+2. **Same shared lib imports** — If web uses `calculateFee()`, mobile uses `calculateFee()`. No local reimplementations.
+3. **Same error handling** — If web catches a specific error and shows a message, mobile does too.
+4. **Same state machine** — If web has states `idle → loading → success / error`, mobile has the same transitions.
+5. **Same edge cases** — If web handles "free after promo code" differently from "paid", mobile does too.
+6. **Same cents/dollars convention** — If web stores amounts in cents and displays via `formatCentsAsPrice()`, mobile does the exact same thing. NEVER convert or round manually.
+7. **Better industry pattern?** — If during porting you identify that the web's approach doesn't match industry conventions (e.g., web makes 3 separate API calls where Eventbrite/Ticketmaster use a single batch call, or web calculates revenue client-side where Stripe Dashboard uses server-authoritative amounts), adopt the industry-standard pattern on mobile and log the improvement in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` for web to adopt later. The web is the source of truth for *what* logic to port, but not necessarily for *how* to structure the data flow. See Section 3 — Industry Standards Benchmarking.
+
+### Step 5: Verify Query / API Parity
+
+**For direct Supabase reads**, verify:
+
+- [ ] `.select()` fields match the web route's select (same columns, same joins).
+- [ ] `.eq()` / `.in()` / `.neq()` filters match the web route's WHERE clauses.
+- [ ] `.order()` matches the web route's ORDER BY.
+- [ ] Response data is transformed to the same shape as the web route's JSON response.
+- [ ] Auth is via `getAuthenticatedClient(getToken)` — RLS handles user-scoping.
+
+**For web API writes** (Stripe, email, admin ops), verify:
+
+- [ ] HTTP method matches web (GET / POST / PUT / DELETE).
+- [ ] Endpoint path matches web exactly.
+- [ ] Request body shape matches web exactly (same field names, same types, same units).
+- [ ] Auth header is sent (Bearer token via `lib/api.ts`).
+- [ ] Response is parsed the same way (same field names, same fallback values).
+
+### Step 6: Verify Calculation Parity
+
+For any screen that displays prices, fees, or totals:
+
+- [ ] All amounts use the SAME shared lib function as web (e.g., `calculateFee`, `calculateFinalPrice`).
+- [ ] Cents-to-display conversion uses `formatCentsAsPrice()` from `@project-flame/lib` — no custom formatting.
+- [ ] Fee breakdown matches web's `PriceBreakdownDisplay.tsx` logic (subtotal, discount, service fee, total).
+- [ ] Promo code discount is applied in the same order and with the same rounding as web.
+- [ ] The server's response amounts ALWAYS override any client-side estimates.
+
+### Step 7: Test Against Web Behavior
+
+After implementation, test the same scenario on BOTH platforms:
+
+1. Perform the action on web — note the exact behavior, amounts, states, and API calls (Network tab).
+2. Perform the same action on mobile — verify identical behavior and amounts.
+3. If anything differs — the mobile implementation has a bug. The web is the source of truth.
+
+### Failure Conditions — STOP and Ask
+
+- A web pattern doesn't have a clean mobile equivalent (e.g., server-side redirect, URL-based purchase tokens).
+- The web flow requires server-side secrets (Stripe, email) that can't be exposed on mobile — needs a web API route or Supabase Edge Function.
+- An RLS policy is missing or incompatible with Clerk JWTs (e.g., uses `auth.uid()` instead of `auth.jwt() ->> 'sub'`) — needs a migration.
+- The web flow has steps that don't exist on mobile or vice versa.
+- Two web files contradict each other.
+
+---
+
+### 9.1 Web Parity Gate (MANDATORY when porting from web)
+
+Phase 5A/5B are complete. This gate continues to apply to any PR that ports or changes mobile logic that has a web equivalent (e.g., Phase 7 extra features that mirror web flows). Such PRs are blocked from merge unless the PR description includes all of the following:
+
+1. **Web Source References**
+   - Exact web files used as source-of-truth (paths in `apps/web/app/...`).
+   - Brief mapping from each changed mobile file to corresponding web file(s).
+2. **API Parity Evidence**
+   - Method + endpoint parity confirmed (mobile vs web).
+   - Request body field parity confirmed (same names, units, and optional fields).
+   - Response parsing parity confirmed (same fallback behavior and error branches).
+3. **Calculation Parity Evidence**
+   - Confirmation that shared pricing/validation/formatting helpers are imported from `@project-flame/lib`.
+   - Confirmation that price display uses server-authoritative amounts once returned.
+   - Confirmation that no custom cents/dollars conversion or custom fee math was introduced.
+4. **Edge Case Verification**
+   - Verified outcomes for: standard paid purchase, free purchase, promo-discounted purchase, 100% promo, RSVP paid, RSVP free, and payment cancellation/retry.
+5. **Cross-Platform Behavior Check**
+   - Same scenario executed on web and mobile with matching result (state transitions + totals + API behavior).
+
+If any item above is missing, the PR is considered incomplete.
+
+---
+
+### 9.2 Web-to-Mobile Reference Mapping
+
+The full Reference Mapping Table (which web files to read before writing each mobile feature) lives in **`docs/project-migrations/IOS_MIGRATION.md` Section 7**. Consult it before porting logic from web. The table maps every mobile hook/component to the exact web source files and API endpoints.
+
+---
+
+## 10. Mobile Authentication — Current Wiring (DO NOT BREAK)
+
+**Status:** Stable as of Apr 21, 2026 (APRIL_2026_FIXES.md #127, #127.1, #127.2). This section documents exactly what is wired so future changes don't regress it. Before modifying ANY auth code, read this section, then read `apps/mobile/hooks/useSignInHandlers.ts` end-to-end. Do not "simplify", "modernize", or "refactor" the reset calls, the SSO name-collection fallback, or the `signUp.password()` invocation without re-reading the history below.
+
+### 10.1 Architecture Summary
+
+Mobile auth is a **custom Clerk integration** (not Clerk's prebuilt `<SignIn>` / `<SignUp>` components — those are web-only). The web app uses `@clerk/nextjs`'s prebuilt components which auto-handle missing-field collection + legal consent; mobile has to replicate that behavior by hand. That asymmetry is intentional and permanent — do NOT try to add Clerk's prebuilt UI to Expo.
+
+- **Hook:** `apps/mobile/hooks/useSignInHandlers.ts` — single source of truth for ALL sign-in / sign-up logic (email+password, SSO, name collection).
+- **Screen:** `apps/mobile/app/sign-in.tsx` — orchestrates UI state, renders the correct sub-component based on `pendingSSONameProvider`.
+- **Sub-components:** `apps/mobile/components/sign-in/*` — `AppleOAuthButton`, `OAuthButton` (Google), `CredentialsForm`, `SSONameCollection`, `TermsDisclaimer`, `VerificationCodeInput`, etc.
+
+### 10.2 The Three Sign-Up Paths (and what each one touches)
+
+1. **Email + Password sign-up** (`onEmailSignUp`):
+   - Calls `signUp.password({ emailAddress, password, firstName, lastName, legalAccepted: true })` (Clerk v3 API — **not** `signUp.create()`).
+   - `legalAccepted: true` is passed programmatically because the Clerk Dashboard has "Require legal acceptance" enabled. See `TermsDisclaimer` (clickwrap pattern).
+   - **Defensive reset at the top of `onEmailSignUp` is MANDATORY.** Before calling `signUp.password()`, we call `resetClerkSignUp(signUp)` to clear any stale `sua_*` id held over from an abandoned SSO attempt. Removing this reset re-introduces the "No sign up was found with id sua_*" regression.
+2. **SSO (Apple / Google)** (`runSSOFlow`):
+   - Calls `startSSOFlow({ strategy })` from `useSSO()`.
+   - If `createdSessionId` is set → existing user, `setActive()` + navigate. Done.
+   - If `signUp` is returned with `status: "missing_requirements"`:
+     - If `legal_accepted` is missing → call `ssoSignUp.update({ legalAccepted: true })` (programmatic consent, per the clickwrap disclaimer already shown).
+     - If `first_name` or `last_name` is still missing → stash `ssoSignUp` in `ssoSignUpRef` and set `pendingSSONameProvider`. This triggers the UI to render `<SSONameCollection>`, which collects the names and calls `onCompleteSSONameCollection(firstName, lastName)` → `ssoSignUp.update({ firstName, lastName })` → `setActive()`.
+     - If still incomplete after all known remedies → call `resetClerkSignUp(currentSignUp)` and surface the error.
+3. **SSO name-collection cancellation** (`cancelSSONameCollection`):
+   - Called when the user backs out of `<SSONameCollection>`.
+   - **Fire-and-forget `resetClerkSignUp(abandoned)` is MANDATORY.** Skipping it re-introduces the stale `sua_*` bug when the user then switches to email signup.
+
+### 10.3 Why Apple Sign-In Triggers the Name-Collection Screen
+
+Apple releases first/last name **only once per Apple ID per app** — on the very first authorization. On every subsequent Apple Sign-In (even in simulators, even after "Stop Using Apple ID" in system settings), Apple returns the email but withholds names. Clerk then flags `first_name` + `last_name` as `missingFields` and our UI renders `<SSONameCollection>`. This is expected behavior, matches how Spotify / Uber / Lyft handle the same Apple quirk, and must not be "fixed" by removing the screen.
+
+### 10.4 `__internal_future.reset()` — Why We Use It
+
+- `SignUpResource.__internal_future.reset()` is a local-only state clear on the Clerk client. It does NOT hit the network and is safe to call on fresh state.
+- We deliberately avoid `client.signUp.destroy()` — that attempts a server-side DELETE and 404s when the `sua_*` id has already been consumed or never existed.
+- The `__internal_future` namespace is Clerk's internal API. Call sites are narrow (`resetClerkSignUp` helper, 3 invocations) and structurally typed via `SSOSignUpHandle`. If Clerk removes this API in a future SDK bump, `resetClerkSignUp` will silently no-op (the optional-chain guards + try/catch) — verify at that point and migrate.
+
+### 10.5 Terms & Conditions — One Disclaimer, Always Visible
+
+- `<TermsDisclaimer />` is rendered **unconditionally** below `<CredentialsForm>` in `sign-in.tsx`.
+- It is a **clickwrap** — the user's act of tapping "Continue with Apple" / "Continue with Google" / "Sign up" / "Sign in" is the legal agreement. `legalAccepted: true` is passed programmatically.
+- There is no longer a `TermsCheckbox` — do NOT re-add one. The clickwrap pattern is the intentionally simplified single consent surface (see APRIL_2026_FIXES.md #127.1).
+
+### 10.6 Known Edge Case (Deferred)
+
+Deleting an account in-session and immediately trying to re-register (without closing the app) can still hit `No sign up was found with id sua_*`. Logged as edge case #92 in `EDGE_CASES_TODOS.MD`. Workaround: force-quit + relaunch. Rare enough to defer; do NOT chase it as part of unrelated work.
+
+### 10.7 Checklist Before Touching This Code
+
+- [ ] Re-read `useSignInHandlers.ts` top-to-bottom.
+- [ ] Re-read `APRIL_2026_FIXES.md` #127, #127.1, #127.2 for historical context.
+- [ ] If removing/moving `resetClerkSignUp` calls — stop. Each of the three call sites exists to prevent a specific regression. Find a different path.
+- [ ] If changing `signUp.password()` to `signUp.create()` or similar — stop. `password()` is the Clerk v3 API (APRIL_2026_FIXES.md #125). `create()` was the legacy v2 method.
+- [ ] If adding a `TermsCheckbox` back — stop. The clickwrap disclaimer is intentional.
+- [ ] Test every auth path after changes: (a) new email signup, (b) existing email sign-in, (c) Apple first-time, (d) Apple returning-user (triggers name-collection screen), (e) Google first-time, (f) Google returning-user, (g) SSO → back out of name collection → email signup (stale-id regression check).
