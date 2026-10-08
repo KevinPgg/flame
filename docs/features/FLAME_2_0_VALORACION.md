@@ -59,29 +59,36 @@
 
 ---
 
-## 3. Plan sencillo (por fases)
+## 3. Plan sencillo (por fases) — v2, con decisiones del 2026-10-08
 
-Principio: **primero lo que no toca pagos ni BD; lo nuevo, detrás de una feature flag.**
+Principio: **primero lo que no toca pagos ni BD; lo nuevo, detrás de una feature flag.** El organizador se construye **dos veces** (web y app nativa) a partir del mismo diseño.
 
 | Fase | Contenido | Toca BD | Toca pagos | Esfuerzo [Adivinando] |
 | --- | --- | --- | --- | --- |
-| **0. Decidir** | Resolver D1–D4 (§4). Sacar del prototipo los design tokens (colores, tipografía Inter/Inter Tight, radios, espaciados) a `packages/ui` | No | No | 2–3 días |
-| **1. Organizador web** | Rediseño 1:1 del panel (dashboard, tabs de evento, RSVPs, equipo, ajustes, scanner, crear/editar) + responsive con barra inferior. Hacer antes el fix batch del N+1 | No | No | 3–4 semanas |
-| **2. Asistente** | Home, explore, evento, wallet, ticket, perfil, ajustes, inbox (con `notifications`). En web y/o app según D1 | No | No | 3–4 semanas |
-| **3. Checkout y códigos** | Selector de tickets por tier, discount en checkout, promoter con check. **Corregir antes el bug de promoter** y correr los tests de pago web | No | **Sí** | 1–2 semanas |
-| **4. Funcionalidad nueva** | Follow, saved, categorías, line-up, búsqueda ampliada, invitaciones de equipo, breakdown, numeración de tickets. Una migración por ítem, con RLS revisada | **Sí** | Parcial (numeración, breakdown) | 4–6 semanas |
-| **5. Salida** | QA manual mobile (no hay tests), release iOS, monitoreo | — | — | 1–2 semanas |
+| **0. Base** ✅ 2026-10-08 | Design tokens del prototipo (colores, Inter/Inter Tight, radios, espaciados) en `packages/ui`. Montar i18n en web y app (inglés por defecto + español). Tests de los RPC de compra (§7) | Mínimo (columna `users.language`) | No (solo tests) | 1,5–2 semanas |
+| **1. Organizador web** | Rediseño 1:1 del panel + responsive. Fix batch del N+1 antes del dashboard | No | No | 3–4 semanas |
+| **1b. Organizador app** | Mismas pantallas en Expo, a partir de la vista teléfono del prototipo. Se reescriben las pantallas actuales (~5.200 líneas), no se parte de cero. Cerrar de paso la paridad iOS↔web | No | No | 3–4 semanas |
+| **2. Asistente** | Home, explore, evento, wallet, ticket, perfil, ajustes (con selector de idioma), inbox, en web y app | No | No | 3–4 semanas |
+| **3. Checkout y códigos** | Selector por tier, discount en checkout, promoter con check. **Corregir antes el bug de promoter** | No | **Sí** | 1–2 semanas |
+| **4. Funcionalidad nueva** | Follow, saved, categorías, line-up, búsqueda, invitaciones de equipo, breakdown, numeración de tickets. Una migración por ítem | **Sí** | Parcial | 4–6 semanas |
+| **5. Ensayo y salida** | Ensayo en staging (§7), TestFlight interno, release iOS + web, Flame 2.0 pasa a ser la versión base | — | — | 1,5–2 semanas |
 
-**Total [Adivinando]: 3–4,5 meses con una persona a tiempo completo**, asumiendo que la app conserva sus herramientas de organizador. Si D1 = "organizador solo en web", se ahorra parte de la fase 2 en mobile, pero se suma el trabajo de completar la paridad iOS→web **antes** de quitar nada de la app.
+**Total [Adivinando]: 4,5–6 meses con una persona a tiempo completo** (antes 3–4,5). La diferencia es el organizador nativo (+3–4 semanas) y la i18n (+1–2 semanas).
 
 ---
 
-## 4. Decisiones que tiene que tomar Kevin
+## 4. Decisiones tomadas (2026-10-08)
 
-- **D1 — ¿Dónde vive el organizador?** (a) solo web responsive, como en el prototipo; (b) web + app como hoy. Con (a), primero hay que portar a web los 19+ ítems "crucial" que hoy solo tiene iOS, o los organizadores **pierden funciones**.
-- **D2 — ¿Qué pasa con `Flme_comp/`?** Hoy es la versión base que manda. Flame 2.0 la **cambia** a propósito: hay que decidir si 2.0 se desarrolla en una rama y la versión base se actualiza al hacer release, o si convive.
-- **D3 — ¿Ambiente de prueba?** No hay staging: el entorno local es el único lugar de prueba y mobile no tiene tests. Las fases 3–4 no deberían ir a producción sin staging o, como mínimo, tests de los RPC tocados.
-- **D4 — Idioma.** El prototipo está en inglés y Flame opera en Ecuador. Definir si se agrega i18n (hoy no hay ninguna librería de traducción en mobile).
+- **D1 — Organizador visible y funcional desde la app.** Se descarta "organizador solo web" del prototipo. El botón "Manage" de la app abre pantallas nativas, no la web. La vista teléfono del prototipo es la especificación de esas pantallas.
+- **D2 — Flame 2.0 es código nuevo; `Flme_comp/` no se toca.** Queda como referencia de la versión antigua: todo lo marcado `keep` en el prototipo tiene que comportarse igual que en `Flme_comp/`.
+- **D3 — Entorno de pruebas.** Este proyecto ya es el entorno de desarrollo (fuera del git de producción, con commits propios que Kevin pasará a limpio). Qué falta encima de eso: ver §7.
+- **D4 — Idioma.** Inglés por defecto, como el prototipo, con opción de cambiar el idioma en Ajustes (inglés/español).
+
+### Implicaciones del idioma (D4)
+
+- [Seguro] Hoy no hay librería de traducción en mobile. Hay que montarla en las dos apps (p. ej. `next-intl` en web, `i18next` + `expo-localization` en mobile) y escribir todos los textos con claves, desde la fase 0. Hacerlo después obliga a repasar cada pantalla dos veces.
+- [Probable] La preferencia se guarda en `users.language` para que web, app, **emails y push** salgan en el idioma del usuario. Emails y notificaciones son los que se suelen olvidar.
+- [Seguro] El contenido que escriben los organizadores (nombre del evento, descripción, preguntas del formulario) **no se traduce**: se muestra tal cual.
 
 ---
 
@@ -89,10 +96,24 @@ Principio: **primero lo que no toca pagos ni BD; lo nuevo, detrás de una featur
 
 1. **[Seguro] Camino de pago.** Numeración de tickets, discount en checkout y atribución de promoter tocan el flujo más crítico, que además tiene un bug de promoter sin corregir.
 2. **[Seguro] Mobile sin red de seguridad.** Cero tests unitarios y acoplamiento extremo de auth/logger: un rediseño grande de pantallas multiplica el riesgo de romper cosas que solo se ven en runtime.
-3. **[Probable] Regresión de funciones de organizador** si se sigue el prototipo al pie de la letra (organizador solo web) sin completar la paridad.
+3. **[Probable] Doble implementación del organizador** (web + app): riesgo de que diverjan otra vez. Mitigación: lógica en `packages/lib`, pantallas de cada plataforma solo de presentación.
 4. **[Probable] Dos sistemas de estilos.** Tailwind 4 en web y NativeWind/Tailwind 3 en mobile: los tokens se pueden compartir, las clases no del todo.
 5. **[Adivinando] Datos existentes.** Ciudades en texto libre y eventos con price stages necesitan migración o compatibilidad hacia atrás.
 
 ## 6. Recomendación
 
-Hacerlo **por fases, empezando por el organizador web (fase 1)**: es el cambio con mejor relación valor/riesgo (UX claramente mejor, cero BD, cero pagos) y sirve para validar el sistema de diseño antes de tocar la app. Dejar la fase 4 (funcionalidad nueva) como un proyecto aparte, ítem por ítem, y no como parte del "rediseño".
+Hacerlo **por fases**: fase 0 (tokens + i18n + tests de compra), luego organizador web y app (1/1b). Dejar la fase 4 (funcionalidad nueva) como un proyecto aparte, ítem por ítem, y no como parte del "rediseño".
+
+---
+
+## 7. Entorno de pruebas (D3)
+
+[Seguro] Este proyecto local **sí** es el entorno de desarrollo; no hace falta otro para las fases 0–2. Lo que no cubre son tres cosas que solo aparecen al acercarse a producción:
+
+1. **Pruebas automáticas del flujo de compra** (fase 0, antes de la fase 3). Tests de integración (Vitest, ya instalado en web) que corren contra el Supabase local y ejercitan los RPC de holds, compra, promoter y numeración. Hoy ese flujo solo se valida a mano en mobile. Es lo que más reduce el riesgo, y no cuesta infraestructura.
+2. **Ensayo de migraciones contra algo parecido a producción** (fase 5). En local las migraciones se aplican sobre una BD que el propio proyecto creó. En producción caen sobre datos reales con 66 migraciones previas. El ensayo es: aplicar las migraciones nuevas sobre una copia reciente de producción (o un proyecto Supabase de staging en la nube) y comprobar que la app de producción **actual** sigue funcionando contra esa BD durante la transición.
+3. **Prueba de la app nativa** (fase 5). `npx expo start` + `localhost:8081` es Expo **web** en el navegador: sirve para iterar pantallas, pero pago Stripe nativo, cámara del scanner, push y secure-store no se comportan igual. Para lo nativo: build local Android (ya resuelto). Producción es solo iOS y no hay Mac → antes de publicar, un build iOS con EAS instalado vía TestFlight (la app de Apple para betas internas), apuntando a staging.
+
+Mínimo recomendado: el punto 1 siempre, y los puntos 2 y 3 solo para el ensayo final. Un staging en la nube encendido todo el tiempo no hace falta.
+
+**Ojo al "pasar a limpio" los commits:** las migraciones nuevas se pueden reagrupar antes de llevarlas a producción, pero **nunca** se debe tocar una migración que ya esté aplicada en producción, y el orden por timestamp tiene que quedar posterior a la última de producción (`20260622232556`).

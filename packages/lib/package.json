@@ -26,6 +26,7 @@
     "./stripe": "./src/stripe/index.ts",
     "./validators": "./src/validators/index.ts",
     "./utils": "./src/utils/index.ts",
-    "./supabase": "./src/supabase/index.ts"
+    "./supabase": "./src/supabase/index.ts",
+    "./i18n": "./src/i18n/index.ts"
   }
 }

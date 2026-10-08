@@ -201,6 +201,38 @@ export type { FAQItem } from "./content/faqs";
 // ============================================================================
 export { flameColors, flameColorWhite } from "./design-tokens/flame-colors";
 export { flameRadii } from "./design-tokens/flame-layout";
+export {
+  flameV2Colors,
+  flameV2Fonts,
+  flameV2FontWeights,
+  flameV2FontSizes,
+  flameV2Tracking,
+  flameV2Radii,
+  flameV2Layout,
+} from "./design-tokens/flame-v2";
+export type { FlameV2Color } from "./design-tokens/flame-v2";
+
+// ============================================================================
+// I18N (en default, es) — see src/i18n/index.ts
+// ============================================================================
+export {
+  SUPPORTED_LANGUAGES,
+  DEFAULT_LANGUAGE,
+  LOCALE_BY_LANGUAGE,
+  MESSAGES,
+  isLanguage,
+  resolveLanguage,
+  translate,
+  createTranslator,
+} from "./i18n";
+export type {
+  Language,
+  Messages,
+  PluralMessage,
+  TranslationKey,
+  TranslationParams,
+  Translator,
+} from "./i18n";
 
 // ============================================================================
 // SUPABASE

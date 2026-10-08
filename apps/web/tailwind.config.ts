@@ -16,6 +16,14 @@ const config: Config = {
         "poppins-medium": ["Poppins", "sans-serif"],
         "poppins-semibold": ["Poppins", "sans-serif"],
         "poppins-bold": ["Poppins", "sans-serif"],
+        // Flame 2.0 — on the web one CSS family covers every weight; pair with font-medium/semibold/bold.
+        "v2-ui": ["Inter", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"],
+        "v2-ui-medium": ["Inter", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"],
+        "v2-ui-semibold": ["Inter", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"],
+        "v2-ui-bold": ["Inter", "-apple-system", "Helvetica Neue", "Arial", "sans-serif"],
+        "v2-display": ["Inter Tight", "Inter", "-apple-system", "sans-serif"],
+        "v2-display-bold": ["Inter Tight", "Inter", "-apple-system", "sans-serif"],
+        "v2-display-extrabold": ["Inter Tight", "Inter", "-apple-system", "sans-serif"],
       },
       zIndex: {
         "200": "200",

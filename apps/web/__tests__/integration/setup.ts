@@ -6,7 +6,10 @@
 
 // Load environment variables for testing
 import dotenv from 'dotenv';
+// .env.local first (if present), then .env. dotenv never overrides a variable that is already set,
+// so .env.local wins when both define it. The local dev setup only has apps/web/.env.
 dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env' });
 
 // Verify required environment variables
 const requiredEnvVars = [
