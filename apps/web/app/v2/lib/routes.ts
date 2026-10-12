@@ -1,0 +1,20 @@
+/**
+ * Every link the v2 organizer UI uses, in one place.
+ * Screens not rebuilt yet point to their v1 page; when a screen moves to v2, only this file changes.
+ */
+const q = (slug: string) => `org=${encodeURIComponent(slug)}`;
+
+export const routes = {
+  // v2
+  organizers: () => "/v2/organizer",
+  dashboard: (slug: string) => `/v2/organizer?${q(slug)}`,
+  // still v1
+  event: (eventId: string, slug: string) => `/organizer/event/${eventId}?${q(slug)}`,
+  rsvps: (slug: string) => `/organizer?${q(slug)}&tab=rsvps`,
+  createEvent: (slug: string) => `/organizer?${q(slug)}&tab=create-event`,
+  team: (slug: string) => `/organizer/team?${q(slug)}`,
+  settings: (slug: string) => `/organizer/settings?${q(slug)}&tab=organization`,
+  payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,
+  scanner: () => "/qr-scanner",
+  attendeeHome: () => "/",
+} as const;

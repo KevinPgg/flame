@@ -53,3 +53,20 @@ Todo aditivo: ninguna pantalla actual cambia. Verificado en un Postgres 16 + Pos
 - ⚠️ `supabase/seed/` está **vacía** desde el 2026-07-17: el `backup.sql` ya no está en el proyecto y el script de anonimización nunca se guardó. Si la BD local se borra, no hay cómo recargar esos datos sin un dump nuevo de prod.
 - `supabase migration list` sin flags compara contra el proyecto **vinculado en la nube** → "no project ref". Para la BD local: `supabase migration list --local`, o consultar `supabase_migrations.schema_migrations` con psql. **No** hacer `supabase link` contra prod.
 - Conteo real: 65 migraciones (igual que `Flme_comp`); el "66" de docs anteriores era un error de conteo.
+
+## Fix sold-out manual + inicio fase 1 (17:09)
+**Fix (`supabase/migrations/20261008180000_enforce_manual_sold_out.sql`):**
+- `atomic_create_hold_with_stage_validation` y `create_rsvp_atomic` rechazan tiers con `is_manually_sold_out` ("This ticket tier is sold out", mismo mensaje que el inventario → la ruta de RSVP ya lo traduce a 400). Envío de tickets gratis / transferencias del organizador NO se bloquea (a propósito).
+- Hallazgo extra (seguridad): el RPC de holds es `SECURITY DEFINER`, recibe `p_user_id` y tenía EXECUTE para `anon`/`authenticated` → con la anon key pública cualquiera podía reservar entradas a nombre de cualquiera (bloquear inventario 30 min en bucle). Ahora solo `service_role` (su único llamador es la API con service role).
+- Se eliminaron 2 overloads viejos de `create_rsvp_atomic` (5 y 7 args) sin la validación; nada los llama (la API usa la de 9 args).
+- Tests: `purchase-holds.test.ts` 18/18; sin la migración fallan justo los casos nuevos.
+
+**Fase 1 — organizador web v2 (primera entrega):**
+- Rutas en `/v2/organizer` (sin `org` = Mis organizadores; con `?org=slug` = dashboard). Mismo esquema de URL que v1 → al publicar se quita `/v2`. `/v2(.*)` protegido en `middleware.ts`.
+- Datos: misma API (`/api/organizer/data`) y misma cache de React Query que v1; rol desde el servidor (`selectOrganization`). Reglas (alcance por rol, co-hosts, totales por moneda, búsqueda sin tildes, fecha en la zona del evento) en `packages/lib/src/organizer/dashboard.ts` con tests (lib: 207/207).
+- Pantallas que aún no tienen v2 enlazan a v1 desde un solo archivo: `apps/web/app/v2/lib/routes.ts`.
+- Verificado: tsc web 0 errores; render en escritorio (1280) y teléfono (412), en/es, con datos simulados.
+- Fuentes: Inter / Inter Tight vía `next/font` en `app/v2/layout.tsx`; pesos web en `app/v2/v2.css`.
+
+**Pendiente de Kevin:** `supabase migration up` (aplica el fix) · correr tests · abrir `localhost:3000/v2/organizer` con su usuario.
+**Siguiente en fase 1:** detalle de evento v2 (tabs Tiers / Purchases / Breakdown / Promoter links / Promotions / Send tickets).

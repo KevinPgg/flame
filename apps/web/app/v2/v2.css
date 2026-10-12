@@ -1,0 +1,12 @@
+/*
+ * Flame 2.0 (web). Mobile (React Native) needs one font family per weight, so the shared
+ * Tailwind preset names a family per weight (font-v2-ui-semibold…). On the web a single
+ * next/font family covers all weights, so each of those classes also sets its weight here.
+ */
+.font-v2-ui { font-weight: 400; }
+.font-v2-ui-medium { font-weight: 500; }
+.font-v2-ui-semibold { font-weight: 600; }
+.font-v2-ui-bold { font-weight: 700; }
+.font-v2-display { font-weight: 600; }
+.font-v2-display-bold { font-weight: 700; }
+.font-v2-display-extrabold { font-weight: 800; }

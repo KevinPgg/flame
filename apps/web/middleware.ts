@@ -12,6 +12,7 @@ const isProtectedRoute = createRouteMatcher([
   "/organizer/event/(.*)",
   "/organizer/rsvps/(.*)",
   "/organizer/team(.*)",
+  "/v2(.*)", // Flame 2.0 screens under construction — signed-in only
   "/scanner(.*)",
   "/api/organizer(.*)",
 ]);

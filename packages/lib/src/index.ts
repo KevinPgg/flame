@@ -235,6 +235,26 @@ export type {
 } from "./i18n";
 
 // ============================================================================
+// ORGANIZER (Flame 2.0 dashboard model, shared web/mobile)
+// ============================================================================
+export {
+  buildOrganizerEventList,
+  revenueByCurrency,
+  searchEventsByName,
+  splitEventsByTime,
+  totalPendingRsvps,
+  formatEventDateTime,
+} from "./organizer/dashboard";
+export type {
+  DashboardEvent,
+  CohostEntry,
+  OwnerCohostAssignmentRef,
+  OrganizerEventListInput,
+  OrganizerEventList,
+  CurrencyTotal,
+} from "./organizer/dashboard";
+
+// ============================================================================
 // SUPABASE
 // ============================================================================
 export {
