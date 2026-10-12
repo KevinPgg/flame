@@ -8,10 +8,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
  *   - atomic_create_hold_with_stage_validation  (POST /api/holds/create)
  *   - cleanup_expired_holds                      (called lazily before availability / new holds)
  *   - mark_hold_payment_started                  (legacy Datafast path; keeps the grace window)
+ *   - create_rsvp_atomic                         (POST /api/rsvp)
+ *   - EXECUTE permissions on the hold RPC (anon must not reach it)
  *
  * Phase 3 (checkout redesign) changes code around these RPCs; these tests must stay green.
- * Tests marked `it.fails` document KNOWN GAPS: they pass while the gap exists. When someone fixes
- * the gap the test turns red — then switch it to a normal `it` so it guards the fix.
+ * Convention: a newly found gap is first written as `it.fails` (passes while the gap exists);
+ * the fix turns it red, then it becomes a normal `it` that guards the fix.
  *
  * Run: pnpm --filter web test:integration   (needs NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
  * in apps/web/.env.local pointing at the LOCAL Supabase — never at production).
@@ -314,13 +316,65 @@ describe('atomic_create_hold_with_stage_validation', () => {
     expect((data as HoldResult).success).toBe(false);
   });
 
-  // KNOWN GAP (found 2026-10-08): "Sold out" set by the organizer (is_manually_sold_out) is only
-  // enforced in the UI (EventDetail.tsx / useEventDetails.ts). Neither this RPC nor
-  // POST /api/holds/create checks it, so a direct API call can still reserve and buy.
-  it.fails('rejects holds on a tier the organizer marked as sold out', async () => {
+  // Fixed 2026-10-08 (migration 20261008180000): before, "Sold out" set by the organizer was
+  // only enforced in the UI and a direct API call could still reserve and buy.
+  it('rejects holds on a tier the organizer marked as sold out', async () => {
     await supabase.from('ticket_tiers').update({ is_manually_sold_out: true }).eq('id', tier.id);
     const res = await createHold(buyerA.id, tier.id, 1);
-    expect(res.success).toBe(false);
+    expect(res).toMatchObject({ success: false, error: 'This ticket tier is sold out' });
+  });
+});
+
+describe('hold RPC permissions', () => {
+  // Fixed 2026-10-08: the hold RPC is SECURITY DEFINER and takes p_user_id, but anon could
+  // execute it, so anyone with the public anon key could hold tickets for any user.
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  it.skipIf(!anonKey)('cannot be called with the public anon key', async () => {
+    const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, anonKey!, {
+      auth: { persistSession: false },
+    });
+    const { data, error } = await anon.rpc('atomic_create_hold_with_stage_validation', {
+      p_user_id: buyerA.id,
+      p_event_id: event.id,
+      p_tier_id: tier.id,
+      p_quantity: 1,
+    });
+    expect(data).toBeNull();
+    expect(error?.code).toBe('42501'); // insufficient_privilege
+    const { count } = await supabase
+      .from('holds')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event.id);
+    expect(count).toBe(0);
+  });
+});
+
+describe('create_rsvp_atomic', () => {
+  const rsvp = (userId: string, tierId: string, quantity = 1) =>
+    supabase.rpc('create_rsvp_atomic', {
+      p_user_id: userId,
+      p_event_id: event.id,
+      p_ticket_tier_id: tierId,
+      p_quantity: quantity,
+    });
+
+  afterAll(async () => {
+    await supabase.from('rsvps').delete().eq('event_id', event.id);
+  });
+
+  it('creates a pending RSVP on an open tier', async () => {
+    const { data, error } = await rsvp(buyerA.id, tier.id);
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ status: 'pending' });
+    await supabase.from('rsvps').delete().eq('event_id', event.id);
+  });
+
+  it('rejects an RSVP on a tier the organizer marked as sold out', async () => {
+    await supabase.from('ticket_tiers').update({ is_manually_sold_out: true }).eq('id', tier.id);
+    const { data, error } = await rsvp(buyerB.id, tier.id);
+    expect(data).toBeNull();
+    // POST /api/rsvp matches /\bsold out\b/ on this message and answers 400.
+    expect(error?.message).toBe('This ticket tier is sold out');
   });
 });
 
