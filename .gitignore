@@ -101,3 +101,7 @@ supabase/.temp/
 
 # Levantamiento de info, claude artifact
 /Levantamiento
+
+
+#Carpeta con archivo temporales
+apps/to_delete/

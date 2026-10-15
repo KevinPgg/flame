@@ -147,3 +147,28 @@ Decisión de Kevin: un miembro solo actúa sobre lo que le corresponde. Viewer: 
 - 15 ya existentes (pagos desactualizados): `create-payment-intent` (6) y `purchase-page.integration` (9) → fase 3.
 - 3 archivos de `__tests__/integration/` abortaban por falta de credenciales: `vitest.config.ts` solo lee `.env.local`/`.env.test` y Kevin solo tiene `apps/web/.env`. Corregido separando: `vitest.config.ts` excluye `__tests__/integration/**`; esos corren solo con `npm run test:integration` (su setup sí lee `.env`, que apunta al Supabase local). Ambos tests de integración limpian únicamente sus propias filas.
 - Nota: redirigir con `>` en PowerShell guarda UTF-16 y solo stdout (vitest escribe los errores en stderr) → usar `npm run test:run 2>&1 | Out-File -Encoding utf8 run_test.txt`.
+
+## Fase 1 — fix N+1 de `/api/organizer/data` (2026-10-15, 17:00)
+**Medido con tests** (BD en memoria que imita PostgREST: corte en 1000 filas, `range`, `neq` sin NULL):
+- Antes: 17 consultas con 2 eventos, **137 con 42** (2–4 por evento: RSVPs, órdenes, etapas, registro). Ahora: **13 fijas**.
+- Antes, toda lectura de varios eventos se cortaba en 1000 filas **sin error**: con 1500 RSVPs el dashboard mostraba 999 pendientes. Afectaba también stats de promotores (órdenes de toda la org), reservas activas, RSVPs reservados y RSVPs de co-organizados. Ahora todo pagina.
+
+**Cambios:**
+- `lib/utils/supabase-pagination.ts`: `selectAllPages` / `selectAllPagesByIds` (páginas de 1000 ordenadas por `id`, `.in()` en trozos de 100). Error en una página → excepción (datos parciales = totales falsos).
+- `lib/utils/purchase-data.ts`: `fetchEventPurchasesForEvents` (3 consultas para N eventos); `fetchEventPurchases` queda como envoltorio. Cálculo por orden idéntico (función `toPurchase`).
+- `lib/utils/rsvp-stats.ts`: una lectura de RSVPs → conteos por evento + reservado por tier.
+- `api/organizer/data/route.ts`: `enrichEventWithStats` pasa a síncrono con datos precargados; propios y co-organizados en lote.
+- `app/organizer/page.tsx` (SSR v1, alcance mínimo): filtro por rol (antes metía todos los eventos y compradores en el HTML de cualquier miembro), co-organizados en lote, RSVPs y reservas paginados. Su cálculo propio de compras no se unificó: se elimina con v1.
+
+**Tests:** `purchases-batch.test.ts` (caracterización con valores grabados del código anterior + batch idéntico, consultas fijas, >1000 filas, errores), `organizer-data.test.ts` (respuesta idéntica a la anterior, 2 vs 42 eventos mismas consultas, >1000 filas, error → 500), `organizer-page-ssr.test.tsx` (rol, co-host en lote, >1000). Fixtures: `purchases-fixture.ts`, `organizer-data-fixture.ts`. Mutación: sin el filtro del SSR falla el test del organizer. Web tsc 0; lib 261/261; sin regresiones.
+
+**Pendiente de Kevin:** medir si algún evento real ya pasaba de 1000 filas (si sí, los números que veían estaban mal):
+```sql
+select 'orders' t, event_id, count(*) n from orders group by event_id having count(*) > 1000
+union all
+select 'rsvps', event_id, count(*) from rsvps group by event_id having count(*) > 1000
+union all
+select 'orders_org', e.organization_id, count(*) from orders o join events e on e.id = o.event_id
+  where o.promoter_code is not null group by e.organization_id having count(*) > 1000;
+```
+**Siguiente en fase 1:** RSVPs v2.

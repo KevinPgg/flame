@@ -32,10 +32,12 @@ roles, scanner QR, payouts Stripe Connect multi-país.
 
 **Riesgos estructurales conocidos:**
 
-1. **N+1 en revenue de organizador** — el dashboard enriquece cada evento con un
-   `fetchEventPurchases` individual, en la ruta API y de nuevo en SSR (~2 consultas por
-   evento por carga). Escala linealmente con el número de eventos. Fix identificado, no
-   implementado: `fetchEventPurchasesForEvents` (una consulta batch por lote de ids).
+1. ~~**N+1 en revenue de organizador**~~ — **resuelto 2026-10-15** en `/api/organizer/data`
+   (número fijo de consultas: 13 con 2 eventos y con 42; antes 17 y 137) con
+   `fetchEventPurchasesForEvents` + `rsvp-stats.ts`, y todas las lecturas de varios eventos
+   paginadas (`lib/utils/supabase-pagination.ts`), porque PostgREST corta en 1000 filas sin error.
+   El SSR de v1 (`app/organizer/page.tsx`) conserva su propio cálculo de compras (ya paginado);
+   se elimina con v1 al cerrar la fase 1.
 2. **Logger y auth mobile: acoplamiento extremo sin red de seguridad** — `error`/`warn` del
    logger Supabase mobile tienen fan-in 301/90 y `getAuthenticatedClient`/`useOptionalAuth`
    26/69, con **cero tests en mobile**. Un cambio de firma o comportamiento en uno de esos
@@ -125,5 +127,5 @@ escritura in-place fallida (posible artefacto de sync); verificar el contenido r
 ## 5. Recomendaciones vigentes (de prod, siguen aplicando)
 
 Alta: cerrar paridad organizador web (#16/#17/#18) · UI compartida real en `packages/ui` ·
-bajar baseline `tsc` mobile. Media: retirar Datafast · batch `fetchEventPurchasesForEvents` ·
+bajar baseline `tsc` mobile. Media: retirar Datafast · ~~batch `fetchEventPurchasesForEvents`~~ (hecho 2026-10-15) ·
 tests mobile + RLS en CI · unificar Zod. Higiene: regla lint `www.flme.co`.
