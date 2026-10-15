@@ -42,7 +42,7 @@ export default function PromotionsTab({
     const v = validatePromoCode(code, codes.map((c) => c.code));
     if (v.error) return setError(t(`eventAdmin.codeErrors.${v.error}`));
     const usageLimit = Number.parseInt(limit, 10);
-    if (!Number.isFinite(usageLimit) || usageLimit < 1) return setError(t("errors.generic"));
+    if (!Number.isFinite(usageLimit) || usageLimit < 1) return setError(t("eventAdmin.promotions.limitInvalid"));
     setSaving(true);
     setError(null);
     try {
