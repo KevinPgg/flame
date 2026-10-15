@@ -124,4 +124,8 @@ describe("formatEventDateTime", () => {
     expect(formatEventDateTime(iso, "Not/AZone", "en-US").time).toBe("10:00 PM");
     expect(formatEventDateTime("nope", "America/Guayaquil", "en-US")).toEqual({ date: "", time: "" });
   });
+  it("no timezone (null / blank) → Guayaquil", () => {
+    expect(formatEventDateTime(iso, null, "en-US").time).toBe("10:00 PM");
+    expect(formatEventDateTime(iso, "  ", "en-US").time).toBe("10:00 PM");
+  });
 });

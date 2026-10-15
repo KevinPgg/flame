@@ -70,6 +70,27 @@ describe("translate", () => {
   it("returns the key for an unknown key instead of throwing", () => {
     expect(translate("es", "nope.missing" as TranslationKey)).toBe("nope.missing");
   });
+
+  it("returns the key when it points to a group, not to a message", () => {
+    expect(translate("en", "eventAdmin.send" as TranslationKey)).toBe("eventAdmin.send");
+    expect(translate("en", "eventAdmin.send.left.extra" as TranslationKey)).toBe("eventAdmin.send.left.extra");
+  });
+
+  it("plural without count uses the 'other' form", () => {
+    expect(translate("en", "tickets.count")).toBe("{count} tickets");
+  });
+
+  it("plurals still work where Intl.PluralRules is missing (old JS engines)", () => {
+    const intl = Intl as unknown as Record<string, unknown>;
+    const original = intl.PluralRules;
+    intl.PluralRules = undefined; // simulate an engine without PluralRules
+    try {
+      expect(translate("es", "tickets.count", { count: 1 })).toBe("1 ticket");
+      expect(translate("es", "tickets.count", { count: 2 })).toBe("2 tickets");
+    } finally {
+      intl.PluralRules = original;
+    }
+  });
 });
 
 describe("resolveLanguage", () => {
