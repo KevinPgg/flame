@@ -6,6 +6,7 @@ import { supabaseAdmin } from "../../../../../lib/supabase/server";
 import { stripe } from "../../../../../lib/stripe/stripe";
 import { sendRsvpRejectionEmail } from "../../../../../lib/email/rsvp-notifications";
 import { sendPushNotification } from "../../../../../lib/push-notifications";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 /**
  * POST /api/organizer/tiers/[tierId]/force-reduce
@@ -143,6 +144,10 @@ export async function POST(
         { status: 403 },
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, tier.events.id, tier.events.organization_id);
+    if (denied) return denied;
 
     if (new_quantity_total < tier.quantity_sold) {
       return NextResponse.json(

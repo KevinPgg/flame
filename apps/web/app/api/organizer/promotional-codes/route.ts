@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -127,6 +128,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, user.id, event.id, event.organization_id);
+    if (denied) return denied;
+
     // Create promotional code (DB unique constraint will enforce uniqueness)
     const { data: promotionalCode, error: createError } = await supabaseAdmin
       .from("promotional_codes")
@@ -243,6 +248,10 @@ export async function GET(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, user.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Get promotional codes for this event
     const { data: promotionalCodes, error: codesError } = await supabaseAdmin

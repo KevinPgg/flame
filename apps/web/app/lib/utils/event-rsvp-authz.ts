@@ -1,15 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getEventAccess } from "./event-access";
 
 /**
  * Returns true when the user can manage RSVPs for an event:
- *   - Any member of the event's primary organization (matches the pre-existing
- *     check across the three RSVP routes), OR
+ *   - Owner/admin of the event's primary organization, or an organizer of it who is
+ *     assigned to the event (getEventAccess — before 2026-10-15 any member passed), OR
  *   - Owner/admin of any organization listed as a cohost on the event in
  *     `event_assignments.cohost_organization_id`.
  *
- * Cohost-side intentionally restricts to owner/admin (the primary side stays
- * open to any member) so cohost orgs don't gain a broader surface than they
- * have elsewhere.
+ * Cohost-side intentionally restricts to owner/admin so cohost orgs don't gain a
+ * broader surface than they have elsewhere.
  */
 export async function canManageEventRsvps(
   supabase: SupabaseClient,
@@ -17,24 +17,11 @@ export async function canManageEventRsvps(
   eventOrganizationId: string,
   eventId: string,
 ): Promise<boolean> {
-  const { data: primaryMembership, error: primaryErr } = await supabase
-    .from("organization_members")
-    .select("organization_id")
-    .eq("user_id", supabaseUserId)
-    .eq("organization_id", eventOrganizationId)
-    .maybeSingle();
-
-  if (primaryErr) {
-    console.error("[canManageEventRsvps] primary membership query failed", {
-      supabaseUserId,
-      eventId,
-      eventOrganizationId,
-      error: primaryErr,
-    });
-    return false;
-  }
-
-  if (primaryMembership) return true;
+  const primary = await getEventAccess(supabase, supabaseUserId, eventId, eventOrganizationId);
+  if (primary.failed) return false;
+  if (primary.allowed) return true;
+  // Not allowed on the primary side (e.g. an unassigned organizer): they may still be
+  // owner/admin of a cohost organization, checked below.
 
   const { data: cohostAssignments, error: cohostAssignErr } = await supabase
     .from("event_assignments")

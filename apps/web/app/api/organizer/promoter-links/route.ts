@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "../../../lib/supabase/server";
 import { resolveDbUserFromClerkId } from "../../../lib/auth";
 import { extractBasePriceHistorical } from "@project-flame/lib";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 /**
  * GET - List all promoter links for an event with sales statistics
@@ -63,6 +64,10 @@ export async function GET(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(db, currentUser.id, eventId, event.organization_id);
+    if (denied) return denied;
 
     // Fetch promoter links for this event
     const { data: promoterLinks, error: linksError } = await db
@@ -226,6 +231,10 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(db, currentUser.id, event_id, event.organization_id);
+    if (denied) return denied;
 
     // Create promoter link
     const { data: promoterLink, error: createError } = await db

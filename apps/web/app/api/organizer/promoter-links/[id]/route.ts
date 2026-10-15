@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "../../../../lib/supabase/server";
 import { resolveDbUserFromClerkId } from "../../../../lib/auth";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 /**
  * DELETE - Delete a promoter link
@@ -57,6 +58,10 @@ export async function DELETE(
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, currentUser.id, promoterLink.event_id, promoterLink.events.organization_id);
+    if (denied) return denied;
 
     // Check if any orders reference this promoter code for this event
     const { data: relatedOrders, error: ordersError } = await supabaseAdmin

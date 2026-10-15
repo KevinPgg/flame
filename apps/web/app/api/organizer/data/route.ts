@@ -8,6 +8,7 @@ import {
   type Organization,
 } from "../../../lib/utils/organization-selection";
 import { transformBankTransferOrders } from "../../../lib/utils/bank-transfer-data";
+import { visibleEventIds } from "../../../lib/utils/event-access";
 import { retrySupabaseOperation } from "../../../lib/utils/supabase-retry";
 
 /**
@@ -210,6 +211,27 @@ export async function GET(req: NextRequest) {
 
     const { organization } = orgSelection;
 
+    // Organizer role: only the events assigned to them — sales rows (names, emails) of other
+    // events must not leave the server. Before 2026-10-15 this was filtered only in the browser.
+    const myMembership = orgSelection.approvedMemberships.find(
+      m => m.organization_id === organization.id
+    );
+    let visible: Set<string> | null;
+    try {
+      visible = await visibleEventIds(
+        supabaseAdmin!,
+        myMembership?.user_id ?? "",
+        organization.id,
+        myMembership?.role ?? null
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "Failed to load event assignments" },
+        { status: 500 }
+      );
+    }
+    const inScope = (eventId: string) => visible === null || visible.has(eventId);
+
     // Fetch events for this organization with complete ticket tier data including stages
     // Ticket tiers are ordered by price (lowest first) at the database level
     const { data: events, error: eventsError } = await retrySupabaseOperation<
@@ -405,7 +427,8 @@ export async function GET(req: NextRequest) {
           event: ev,
         };
       })
-      .filter((x): x is CohostEventEntry => x !== null);
+      .filter((x): x is CohostEventEntry => x !== null)
+      .filter(x => inScope(x.event.id));
 
     // Enrich cohost events with totalAttendees + RSVP counts + per-event
     // totalRevenue so the cohost org's dashboard cards / RSVPs tab show real
@@ -487,7 +510,7 @@ export async function GET(req: NextRequest) {
 
     // Transform bank transfer orders to match promotional_tickets structure for display
     const eventsWithFilteredBankTransfers = transformBankTransferOrders(
-      events || []
+      (events || []).filter((e: { id: string }) => inScope(e.id))
     );
 
     const eventIds = (eventsWithFilteredBankTransfers || []).map(e => e.id);

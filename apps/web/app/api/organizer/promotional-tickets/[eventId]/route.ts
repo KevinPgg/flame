@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 interface RouteParams {
   params: Promise<{
@@ -74,6 +75,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin!, user.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Get promotional tickets for this event
     const { data: promotionalTickets, error: ticketsError } =

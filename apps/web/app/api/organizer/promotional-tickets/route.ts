@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/app/lib/supabase/server";
 import { maskEmail } from "../../../lib/utils/email-mask";
 import { sendPromotionalTicketEmail } from "../../../lib/email/promotional-ticket-notifications";
 import { sendPushNotification } from "../../../lib/push-notifications";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 export async function POST(req: NextRequest) {
   try {
@@ -187,6 +188,10 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, user.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Verify ticket tier belongs to this event and get stage info
     const { data: ticketTier, error: tierError } = await supabaseAdmin

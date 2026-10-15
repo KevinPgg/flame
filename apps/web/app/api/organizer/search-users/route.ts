@@ -62,6 +62,8 @@ export async function GET(req: NextRequest) {
       .from("organization_members")
       .select("organization_id")
       .eq("user_id", user.id)
+      // Only roles that can send tickets look users up by email (viewer can't).
+      .in("role", ["owner", "admin", "organizer"])
       .limit(1);
 
     if (membershipError) {

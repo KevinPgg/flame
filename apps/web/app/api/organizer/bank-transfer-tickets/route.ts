@@ -7,6 +7,7 @@ import { sendPushNotification } from "@/app/lib/push-notifications";
 import QRCode from "qrcode";
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 export async function POST(req: NextRequest) {
   try {
@@ -147,6 +148,10 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, organizer.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Resolve the recipient. Two paths:
     //   • user_id        → existing Flame account (push-eligible)

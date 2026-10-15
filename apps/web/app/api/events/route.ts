@@ -13,6 +13,8 @@ import {
 } from "@project-flame/lib";
 import { sendDateChangeEmail } from "../../lib/email/date-change-notifications";
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
+import { canCreateEvents, type OrgMemberRole } from "@project-flame/lib";
 import {
   ensureUniquePublishedSlug,
   ExhaustedSlugError,
@@ -377,6 +379,15 @@ export async function POST(req: NextRequest) {
           error:
             "You don't have permission to create events for this organization",
         },
+        { status: 403 }
+      );
+    }
+
+    // Only owner/admin create events (canCreateEvents) — the web and app already hide the
+    // button for organizers; before 2026-10-15 the API accepted any member.
+    if (!canCreateEvents((membership.role ?? null) as OrgMemberRole | null)) {
+      return NextResponse.json(
+        { error: "Only owners and admins can create events for this organization" },
         { status: 403 }
       );
     }
@@ -903,6 +914,10 @@ export async function PATCH(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Validate dates if provided
     if (validatedData.starts_at || validatedData.ends_at) {

@@ -9,6 +9,7 @@ import {
   MAX_TICKET_TIERS_PER_EVENT,
 } from "@project-flame/lib";
 import { createTierSchema, updateTierSchema } from "./schemas";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 // Type definitions for nested query results
 type TierWithEvent = {
@@ -98,6 +99,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, eventId, eventCheck.organization_id);
+    if (denied) return denied;
+
     // Fetch ticket tiers
     const { data: tiers, error: tiersError } = await supabaseAdmin
       .from("ticket_tiers")
@@ -177,6 +182,10 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     const { count: tierCount, error: tierCountError } = await supabaseAdmin
       .from("ticket_tiers")
@@ -497,6 +506,10 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, tierCheck.events.id, eventOrgId);
+    if (denied) return denied;
+
     // CRITICAL: Prevent reducing quantity below sold + pending (reserved) amount.
     // Sold is enforced at the DB level by CHECK constraint `quantity_total_gte_quantity_sold`;
     // Pending (quantity_reserved) is not enforced by that constraint, but if we allowed
@@ -804,6 +817,10 @@ export async function DELETE(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, tierCheck.events.id, eventOrgId);
+    if (denied) return denied;
 
     // Prevent deletion if tickets have been sold
     if (tierCheck.quantity_sold && tierCheck.quantity_sold > 0) {
