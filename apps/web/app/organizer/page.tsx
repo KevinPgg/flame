@@ -3,7 +3,15 @@ import { redirect } from "next/navigation";
 import { supabaseAdmin } from "../lib/supabase/server";
 import { Navbar } from "../components";
 import OrganizerDashboard from "../components/OrganizerDashboard";
-import { fetchEventPurchases } from "../lib/utils/purchase-data";
+import { fetchEventPurchasesForEvents } from "../lib/utils/purchase-data";
+import { visibleEventIds } from "../lib/utils/event-access";
+import {
+  emptyRsvpCounts,
+  fetchRsvpRowsForEvents,
+  summarizeRsvps,
+  type RsvpCounts,
+} from "../lib/utils/rsvp-stats";
+import { selectAllPagesByIds } from "../lib/utils/supabase-pagination";
 import { extractBasePriceHistorical, calculateOrganizerBasePrice } from "@project-flame/lib";
 import { selectOrganization } from "../lib/utils/organization-selection";
 import { transformBankTransferOrders } from "../lib/utils/bank-transfer-data";
@@ -153,7 +161,22 @@ export default async function OrganizerPage({ searchParams }: PageProps) {
     .order("created_at", { foreignTable: "promoter_links", ascending: false });
 
   // Transform bank transfer orders to match promotional_tickets structure for display
-  const eventsWithFilteredBankTransfers = transformBankTransferOrders(events || []);
+  // Organizer role: only the events assigned to them (same rule as /api/organizer/data and every
+  // organizer route). Before 2026-10-15 this page rendered every event of the organization, with
+  // its buyers, into the HTML of any member.
+  const myMembership = approvedMemberships.find(
+    m => m.organization_id === organization.id
+  );
+  const visible = await visibleEventIds(
+    supabaseAdmin,
+    myMembership?.user_id ?? "",
+    organization.id,
+    myMembership?.role ?? null
+  );
+  const inScope = (eventId: string) => visible === null || visible.has(eventId);
+  const eventsWithFilteredBankTransfers = transformBankTransferOrders(
+    (events || []).filter((e: { id: string }) => inScope(e.id))
+  );
 
   // SSR-fetch owner-side assignments so the dashboard can render "Co-host
   // with X" pills on events the current org OWNS and has assigned cohosts to,
@@ -220,7 +243,8 @@ export default async function OrganizerPage({ searchParams }: PageProps) {
         event: ev,
       };
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .filter(x => inScope(x.event.id));
 
   // Enrich cohost events with totalAttendees + RSVP counts + per-event
   // totalRevenue so first-paint shows real numbers (matches the per-event
@@ -232,74 +256,47 @@ export default async function OrganizerPage({ searchParams }: PageProps) {
   // bank_transfer), so the cohost card matches its detail view exactly.
   const initialCohostEventIds = initialCohostEvents.map(c => c.event.id);
   if (initialCohostEventIds.length > 0) {
-    const { data: cohostRsvpRows } = await supabaseAdmin
-      .from("rsvps")
-      .select("event_id, status")
-      .in("event_id", initialCohostEventIds);
-
-    type RsvpCounts = {
-      pending: number;
-      approved: number;
-      rejected: number;
-      purchased: number;
-    };
-    const rsvpCountsByEvent: Record<string, RsvpCounts> = {};
-    for (const row of (cohostRsvpRows ?? []) as Array<{
-      event_id: string;
-      status: string;
-    }>) {
-      const counts: RsvpCounts =
-        rsvpCountsByEvent[row.event_id] ??
-        (rsvpCountsByEvent[row.event_id] = {
-          pending: 0,
-          approved: 0,
-          rejected: 0,
-          purchased: 0,
-        });
-      if (row.status === "pending") counts.pending++;
-      else if (row.status === "approved") counts.approved++;
-      else if (row.status === "rejected") counts.rejected++;
-      else if (row.status === "purchased") counts.purchased++;
+    // One paged RSVP read and one batched purchases read for all cohost events
+    // (was one purchases query per event).
+    let cohostCounts = new Map<string, RsvpCounts>();
+    try {
+      cohostCounts = summarizeRsvps(
+        await fetchRsvpRowsForEvents(supabaseAdmin, initialCohostEventIds)
+      ).countsByEvent;
+    } catch (error) {
+      console.error("Failed to fetch cohost RSVPs:", error);
     }
-
-    await Promise.all(
-      initialCohostEvents.map(async entry => {
-        const counts = rsvpCountsByEvent[entry.event.id] ?? {
-          pending: 0,
-          approved: 0,
-          rejected: 0,
-          purchased: 0,
-        };
-        const totalAttendees = ((entry.event as any).ticket_tiers || []).reduce(
-          (sum: number, tier: any) => sum + (tier.quantity_sold || 0),
-          0,
-        );
-        // Same net-revenue computation as owner events and the API cohost
-        // enrichment: sum basePrice (net of service fee/IVA, excludes
-        // bank_transfer) so the cohost card matches its detail view.
-        const purchases = await fetchEventPurchases(
-          supabaseAdmin!,
-          entry.event.id,
-        );
-        const totalRevenue = purchases.reduce(
-          (sum, purchase) => sum + purchase.basePrice,
-          0,
-        );
-        entry.event = {
-          ...(entry.event as any),
-          pending_rsvps: counts.pending,
-          approved_rsvps: counts.approved,
-          rejected_rsvps: counts.rejected,
-          purchased_rsvps: counts.purchased,
-          totalAttendees,
-          totalRevenue,
-        };
-      }),
+    const cohostPurchases = await fetchEventPurchasesForEvents(
+      supabaseAdmin,
+      initialCohostEventIds
     );
+    for (const entry of initialCohostEvents) {
+      const counts = cohostCounts.get(entry.event.id) ?? emptyRsvpCounts();
+      const totalAttendees = ((entry.event as any).ticket_tiers || []).reduce(
+        (sum: number, tier: any) => sum + (tier.quantity_sold || 0),
+        0,
+      );
+      // Same net-revenue computation as owner events and the API cohost
+      // enrichment: sum basePrice (net of service fee/IVA, excludes
+      // bank_transfer) so the cohost card matches its detail view.
+      const totalRevenue = (cohostPurchases.get(entry.event.id) ?? []).reduce(
+        (sum, purchase) => sum + purchase.basePrice,
+        0,
+      );
+      entry.event = {
+        ...(entry.event as any),
+        pending_rsvps: counts.pending,
+        approved_rsvps: counts.approved,
+        rejected_rsvps: counts.rejected,
+        purchased_rsvps: counts.purchased,
+        totalAttendees,
+        totalRevenue,
+      };
+    }
   }
 
   // Optimize: Fetch ALL RSVPs and purchases for all events in parallel (2 queries instead of N*2)
-  const eventIds = (eventsWithFilteredBankTransfers || []).map(e => e.id);
+  const eventIds = (eventsWithFilteredBankTransfers || []).map(e => String(e.id));
 
   // Early return if no events (owned). Still pass cohost events so the cohost
   // org's dashboard renders its cohosted events on first paint.
@@ -324,10 +321,11 @@ export default async function OrganizerPage({ searchParams }: PageProps) {
     // requested_quantity so we can also compute a per-tier quantity_reserved
     // hint (pending/approved RSVP quantities) in addition to the event-level
     // status counts used below.
-    supabaseAdmin
-      .from("rsvps")
-      .select("event_id, status, ticket_tier_id, requested_quantity")
-      .in("event_id", eventIds),
+    // Paged: an org can exceed PostgREST's 1000-row cap in RSVPs too.
+    fetchRsvpRowsForEvents(supabaseAdmin, eventIds).then(
+      data => ({ data, error: null as unknown }),
+      error => ({ data: [] as Awaited<ReturnType<typeof fetchRsvpRowsForEvents>>, error })
+    ),
     // Fetch all purchases for all events at once.
     // Exclude bank transfer orders from purchase details (they appear in "Sent Promotional Tickets" instead).
     //
@@ -400,12 +398,21 @@ export default async function OrganizerPage({ searchParams }: PageProps) {
     // Fetch active (non-expired, not attached to an order) holds for all
     // tiers on these events, so we can display a per-tier "pending" hint
     // alongside quantity_sold on the organizer dashboard.
-    supabaseAdmin
-      .from("holds")
-      .select("tier_id, quantity, ticket_tiers!inner(event_id)")
-      .in("ticket_tiers.event_id", eventIds)
-      .gt("expires_at", new Date().toISOString())
-      .is("order_id", null),
+    selectAllPagesByIds<{ tier_id: string; quantity: number | null }>(
+      eventIds,
+      (ids, from, to) =>
+        supabaseAdmin!
+          .from("holds")
+          .select("id, tier_id, quantity, ticket_tiers!inner(event_id)")
+          .in("ticket_tiers.event_id", ids)
+          .gt("expires_at", new Date().toISOString())
+          .is("order_id", null)
+          .order("id", { ascending: true })
+          .range(from, to)
+    ).then(
+      data => ({ data, error: null as unknown }),
+      error => ({ data: [] as Array<{ tier_id: string; quantity: number | null }>, error })
+    ),
   ]);
 
   // Check for query errors

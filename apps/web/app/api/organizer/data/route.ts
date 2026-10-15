@@ -1,7 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase/server";
-import { fetchEventPurchases } from "../../../lib/utils/purchase-data";
+import {
+  fetchEventPurchasesForEvents,
+  type Purchase,
+} from "../../../lib/utils/purchase-data";
+import {
+  emptyRsvpCounts,
+  fetchRsvpRowsForEvents,
+  summarizeRsvps,
+  type RsvpCounts,
+} from "../../../lib/utils/rsvp-stats";
+import { selectAllPagesByIds } from "../../../lib/utils/supabase-pagination";
 import { extractBasePriceHistorical } from "@project-flame/lib";
 import {
   selectOrganization,
@@ -12,43 +22,27 @@ import { visibleEventIds } from "../../../lib/utils/event-access";
 import { retrySupabaseOperation } from "../../../lib/utils/supabase-retry";
 
 /**
- * Enriches an event with RSVP counts, purchase data, revenue calculations, and promoter link stats.
- * @param event - The event to enrich
- * @param supabaseAdmin - Supabase admin client
- * @param ordersByEventAndPromoter - Map of orders grouped by event_id and promoter_code (key format: "event_id:promoter_code")
- * @returns The enriched event with additional stats
+ * Adds RSVP counts, purchases, revenue, attendees, per-tier reservations and promoter link stats
+ * to one event. Everything is fetched beforehand for ALL events at once (fixed number of queries,
+ * paged past PostgREST's 1000-row cap) — before 2026-10-15 this ran 2–4 queries per event.
  */
-async function enrichEventWithStats(
+function enrichEventWithStats(
   event: any,
-  supabaseAdmin: any,
-  ordersByEventAndPromoter: Record<string, any[]> = {},
-  reservedByTier: Record<string, number> = {}
-) {
-  if (!supabaseAdmin) return event;
-
-  // Fetch RSVP counts
-  const { data: rsvpCounts, error: rsvpError } = await retrySupabaseOperation<
-    any[]
-  >(
-    async () =>
-      await supabaseAdmin
-        .from("rsvps")
-        .select("status")
-        .eq("event_id", event.id)
-  );
-
-  if (rsvpError) {
-    console.error("Error fetching RSVP counts for event", event.id, rsvpError);
+  prefetched: {
+    purchases: Purchase[];
+    rsvpCounts: RsvpCounts;
+    /** Orders grouped by "event_id:promoter_code". */
+    ordersByEventAndPromoter?: Record<string, any[]>;
+    reservedByTier?: Record<string, number>;
   }
-
-  const pending_rsvps =
-    rsvpCounts?.filter((r: any) => r.status === "pending").length || 0;
-  const approved_rsvps =
-    rsvpCounts?.filter((r: any) => r.status === "approved").length || 0;
-  const rejected_rsvps =
-    rsvpCounts?.filter((r: any) => r.status === "rejected").length || 0;
-  const purchased_rsvps =
-    rsvpCounts?.filter((r: any) => r.status === "purchased").length || 0;
+) {
+  const { purchases, rsvpCounts } = prefetched;
+  const ordersByEventAndPromoter = prefetched.ordersByEventAndPromoter ?? {};
+  const reservedByTier = prefetched.reservedByTier ?? {};
+  const pending_rsvps = rsvpCounts.pending;
+  const approved_rsvps = rsvpCounts.approved;
+  const rejected_rsvps = rsvpCounts.rejected;
+  const purchased_rsvps = rsvpCounts.purchased;
 
   // Attach quantity_reserved per tier (active holds + pending/approved RSVPs)
   // for the organizer UI pending hint. Matches the get_event_with_tiers RPC
@@ -60,16 +54,6 @@ async function enrichEventWithStats(
       quantity_reserved: reservedByTier[tier.id] || 0,
     })
   );
-
-  // Fetch completed orders (purchases) with user and tier details.
-  // For RSVP events with a registration form, also pull each registrant's
-  // answers so the organizer purchase export can include them.
-  const includeRegistrationData =
-    Array.isArray(event?.registration_form_config) &&
-    event.registration_form_config.length > 0;
-  const purchases = await fetchEventPurchases(supabaseAdmin, event.id, {
-    includeRegistrationData,
-  });
 
   // Calculate revenue from base price only (what organizer receives, excluding service fee and IVA)
   const totalRevenue = purchases.reduce(
@@ -438,74 +422,41 @@ export async function GET(req: NextRequest) {
     // purchase rows are still withheld — cohost scope stays narrower.
     const cohostEventIdList = cohostEvents.map(c => c.event.id);
     if (cohostEventIdList.length > 0) {
-      const { data: cohostRsvpRows } = await retrySupabaseOperation<any[]>(
-        async () =>
-          await supabaseAdmin!
-            .from("rsvps")
-            .select("event_id, status")
-            .in("event_id", cohostEventIdList)
-      );
-
-      type RsvpCounts = {
-        pending: number;
-        approved: number;
-        rejected: number;
-        purchased: number;
-      };
-      const rsvpCountsByEvent: Record<string, RsvpCounts> = {};
-      for (const row of (cohostRsvpRows ?? []) as Array<{
-        event_id: string;
-        status: string;
-      }>) {
-        const counts: RsvpCounts =
-          rsvpCountsByEvent[row.event_id] ??
-          (rsvpCountsByEvent[row.event_id] = {
-            pending: 0,
-            approved: 0,
-            rejected: 0,
-            purchased: 0,
-          });
-        if (row.status === "pending") counts.pending++;
-        else if (row.status === "approved") counts.approved++;
-        else if (row.status === "rejected") counts.rejected++;
-        else if (row.status === "purchased") counts.purchased++;
+      let cohostCounts = new Map<string, RsvpCounts>();
+      try {
+        cohostCounts = summarizeRsvps(
+          await fetchRsvpRowsForEvents(supabaseAdmin!, cohostEventIdList)
+        ).countsByEvent;
+      } catch (error) {
+        console.error(`[API /organizer/data] Error fetching cohost RSVPs:`, error);
       }
-
-      await Promise.all(
-        cohostEvents.map(async entry => {
-          const counts = rsvpCountsByEvent[entry.event.id] ?? {
-            pending: 0,
-            approved: 0,
-            rejected: 0,
-            purchased: 0,
-          };
-          const totalAttendees = (entry.event.ticket_tiers || []).reduce(
-            (sum: number, tier: any) => sum + (tier.quantity_sold || 0),
-            0,
-          );
-          // Same net-revenue computation as owner events (enrichEventWithStats):
-          // fetchEventPurchases sums basePrice via the shared
-          // calculateOrganizerBasePrice logic and excludes bank_transfer, so the
-          // cohost card matches its detail view instead of showing $0.
-          const purchases = await fetchEventPurchases(
-            supabaseAdmin!,
-            entry.event.id,
-          );
-          const totalRevenue = purchases.reduce(
-            (sum, purchase) => sum + purchase.basePrice,
-            0,
-          );
-          entry.event = {
-            ...entry.event,
-            pending_rsvps: counts.pending,
-            approved_rsvps: counts.approved,
-            rejected_rsvps: counts.rejected,
-            purchased_rsvps: counts.purchased,
-            totalAttendees,
-            totalRevenue,
-          };
-        }),
+      // Same net-revenue computation as owner events: sum of basePrice (net of
+      // service fee, bank transfers excluded) so the cohost card matches its
+      // detail view instead of showing $0. Purchase rows themselves stay withheld.
+      const cohostPurchases = await fetchEventPurchasesForEvents(
+        supabaseAdmin!,
+        cohostEventIdList
       );
+      for (const entry of cohostEvents) {
+        const counts = cohostCounts.get(entry.event.id) ?? emptyRsvpCounts();
+        const totalAttendees = (entry.event.ticket_tiers || []).reduce(
+          (sum: number, tier: any) => sum + (tier.quantity_sold || 0),
+          0
+        );
+        const totalRevenue = (cohostPurchases.get(entry.event.id) ?? []).reduce(
+          (sum, purchase) => sum + purchase.basePrice,
+          0
+        );
+        entry.event = {
+          ...entry.event,
+          pending_rsvps: counts.pending,
+          approved_rsvps: counts.approved,
+          rejected_rsvps: counts.rejected,
+          purchased_rsvps: counts.purchased,
+          totalAttendees,
+          totalRevenue,
+        };
+      }
     }
 
     // Transform bank transfer orders to match promotional_tickets structure for display
@@ -513,15 +464,17 @@ export async function GET(req: NextRequest) {
       (events || []).filter((e: { id: string }) => inScope(e.id))
     );
 
-    const eventIds = (eventsWithFilteredBankTransfers || []).map(e => e.id);
+    const eventIds = (eventsWithFilteredBankTransfers || []).map(e => String(e.id));
 
     // Guard against empty eventIds array to prevent Postgres error
     if (!eventIds || eventIds.length === 0) {
       // Return early with empty orders data
-      const eventsWithRsvpCounts = await Promise.all(
-        (eventsWithFilteredBankTransfers || []).map(async event =>
-          enrichEventWithStats(event, supabaseAdmin, {})
-        )
+      const eventsWithRsvpCounts = (eventsWithFilteredBankTransfers || []).map(
+        event =>
+          enrichEventWithStats(event, {
+            purchases: [],
+            rsvpCounts: emptyRsvpCounts(),
+          })
       );
 
       return NextResponse.json({
@@ -535,18 +488,25 @@ export async function GET(req: NextRequest) {
     // Fetch all orders for all events to calculate promoter link stats
     // We use a separate query here instead of reusing 'purchases' because 'purchases' excludes bank transfers,
     // but promoter stats should include ALL sales (including bank transfers) to align with totalAttendees derived from ticket_tiers.
-    const { data: allOrders, error: ordersError } =
-      await retrySupabaseOperation<any[]>(
-        async () =>
-          await supabaseAdmin!
-            .from("orders")
-            .select(
-              "event_id, promoter_code, quantity, total_amount_cents, discount_amount_cents, fee_percentage, created_at, base_price_cents"
-            )
-            .in("event_id", eventIds)
-            .in("status", ["completed", "paid"])
-            .not("promoter_code", "is", null) // Optimization: Only fetch orders with a promoter code
+    // Org-wide → paged (an org easily has > 1000 orders).
+    let allOrders: any[] | null = null;
+    let ordersError: unknown = null;
+    try {
+      allOrders = await selectAllPagesByIds<any>(eventIds, (ids, from, to) =>
+        supabaseAdmin!
+          .from("orders")
+          .select(
+            "id, event_id, promoter_code, quantity, total_amount_cents, discount_amount_cents, fee_percentage, created_at, base_price_cents"
+          )
+          .in("event_id", ids)
+          .in("status", ["completed", "paid"])
+          .not("promoter_code", "is", null) // Optimization: Only fetch orders with a promoter code
+          .order("id", { ascending: true })
+          .range(from, to)
       );
+    } catch (error) {
+      ordersError = error;
+    }
 
     // Handle orders query error
     if (ordersError) {
@@ -573,71 +533,58 @@ export async function GET(req: NextRequest) {
       {}
     );
 
-    // Batch fetch per-tier reservations (active holds + pending/approved
-    // RSVPs) for the organizer "pending" hint. Runs in parallel with event
-    // enrichment rather than per-event to avoid N+1 queries.
-    const [holdsResult, reservedRsvpsResult] = await Promise.all([
-      retrySupabaseOperation<any[]>(
-        async () =>
-          await supabaseAdmin!
+    // Everything per event, fetched for all events at once (fixed number of
+    // queries whatever the number of events, each paged past the 1000-row cap):
+    // active holds, RSVPs (counts + reserved quantities) and purchases.
+    const registrationEventIds = (eventsWithFilteredBankTransfers || [])
+      .filter(
+        (e: any) =>
+          Array.isArray(e?.registration_form_config) &&
+          e.registration_form_config.length > 0
+      )
+      .map((e: any) => e.id as string);
+
+    const [holdsRows, rsvpRows, purchasesByEvent] = await Promise.all([
+      selectAllPagesByIds<{ tier_id: string; quantity: number | null }>(
+        eventIds,
+        (ids, from, to) =>
+          supabaseAdmin!
             .from("holds")
-            .select("tier_id, quantity, ticket_tiers!inner(event_id)")
-            .in("ticket_tiers.event_id", eventIds)
+            .select("id, tier_id, quantity, ticket_tiers!inner(event_id)")
+            .in("ticket_tiers.event_id", ids)
             .gt("expires_at", new Date().toISOString())
             .is("order_id", null)
-      ),
-      retrySupabaseOperation<any[]>(
-        async () =>
-          await supabaseAdmin!
-            .from("rsvps")
-            .select("ticket_tier_id, requested_quantity, status")
-            .in("event_id", eventIds)
-            .in("status", ["pending", "approved"])
-      ),
+            .order("id", { ascending: true })
+            .range(from, to)
+      ).catch(error => {
+        // Non-critical: the pending hint omits held counts.
+        console.error(`[API /organizer/data] Error fetching holds:`, error);
+        return [];
+      }),
+      fetchRsvpRowsForEvents(supabaseAdmin!, eventIds).catch(error => {
+        console.error(`[API /organizer/data] Error fetching RSVPs:`, error);
+        return [];
+      }),
+      fetchEventPurchasesForEvents(supabaseAdmin!, eventIds, {
+        registrationEventIds,
+      }),
     ]);
 
-    if (holdsResult.error) {
-      console.error(
-        `[API /organizer/data] Error fetching holds:`,
-        holdsResult.error
-      );
-    }
-    if (reservedRsvpsResult.error) {
-      console.error(
-        `[API /organizer/data] Error fetching reserved RSVPs:`,
-        reservedRsvpsResult.error
-      );
-    }
-
-    const reservedByTier: Record<string, number> = {};
-    for (const row of (holdsResult.data || []) as Array<{
-      tier_id: string;
-      quantity: number | null;
-    }>) {
+    const { countsByEvent, reservedByTier } = summarizeRsvps(rsvpRows);
+    for (const row of holdsRows) {
       if (!row.tier_id) continue;
       reservedByTier[row.tier_id] =
         (reservedByTier[row.tier_id] || 0) + (row.quantity || 0);
     }
-    for (const row of (reservedRsvpsResult.data || []) as Array<{
-      ticket_tier_id: string | null;
-      requested_quantity: number | null;
-    }>) {
-      if (!row.ticket_tier_id) continue;
-      reservedByTier[row.ticket_tier_id] =
-        (reservedByTier[row.ticket_tier_id] || 0) +
-        (row.requested_quantity || 0);
-    }
 
-    // Add RSVP counts and purchase details to each event
-    const eventsWithRsvpCounts = await Promise.all(
-      (eventsWithFilteredBankTransfers || []).map(async event =>
-        enrichEventWithStats(
-          event,
-          supabaseAdmin,
+    const eventsWithRsvpCounts = (eventsWithFilteredBankTransfers || []).map(
+      event =>
+        enrichEventWithStats(event, {
+          purchases: purchasesByEvent.get(String(event.id)) ?? [],
+          rsvpCounts: countsByEvent.get(String(event.id)) ?? emptyRsvpCounts(),
           ordersByEventAndPromoter,
-          reservedByTier
-        )
-      )
+          reservedByTier,
+        })
     );
 
     return NextResponse.json({

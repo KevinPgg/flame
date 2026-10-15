@@ -5,7 +5,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { extractBasePriceHistorical } from "@project-flame/lib";
 import { z, ZodError } from "zod";
-import { retrySupabaseOperation } from "./supabase-retry";
+import { selectAllPagesByIds } from "./supabase-pagination";
 
 /**
  * Interface for a purchase record
@@ -57,6 +57,7 @@ const OrderTicketSchema = z.object({
 
 const OrderRowSchema = z.object({
   id: z.string(),
+  event_id: z.string(),
   user_id: z.string(),
   quantity: z.number(),
   unit_price_cents: z.number(),
@@ -84,38 +85,9 @@ const StageLookupRowSchema = z.object({
 
 type StageLookupRow = z.infer<typeof StageLookupRowSchema>;
 
-/**
- * Fetch completed orders (purchases) for a specific event with user and tier details
- * @param supabaseAdmin - The Supabase admin client
- * @param eventId - The event ID to fetch purchases for
- * @returns Array of purchases or empty array on error
- */
-export async function fetchEventPurchases(
-  supabaseAdmin: SupabaseClient,
-  eventId: string,
-  options?: {
-    /**
-     * When true, fetch matching `rsvps.registration_data` and attach it to
-     * each Purchase via `stripe_payment_intent_id`. Skipped for non-RSVP
-     * events to keep the query cheap.
-     */
-    includeRegistrationData?: boolean;
-    extractBasePriceHistoricalFn?: typeof extractBasePriceHistorical;
-  },
-): Promise<Purchase[]> {
-  const extractBasePriceHistoricalFn =
-    options?.extractBasePriceHistoricalFn ?? extractBasePriceHistorical;
-  const includeRegistrationData = options?.includeRegistrationData === true;
-  try {
-    // Fetch completed orders with user and tier details
-    // Use users!orders_user_id_fkey to specify the user_id relationship (not promoter_user_id)
-    const { data: ordersData, error: ordersError } = await retrySupabaseOperation(
-      async () =>
-        await supabaseAdmin
-          .from("orders")
-          .select(
-            `
+const ORDER_SELECT = `
         id,
+        event_id,
         user_id,
         quantity,
         unit_price_cents,
@@ -143,30 +115,93 @@ export async function fetchEventPurchases(
           checked_in_at,
           metadata
         )
-      `,
-          )
-          .eq("event_id", eventId)
-          .in("status", ["completed", "paid"])
-          .neq("payment_provider", "bank_transfer"),
-    ); // Exclude bank transfer orders from revenue and attendee count
+      `;
 
-    if (ordersError) {
-      console.error("Error fetching orders for event", eventId, ordersError);
-      return [];
+type PurchaseOptions = {
+  extractBasePriceHistoricalFn?: typeof extractBasePriceHistorical;
+};
+
+/**
+ * Fetch completed orders (purchases) for a specific event with user and tier details
+ * @param supabaseAdmin - The Supabase admin client
+ * @param eventId - The event ID to fetch purchases for
+ * @returns Array of purchases or empty array on error
+ */
+export async function fetchEventPurchases(
+  supabaseAdmin: SupabaseClient,
+  eventId: string,
+  options?: PurchaseOptions & {
+    /**
+     * When true, fetch matching `rsvps.registration_data` and attach it to
+     * each Purchase via `stripe_payment_intent_id`. Skipped for non-RSVP
+     * events to keep the query cheap.
+     */
+    includeRegistrationData?: boolean;
+  },
+): Promise<Purchase[]> {
+  const byEvent = await fetchEventPurchasesForEvents(supabaseAdmin, [eventId], {
+    extractBasePriceHistoricalFn: options?.extractBasePriceHistoricalFn,
+    registrationEventIds: options?.includeRegistrationData === true ? [eventId] : [],
+  });
+  return byEvent.get(eventId) ?? [];
+}
+
+/**
+ * Purchases for many events with a fixed number of queries (orders, stages, registration answers),
+ * each paged past PostgREST's 1000-row cap. Same rules as the per-event version it replaces:
+ * completed/paid orders, bank transfers excluded, net price per order (stored base price, or the
+ * historical extraction for legacy orders), stage from ticket metadata or (tier, price) lookup.
+ *
+ * Errors never throw: if the orders of a chunk of events can't be read, those events get []
+ * (and it is logged) — same as the per-event behavior.
+ */
+export async function fetchEventPurchasesForEvents(
+  supabaseAdmin: SupabaseClient,
+  eventIds: string[],
+  options?: PurchaseOptions & {
+    /** Events whose purchases should carry the RSVP registration answers (events with a form). */
+    registrationEventIds?: Iterable<string>;
+  },
+): Promise<Map<string, Purchase[]>> {
+  const result = new Map<string, Purchase[]>();
+  for (const id of eventIds) result.set(id, []);
+  if (eventIds.length === 0) return result;
+
+  const extractBasePriceHistoricalFn =
+    options?.extractBasePriceHistoricalFn ?? extractBasePriceHistorical;
+  const registrationEvents = new Set(options?.registrationEventIds ?? []);
+
+  try {
+    // Orders for all events, paged; a failing chunk leaves its events empty.
+    const rawOrders: unknown[] = [];
+    try {
+      rawOrders.push(
+        ...(await selectAllPagesByIds<unknown>(eventIds, (ids, from, to) =>
+          supabaseAdmin
+            .from("orders")
+            .select(ORDER_SELECT)
+            .in("event_id", ids)
+            .in("status", ["completed", "paid"])
+            // Exclude bank transfer orders from revenue and attendee count
+            .neq("payment_provider", "bank_transfer")
+            .order("id", { ascending: true })
+            .range(from, to),
+        )),
+      );
+    } catch (ordersError) {
+      console.error("Error fetching orders for events", eventIds.length, ordersError);
+      return result;
     }
 
-    // Cast the result to our typed interface with Zod validation
     // Use safeParse to filter out invalid records instead of crashing the entire request
     const orders: OrderRow[] = [];
-    const rawOrders = ordersData ?? [];
-    
-    for (const rawOrder of rawOrders) {
-      const result = OrderRowSchema.safeParse(rawOrder);
-      if (result.success) {
-        orders.push(result.data);
+    for (const rawOrder of rawOrders as Array<{ id?: string }>) {
+      const parsed = OrderRowSchema.safeParse(rawOrder);
+      if (parsed.success) {
+        orders.push(parsed.data);
       } else {
         // Log only sanitized metadata - do not expose PII or full error objects
-        const issueSummaries = result.error.issues.map((issue) => ({
+        const issueSummaries = parsed.error.issues.map((issue) => ({
           path: issue.path.join("."),
           message: issue.message,
         }));
@@ -175,15 +210,14 @@ export async function fetchEventPurchases(
           {
             orderId: rawOrder.id,
             issues: issueSummaries,
-            issueCount: result.error.issues.length,
-          }
+            issueCount: parsed.error.issues.length,
+          },
         );
-        // Continue processing other orders
       }
     }
 
-    // Build purchase details from completed orders
-    // First, get all unique tier+price combinations that need stage lookup
+    // Stage names for orders whose tickets don't carry one: one lookup by tier, filtered
+    // in memory to the (tier, unit price) pairs we need.
     const ordersNeedingStageLookup = orders.filter((order) => {
       const firstTicket = order.tickets?.[0];
       return (
@@ -193,248 +227,173 @@ export async function fetchEventPurchases(
         order.unit_price_cents !== null
       );
     });
-
-    // Fetch all stages in a single query for orders missing stage info
-    // Optimized: Only filter by ticket_tier_id to avoid Cartesian product, filter by price in-memory
     const stageLookupMap = new Map<string, string>();
     if (ordersNeedingStageLookup.length > 0) {
       const uniqueTierPricePairs = new Set(
-        ordersNeedingStageLookup.map(
-          (o) => `${o.ticket_tiers.id}:${o.unit_price_cents}`,
-        ),
+        ordersNeedingStageLookup.map((o) => `${o.ticket_tiers.id}:${o.unit_price_cents}`),
       );
-
-      const tierIds = Array.from(
-        new Set(ordersNeedingStageLookup.map((o) => o.ticket_tiers.id)),
-      );
-
-      // Fetch all stages for the required tiers (avoid Cartesian product)
-      const { data: stagesData, error: stagesError } = await retrySupabaseOperation(
-        async () =>
-          await supabaseAdmin
+      const tierIds = Array.from(new Set(ordersNeedingStageLookup.map((o) => o.ticket_tiers.id)));
+      let stagesData: unknown[] | null = null;
+      try {
+        stagesData = await selectAllPagesByIds<unknown>(tierIds, (ids, from, to) =>
+          supabaseAdmin
             .from("ticket_stages")
             .select("ticket_tier_id, price_cents, name")
-            .in("ticket_tier_id", tierIds),
-      );
-
-      // Check for errors and handle missing data
-      if (stagesError) {
-        console.error(
-          "Error fetching ticket stages for event",
-          eventId,
-          "tiers",
-          tierIds,
-          stagesError,
+            .in("ticket_tier_id", ids)
+            .order("id", { ascending: true })
+            .range(from, to),
         );
+      } catch (stagesError) {
         // Continue with empty stageLookupMap - orders will have null stage names
-      } else if (!stagesData || !Array.isArray(stagesData)) {
-        console.warn(
-          "No ticket stages data returned for event",
-          eventId,
-          "tiers",
-          tierIds,
-        );
-        // Continue with empty stageLookupMap - orders will have null stage names
-      } else {
+        console.error("Error fetching ticket stages for tiers", tierIds, stagesError);
+      }
+      if (stagesData) {
         let stages: StageLookupRow[] = [];
         try {
           stages = StageLookupRowSchema.array().parse(stagesData);
         } catch (validationError) {
-          console.warn(
-            "Ticket stage data validation failed for event",
-            eventId,
-            "tiers",
-            tierIds,
-            validationError,
-          );
+          console.warn("Ticket stage data validation failed for tiers", tierIds, validationError);
         }
-        // Filter in-memory to only include the specific (tier, price) pairs we need
-        stages.forEach((stage) => {
+        for (const stage of stages) {
           const key = `${stage.ticket_tier_id}:${stage.price_cents}`;
-          // Only include stages that match our needed (tier, price) pairs
-          if (uniqueTierPricePairs.has(key)) {
-            stageLookupMap.set(key, stage.name);
-          }
-        });
-      }
-    }
-
-    // Build a paymentIntentId → registration_data lookup for RSVP events with
-    // a registration form. We match orders to RSVPs via stripe_payment_intent_id
-    // (unique on both tables for paid RSVPs), so a user with multiple RSVPs for
-    // the same event/tier still resolves to the correct submission.
-    const registrationDataByPaymentIntent = new Map<
-      string,
-      Record<string, unknown>
-    >();
-    if (includeRegistrationData) {
-      const paymentIntentIds = Array.from(
-        new Set(
-          orders
-            .map((o) => o.stripe_payment_intent_id)
-            .filter((v): v is string => typeof v === "string" && v.length > 0),
-        ),
-      );
-      if (paymentIntentIds.length > 0) {
-        const { data: rsvpRows, error: rsvpError } = await retrySupabaseOperation(
-          async () =>
-            await supabaseAdmin
-              .from("rsvps")
-              .select("stripe_payment_intent_id, registration_data, status")
-              .eq("event_id", eventId)
-              .in("stripe_payment_intent_id", paymentIntentIds),
-        );
-        if (rsvpError) {
-          console.error(
-            "Error fetching RSVP registration_data for event",
-            eventId,
-            rsvpError,
-          );
-        } else {
-          // Prefer status='purchased' over 'approved' if both exist for the
-          // same payment intent (shouldn't happen — payment intents are unique
-          // per RSVP — but guard anyway).
-          const statusPriority = (s: unknown): number =>
-            s === "purchased" ? 2 : s === "approved" ? 1 : 0;
-          const bestByPi = new Map<
-            string,
-            { priority: number; data: Record<string, unknown> }
-          >();
-          for (const row of rsvpRows ?? []) {
-            const pi = (row as { stripe_payment_intent_id?: string | null })
-              .stripe_payment_intent_id;
-            const data = (row as { registration_data?: unknown }).registration_data;
-            if (
-              !pi ||
-              !data ||
-              typeof data !== "object" ||
-              Array.isArray(data)
-            ) {
-              continue;
-            }
-            const priority = statusPriority(
-              (row as { status?: unknown }).status,
-            );
-            const existing = bestByPi.get(pi);
-            if (!existing || priority > existing.priority) {
-              bestByPi.set(pi, {
-                priority,
-                data: data as Record<string, unknown>,
-              });
-            }
-          }
-          for (const [pi, { data }] of bestByPi.entries()) {
-            registrationDataByPaymentIntent.set(pi, data);
-          }
+          if (uniqueTierPricePairs.has(key)) stageLookupMap.set(key, stage.name);
         }
       }
     }
 
-    // Enrich orders with stage information
-    const enrichedOrders = orders.map((order) => {
-      // Extract stage name from the first ticket's metadata (all tickets in an order should have the same stage)
-      const firstTicket = order.tickets?.[0];
-      let stageName = firstTicket?.metadata?.stage_name || null;
-
-      // If stage name is missing from metadata, look it up from our map
-      if (
-        !stageName &&
-        order.ticket_tiers?.id &&
-        order.unit_price_cents !== undefined &&
-        order.unit_price_cents !== null
-      ) {
-        const lookupKey = `${order.ticket_tiers.id}:${order.unit_price_cents}`;
-        stageName = stageLookupMap.get(lookupKey) || null;
-      }
-
-      return {
-        ...order,
-        inferredStageName: stageName,
-      };
-    });
-
-    const purchases: Purchase[] = enrichedOrders.reduce<Purchase[]>((acc, order) => {
-      // Check if any ticket in this order has been checked in
-      const hasScannedTicket = order.tickets?.some(
-        (ticket) => !!ticket.checked_in_at,
-      );
-
-      // Use inferred stage name (from metadata or price matching)
-      const stageName = order.inferredStageName || null;
-
-      // Concatenate first and last name, fall back to email
-      const fullName =
-        order.users.first_name && order.users.last_name
-          ? `${order.users.first_name} ${order.users.last_name}`
-          : order.users.first_name ||
-            order.users.last_name ||
-            order.users.email;
-
-      // Calculate the base price the organizer receives
-      // PRIORITY: Use stored base_price_cents if available (Stripe Guaranteed Net model)
-      // This field already contains the final discounted base price
-      // Otherwise, fall back to historical extraction for legacy Datafast orders
-      const totalCents = order.total_amount_cents || 0;
-      const discountCents = order.discount_amount_cents || 0;
-
-      let actualBasePrice: number;
-
-      if (
-        order.base_price_cents !== null &&
-        order.base_price_cents !== undefined
-      ) {
-        // Stripe Guaranteed Net model: base_price_cents is the final discounted base price
-        // This is the source of truth - NO further discount calculation needed
-        actualBasePrice = order.base_price_cents;
-      } else {
-        // Legacy Datafast model: extract base price from total using historical extraction
-        const subtotalBeforeDiscount = totalCents + discountCents;
-        const priceBreakdown = extractBasePriceHistoricalFn(
-          subtotalBeforeDiscount,
-          order.created_at,
-          order.fee_percentage,
+    // paymentIntentId → registration_data for events with a registration form. Orders match
+    // RSVPs by stripe_payment_intent_id (unique on both tables for paid RSVPs), so a user with
+    // several RSVPs for the same event/tier still resolves to the right submission.
+    const registrationDataByPaymentIntent = new Map<string, Record<string, unknown>>();
+    const paymentIntentIds = Array.from(
+      new Set(
+        orders
+          .filter((o) => registrationEvents.has(o.event_id))
+          .map((o) => o.stripe_payment_intent_id)
+          .filter((v): v is string => typeof v === "string" && v.length > 0),
+      ),
+    );
+    if (paymentIntentIds.length > 0) {
+      try {
+        const rsvpRows = await selectAllPagesByIds<{
+          event_id?: string;
+          stripe_payment_intent_id?: string | null;
+          registration_data?: unknown;
+          status?: unknown;
+        }>(paymentIntentIds, (ids, from, to) =>
+          supabaseAdmin
+            .from("rsvps")
+            .select("id, event_id, stripe_payment_intent_id, registration_data, status")
+            .in("stripe_payment_intent_id", ids)
+            .order("id", { ascending: true })
+            .range(from, to),
         );
-
-        // For legacy orders, apply discount proportion to extracted base price
-        actualBasePrice = priceBreakdown.basePriceCents;
-        if (discountCents > 0 && subtotalBeforeDiscount > 0) {
-          const discountProportion = Math.min(
-            Math.max(discountCents / subtotalBeforeDiscount, 0),
-            1,
-          );
-          actualBasePrice = Math.max(
-            0,
-            Math.round(priceBreakdown.basePriceCents * (1 - discountProportion)),
-          );
+        // Prefer status='purchased' over 'approved' if both exist for the same payment intent
+        // (shouldn't happen — payment intents are unique per RSVP — but guard anyway).
+        const statusPriority = (s: unknown): number =>
+          s === "purchased" ? 2 : s === "approved" ? 1 : 0;
+        const bestByPi = new Map<string, { priority: number; data: Record<string, unknown> }>();
+        for (const row of rsvpRows) {
+          const pi = row.stripe_payment_intent_id;
+          const data = row.registration_data;
+          if (!pi || !row.event_id || !registrationEvents.has(row.event_id)) continue;
+          if (!data || typeof data !== "object" || Array.isArray(data)) continue;
+          const priority = statusPriority(row.status);
+          const existing = bestByPi.get(pi);
+          if (!existing || priority > existing.priority) {
+            bestByPi.set(pi, { priority, data: data as Record<string, unknown> });
+          }
         }
+        for (const [pi, { data }] of bestByPi.entries()) {
+          registrationDataByPaymentIntent.set(pi, data);
+        }
+      } catch (rsvpError) {
+        console.error("Error fetching RSVP registration_data", rsvpError);
       }
+    }
 
-      const registrationData =
-        includeRegistrationData && order.stripe_payment_intent_id
-          ? registrationDataByPaymentIntent.get(order.stripe_payment_intent_id) ?? null
-          : null;
-
-      acc.push({
-        id: order.id,
-        userName: fullName,
-        email: order.users.email,
-        tierName: order.ticket_tiers.name,
-        stageName: stageName,
-        quantity: order.quantity,
-        pricePerTicket: order.unit_price_cents,
-        totalPrice: totalCents,
-        basePrice: actualBasePrice, // Base price after discount (what organizer actually receives)
-        scanned: hasScannedTicket,
-        rsvpStatus: "purchased",
-        createdAt: order.created_at,
-        registrationData,
-      });
-      return acc;
-    }, []);
-
-    return purchases;
+    for (const order of orders) {
+      const purchases = result.get(order.event_id);
+      if (!purchases) continue;
+      purchases.push(
+        toPurchase(order, stageLookupMap, registrationDataByPaymentIntent, registrationEvents, extractBasePriceHistoricalFn),
+      );
+    }
+    return result;
   } catch (error) {
-    console.error("Error in fetchEventPurchases:", error);
-    return [];
+    console.error("Error in fetchEventPurchasesForEvents:", error);
+    return new Map(eventIds.map((id) => [id, []]));
   }
+}
+
+function toPurchase(
+  order: OrderRow,
+  stageLookupMap: Map<string, string>,
+  registrationDataByPaymentIntent: Map<string, Record<string, unknown>>,
+  registrationEvents: Set<string>,
+  extractBasePriceHistoricalFn: typeof extractBasePriceHistorical,
+): Purchase {
+  // Stage name from the first ticket's metadata (all tickets in an order share the stage),
+  // or from the (tier, unit price) lookup.
+  const firstTicket = order.tickets?.[0];
+  let stageName: string | null = firstTicket?.metadata?.stage_name || null;
+  if (
+    !stageName &&
+    order.ticket_tiers?.id &&
+    order.unit_price_cents !== undefined &&
+    order.unit_price_cents !== null
+  ) {
+    stageName = stageLookupMap.get(`${order.ticket_tiers.id}:${order.unit_price_cents}`) || null;
+  }
+
+  const hasScannedTicket = order.tickets?.some((ticket) => !!ticket.checked_in_at);
+
+  // Concatenate first and last name, fall back to email
+  const fullName =
+    order.users.first_name && order.users.last_name
+      ? `${order.users.first_name} ${order.users.last_name}`
+      : order.users.first_name || order.users.last_name || order.users.email;
+
+  // Base price the organizer receives. PRIORITY: stored base_price_cents (Stripe Guaranteed
+  // Net model, already discounted); otherwise historical extraction for legacy Datafast orders.
+  const totalCents = order.total_amount_cents || 0;
+  const discountCents = order.discount_amount_cents || 0;
+  let actualBasePrice: number;
+  if (order.base_price_cents !== null && order.base_price_cents !== undefined) {
+    actualBasePrice = order.base_price_cents;
+  } else {
+    const subtotalBeforeDiscount = totalCents + discountCents;
+    const priceBreakdown = extractBasePriceHistoricalFn(
+      subtotalBeforeDiscount,
+      order.created_at,
+      order.fee_percentage,
+    );
+    // For legacy orders, apply discount proportion to extracted base price
+    actualBasePrice = priceBreakdown.basePriceCents;
+    if (discountCents > 0 && subtotalBeforeDiscount > 0) {
+      const discountProportion = Math.min(Math.max(discountCents / subtotalBeforeDiscount, 0), 1);
+      actualBasePrice = Math.max(0, Math.round(priceBreakdown.basePriceCents * (1 - discountProportion)));
+    }
+  }
+
+  const registrationData =
+    registrationEvents.has(order.event_id) && order.stripe_payment_intent_id
+      ? registrationDataByPaymentIntent.get(order.stripe_payment_intent_id) ?? null
+      : null;
+
+  return {
+    id: order.id,
+    userName: fullName,
+    email: order.users.email,
+    tierName: order.ticket_tiers.name,
+    stageName,
+    quantity: order.quantity,
+    pricePerTicket: order.unit_price_cents,
+    totalPrice: totalCents,
+    basePrice: actualBasePrice, // Base price after discount (what organizer actually receives)
+    scanned: hasScannedTicket,
+    rsvpStatus: "purchased",
+    createdAt: order.created_at,
+    registrationData,
+  };
 }
