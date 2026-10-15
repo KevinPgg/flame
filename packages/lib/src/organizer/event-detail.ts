@@ -6,6 +6,7 @@
  * promotional_codes). Formulas match v1 (apps/web/app/organizer/event/[id]/OrgEventDetailClient.tsx).
  * Validation rules match the API routes, so the form rejects exactly what the server rejects.
  */
+import { getBasePriceFromTicket } from "../pricing/calculations";
 
 /** A card (Stripe) purchase — bank transfers are NOT in this list (same as v1). */
 export interface PurchaseRow {
@@ -39,7 +40,25 @@ export interface TierRow {
 export interface BankTransferRow {
   order_quantity: number;
   order_total_cents: number | null;
+  /** Needed to strip the fee that pre-2026-01-15 orders stored inside the total (see bankOrderNetCents). */
+  created_at?: string | null;
   ticket_tiers?: { name: string } | null;
+}
+
+/**
+ * What the organizer collects for one bank-transfer order. Orders created before the Stripe
+ * Connect migration (2026-01-15) stored the platform fee inside `total_amount_cents`; v1 strips
+ * it with getBasePriceFromTicket (OrgEventDetailClient → SendTicketsSection). Newer orders store
+ * the subtotal as-is. No date (or an invalid one) → the stored total, never a crash.
+ */
+export function bankOrderNetCents(order: { order_total_cents?: number | null; created_at?: string | null }): number {
+  const total = order.order_total_cents || 0;
+  if (!total || !order.created_at) return total;
+  try {
+    return getBasePriceFromTicket(total, order.created_at);
+  } catch {
+    return total;
+  }
 }
 
 /** Free / comp ticket (one row per ticket unless `quantity` says otherwise). */
@@ -135,7 +154,7 @@ export function eventBreakdown(input: {
     orders: input.bankTransfers.length,
     tickets: sum(input.bankTransfers, (b) => b.order_quantity),
     /** Collected directly by the organizer (outside Stripe). */
-    collectedCents: sum(input.bankTransfers, (b) => b.order_total_cents),
+    collectedCents: sum(input.bankTransfers, bankOrderNetCents),
   };
   const comps = { tickets: sum(input.comps, (c) => c.quantity ?? 1) };
   return {
@@ -163,7 +182,7 @@ export function salesByTier(purchases: PurchaseRow[], bankTransfers: BankTransfe
   for (const b of bankTransfers) {
     const r = row(b.ticket_tiers?.name || "—");
     r.tickets += b.order_quantity || 0;
-    r.netCents += b.order_total_cents || 0;
+    r.netCents += bankOrderNetCents(b);
   }
   return Array.from(map.values()).sort((a, b) => b.tickets - a.tickets);
 }

@@ -10,6 +10,7 @@ import {
   validatePromoCode,
   promoCodeStatus,
   PROMO_DISCOUNT_OPTIONS,
+  bankOrderNetCents,
   type PurchaseRow,
   type TierRow,
 } from "../src/organizer/event-detail";
@@ -120,5 +121,85 @@ describe("code validation mirrors the API", () => {
       used: 15, limit: 15, ratio: 1, active: false,
     });
     expect(promoCodeStatus({ id: "1", code: "X", discount_percentage: 10, usage_limit: 4, usage_count: 1 }).active).toBe(true);
+  });
+});
+
+describe("bank transfer amounts (legacy orders stored the fee inside the total)", () => {
+  // 2026-01-15 = Stripe Connect migration: newer orders store the subtotal as-is.
+  it("keeps the stored total for orders after the migration", () => {
+    expect(bankOrderNetCents({ order_total_cents: 6000, created_at: "2026-03-01T00:00:00Z" })).toBe(6000);
+  });
+  it("strips the fee from legacy orders, like v1", () => {
+    // Value computed by the production helper (getBasePriceFromTicket), not by hand.
+    expect(bankOrderNetCents({ order_total_cents: 2563, created_at: "2025-10-01T00:00:00Z" })).toBe(2300);
+  });
+  it("no total, no date or a bad date → the stored total (never throws)", () => {
+    expect(bankOrderNetCents({ order_total_cents: null, created_at: "2025-10-01T00:00:00Z" })).toBe(0);
+    expect(bankOrderNetCents({ order_total_cents: 5000 })).toBe(5000);
+    expect(bankOrderNetCents({ order_total_cents: 5000, created_at: "not a date" })).toBe(5000);
+  });
+  it("breakdown and sales by tier use the organizer amount, not the stored legacy total", () => {
+    const bank = [
+      { order_quantity: 1, order_total_cents: 2563, created_at: "2025-10-01T00:00:00Z", ticket_tiers: { name: "General" } },
+      { order_quantity: 2, order_total_cents: 4000, created_at: "2026-05-01T00:00:00Z", ticket_tiers: null },
+    ];
+    expect(eventBreakdown({ purchases: [], bankTransfers: bank, comps: [] }).bankTransfer.collectedCents).toBe(6300);
+    expect(salesByTier([], bank)).toEqual([
+      { tierName: "—", tickets: 2, netCents: 4000 },
+      { tierName: "General", tickets: 1, netCents: 2300 },
+    ]);
+  });
+});
+
+describe("edge cases", () => {
+  it("summary with no pending RSVPs and rows with missing numbers", () => {
+    expect(
+      summarizeEventSales({
+        tiers: [{ id: "x", name: "X", price_cents: 0, quantity_total: 0, quantity_sold: 0 }],
+        purchases: [p({ quantity: 0, basePrice: 0 })],
+        pendingRsvps: null,
+      })
+    ).toEqual({ ticketQuantity: 0, requested: 0, sold: 0, revenueCents: 0 });
+  });
+  it("tier with zero capacity: ratio 0, sold out; null counters read as 0", () => {
+    const [s] = tierStats(
+      [{ id: "z", name: "Z", price_cents: 0, quantity_total: 0, quantity_sold: null as unknown as number }],
+      []
+    );
+    expect(s).toMatchObject({ sold: 0, total: 0, reserved: 0, remaining: 0, soldRatio: 0, soldOut: true, revenueCents: 0 });
+  });
+  it("oversold tier caps the ratio at 1 and remaining at 0", () => {
+    const [s] = tierStats([{ id: "o", name: "O", price_cents: 0, quantity_total: 10, quantity_sold: 12 }], []);
+    expect(s.soldRatio).toBe(1);
+    expect(s.remaining).toBe(0);
+  });
+  it("sales by tier tolerates missing quantities / amounts", () => {
+    expect(
+      salesByTier([p({ quantity: undefined as unknown as number, basePrice: undefined as unknown as number })], [
+        { order_quantity: undefined as unknown as number, order_total_cents: null, ticket_tiers: { name: "General" } },
+      ])
+    ).toEqual([{ tierName: "General", tickets: 0, netCents: 0 }]);
+  });
+  it("leaderboard treats missing totals as 0 and does not mutate the input", () => {
+    const links = [
+      { id: "1", promoter_code: "B" },
+      { id: "2", promoter_code: "A", total_tickets_sold: null, total_revenue_cents: 50 },
+    ];
+    expect(promoterLeaderboard(links).map((l) => l.promoter_code)).toEqual(["A", "B"]);
+    expect(links[0].promoter_code).toBe("B");
+  });
+  it("promoter link encodes the code and works without a trailing slash", () => {
+    expect(promoterLinkUrl("http://localhost:3000", "ev", "A B")).toBe("http://localhost:3000/events/ev?promoter=A%20B");
+  });
+  it("promo status with no limit is not active; negative counters clamp to 0", () => {
+    expect(promoCodeStatus({ id: "1", code: "X", discount_percentage: 5, usage_limit: 0, usage_count: 0 })).toEqual({
+      used: 0, limit: 0, ratio: 1, active: false,
+    });
+    expect(promoCodeStatus({ id: "1", code: "X", discount_percentage: 5, usage_limit: -3, usage_count: -1 })).toMatchObject({
+      used: 0, limit: 0,
+    });
+  });
+  it("duplicate check ignores case of existing codes", () => {
+    expect(validatePromoCode("abc", ["Abc"]).error).toBe("duplicate");
   });
 });
