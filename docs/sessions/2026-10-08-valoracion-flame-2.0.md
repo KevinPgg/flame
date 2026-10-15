@@ -80,3 +80,38 @@ Todo aditivo: ninguna pantalla actual cambia. Verificado en un Postgres 16 + Pos
 - Errores 5xx → mensaje genérico traducido; 4xx → mensaje del servidor.
 - Lógica en `packages/lib/src/organizer/event-detail.ts` (lib 217/217). Web tsc 0 errores. Verificado con datos simulados en escritorio y teléfono, en/es, incluidas validaciones, confirmación de borrado y error de API.
 - **Siguiente:** "Enviar tickets" en v2 (buscar usuario → tier y cantidad → confirmar; historial al lado), luego RSVPs v2.
+
+## Fase 1 — Enviar tickets v2 (2026-10-15)
+- Pestaña **Enviar tickets** del detalle de evento v2 ya no abre v1. Modos **Tickets gratis** (`POST /api/organizer/promotional-tickets`) y **Transferencias** (`POST /api/organizer/bank-transfer-tickets`); mismas rutas y reglas que v1, sin cambios de API.
+- Flujo del prototipo en 3 pasos: buscar persona → ticket y cantidad → confirmar; historial "Enviados" al lado (debajo en teléfono).
+- Se mantiene lo que v1 hace y el prototipo no muestra: enviar a un email **sin cuenta Flame** (PDF con QR por email), elegir **etapa** en transferencias (preseleccionada la etapa vigente), **precio personalizado** (> 0 y ≤ 10.000, acepta coma decimal).
+- Diferencia deliberada con el prototipo: la búsqueda es por **email exacto** (la API no busca por nombre; buscar usuarios por nombre entre todas las cuentas sería una fuga de datos).
+- Capacidad: ninguna de las dos rutas bloquea por inventario (override del organizador a propósito). La UI muestra "Quedan N" y avisa si la cantidad supera lo disponible, sin bloquear.
+- Historial: las cortesías se guardan una fila por ticket; ahora se agrupan por envío ("3 × General") en vez de listarse una por una. Montos de transferencias con el mismo cálculo legacy que v1.
+- Permisos UI: solo owner/admin/organizer de la org dueña ven el formulario; el resto ve el historial.
+- **Hallazgo (no corregido):** las dos rutas solo verifican que el usuario sea miembro de la org → un miembro con rol **viewer** puede crear cortesías y órdenes por transferencia llamando a la API. Corregirlo cambia el comportamiento de la app iOS de producción (usa las mismas rutas) → decisión de Kevin.
+- Lógica en `packages/lib/src/organizer/send-tickets.ts` (12 tests; lib 229/229). Web y lib tsc 0 errores. Verificado con datos simulados y API falseada: escritorio 1280 y teléfono 412, en/es, solo lectura, email inválido no llega al servidor, payloads correctos, sin scroll horizontal.
+- **Siguiente:** RSVPs v2 (lista de eventos con pendientes → detalle con pestañas Todos/Pendientes/Aprobados/Rechazados, aprobar/rechazar, aprobar todos, ver formulario).
+
+### Revisión de código + tests antes del commit (2026-10-15, 14:00)
+Pedido de Kevin: revisar y generar los tests que faltan antes de comitear.
+
+**Bugs encontrados y corregidos:**
+- **Desglose v2 inflaba "Cobrado por ti" en eventos viejos:** `eventBreakdown` y `salesByTier` sumaban `order_total_cents` de transferencias tal cual. Las órdenes anteriores al 2026-01-15 (migración Stripe Connect) guardaban la comisión dentro del total; v1 la descuenta con `getBasePriceFromTicket`. Nuevo `bankOrderNetCents` en `event-detail.ts`, usado por Desglose, ventas por tier e historial de Enviar tickets. Fecha ausente o inválida → total guardado, nunca rompe la pantalla.
+- **Códigos de descuento:** límite de usos vacío mostraba "Algo salió mal". Ahora: "El límite de usos debe ser al menos 1." (`eventAdmin.promotions.limitInvalid`). El 0 ya lo bloquea el navegador (`min=1`).
+- **Enviar tickets:** al cambiar de tier con precio personalizado activo se sobrescribía el precio escrito; ahora se conserva, como en v1.
+- `personName` / `initialsOf` pasan de SendTab a lib (los usará la app).
+
+**Tests nuevos:**
+- lib (`packages/lib/__tests__`): ramas que faltaban en send-tickets, event-detail (montos legacy, capacidad 0, sobreventa, contadores nulos), dashboard (zona horaria nula) e i18n (clave que apunta a un grupo, plural sin `count`, motor sin `Intl.PluralRules`). lib 252/252; cobertura de `organizer/*` + i18n: 100% funciones y líneas, ramas 86% → 98% (lo que queda son fallbacks `|| 0`).
+- web (`apps/web/__tests__/v2/`, primeros tests de pantallas v2): `v2-lib.test.ts` (apiErrorMessage, routes, getUserLanguage), `useOrganizerModel.test.tsx` (alcance por rol, organizer sin asignaciones no ve datos sin filtrar, error, invalidación de la cache compartida con v1), `SendTab.test.tsx` (21: permisos, email inválido no llega a la API, normalización, sin cuenta, payloads exactos de cortesía y transferencia con etapa/precio, límites de cantidad, errores 4xx/5xx, doble envío), `EventAdminTabs.test.tsx` (Tiers, Promotores, Códigos: validaciones, PATCH/POST/DELETE, confirmación de borrado, errores). 47/47. `helpers.tsx`: polyfill de `<dialog>` para jsdom y mock de fetch con registro de llamadas.
+- Nota de entorno: `__tests__/setup.ts` reemplaza `window.location` por un objeto sin `origin`; el test de copiar link lo define explícitamente.
+
+**Sin tests de componente todavía:** `EventAdmin` (enrutado de pestañas / solo lectura co-host), `PurchasesTab` (export XLSX), `BreakdownTab`, `OrganizerDashboard`, `OrganizersList`, `OrganizerShell`. Su lógica de cálculo sí está cubierta en lib.
+
+**Alcance real de la fase 1 (según `FLAME_2_0_VALORACION.md` §3: "rediseño 1:1 del panel + responsive, fix batch del N+1 antes del dashboard"). Pendiente:**
+- Fix N+1 de `/api/organizer/data` (`enrichEventWithStats` hace 2 consultas por evento; `ESTADO_ACTUAL.md` riesgo 1). El plan lo ponía antes del dashboard y no se hizo.
+- RSVPs v2 (lista + detalle).
+- Pantallas que siguen enlazando a v1 (`app/v2/lib/routes.ts`): crear evento, editar evento + formulario de tiers, equipo, ajustes de organización, payouts, scanner. Hub "Manage organization" / Finance del prototipo.
+
+**Suite web completa (sin BD):** todo verde salvo 3 archivos que **ya fallaban en el commit 93ff208** (comprobado corriendo el código de HEAD): `payment-protection.test.ts` (necesita credenciales Supabase), `purchase-page.integration.test.tsx` (9 fallos) y `api/purchase/create-payment-intent.test.ts` (6 fallos: los mocks no traen la moneda de la reserva → "Hold missing reservation currency"). Son tests desactualizados del camino de pago → revisar en fase 3, no tocados aquí.
