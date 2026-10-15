@@ -140,3 +140,10 @@ Decisión de Kevin: un miembro solo actúa sobre lo que le corresponde. Viewer: 
 - Scanner (`qr-scanner/checkin|verify`): autoriza por rol de plataforma (`users.role`) + membresía, o por código de puerta del evento. No se tocó: endurecerlo puede dejar sin escanear al personal de puerta la noche del evento.
 - Lecturas directas de la app móvil a Supabase (RLS con JWT de Clerk): no auditadas en esta sesión.
 - Payouts ya exigían owner/admin; miembros/asignaciones ya exigían owner/admin.
+
+### Corrida de tests en el PC de Kevin (2026-10-15, 16:00)
+`npm run test:run` en apps/web: 6 archivos / 18 tests fallidos. Diagnóstico:
+- 3 tests de `SendTab` (míos) por **timeout**: en Windows tardan ~2,6× más que en Linux y superaban los 5 s por defecto. Corregido: `userEvent.setup({ delay: null })` y `testTimeout: 20_000` en `SendTab.test.tsx` y `EventAdminTabs.test.tsx` (el más lento: ~3 s Linux ≈ 8 s Windows).
+- 15 ya existentes (pagos desactualizados): `create-payment-intent` (6) y `purchase-page.integration` (9) → fase 3.
+- 3 archivos de `__tests__/integration/` abortaban por falta de credenciales: `vitest.config.ts` solo lee `.env.local`/`.env.test` y Kevin solo tiene `apps/web/.env`. Corregido separando: `vitest.config.ts` excluye `__tests__/integration/**`; esos corren solo con `npm run test:integration` (su setup sí lee `.env`, que apunta al Supabase local). Ambos tests de integración limpian únicamente sus propias filas.
+- Nota: redirigir con `>` en PowerShell guarda UTF-16 y solo stdout (vitest escribe los errores en stderr) → usar `npm run test:run 2>&1 | Out-File -Encoding utf8 run_test.txt`.
