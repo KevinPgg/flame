@@ -115,3 +115,28 @@ Pedido de Kevin: revisar y generar los tests que faltan antes de comitear.
 - Pantallas que siguen enlazando a v1 (`app/v2/lib/routes.ts`): crear evento, editar evento + formulario de tiers, equipo, ajustes de organización, payouts, scanner. Hub "Manage organization" / Finance del prototipo.
 
 **Suite web completa (sin BD):** todo verde salvo 3 archivos que **ya fallaban en el commit 93ff208** (comprobado corriendo el código de HEAD): `payment-protection.test.ts` (necesita credenciales Supabase), `purchase-page.integration.test.tsx` (9 fallos) y `api/purchase/create-payment-intent.test.ts` (6 fallos: los mocks no traen la moneda de la reserva → "Hold missing reservation currency"). Son tests desactualizados del camino de pago → revisar en fase 3, no tocados aquí.
+
+## Autorización por evento en la API del organizador (2026-10-15, 15:30)
+Decisión de Kevin: un miembro solo actúa sobre lo que le corresponde. Viewer: no hay ningún miembro activo con ese rol.
+
+**Regla** (`canActOnEvent` en `packages/lib/src/utils/permissions.ts`): owner/admin → todos los eventos de su organización; organizer → solo eventos asignados en `event_assignments` **por esa misma organización**; viewer / no miembro → nada. Helper de servidor `apps/web/app/lib/utils/event-access.ts` (`getEventAccess`, `requireEventAccess`, `visibleEventIds`). Error de consulta → 500, nunca "permitido".
+
+**Antes:** todas las rutas solo comprobaban "es miembro de la organización". Un organizer podía, llamando a la API, actuar sobre eventos no asignados, y `/api/organizer/data` le enviaba compras (nombres, emails) de **todos** los eventos (el filtro era solo en el navegador).
+
+**Rutas corregidas** (cambio aditivo: se mantiene el control previo y se agrega el de rol+asignación; la app móvil usa estas mismas rutas):
+- Enviar tickets: `POST promotional-tickets`, `GET promotional-tickets/[eventId]`, `POST bank-transfer-tickets`.
+- Códigos: `POST/GET promotional-codes`, `DELETE promotional-codes/[id]`. Promotores: `GET/POST promoter-links`, `DELETE promoter-links/[id]`.
+- Tiers: `GET/POST/PATCH/DELETE ticket-tiers`, `POST tiers/[tierId]/force-reduce`.
+- Eventos: `PATCH /api/events` (rol+asignación); `POST /api/events` (crear) solo owner/admin = `canCreateEvents`, que la web y la app ya aplicaban en la UI.
+- RSVPs (listar/aprobar/rechazar vía `canManageEventRsvps`): lado primario pasa de "cualquier miembro" a rol+asignación; se conserva owner/admin de org co-organizadora.
+- `GET organizer/data`: el servidor filtra eventos propios y co-organizados a los visibles para el rol.
+- `GET organizer/search-users`: solo owner/admin/organizer.
+
+**Tests:** `packages/lib/__tests__/permissions-event-access.test.ts`; `apps/web/__tests__/api/organizer/event-access.test.ts` (129: matriz 7 perfiles × 16 rutas reales sobre BD en memoria `fake-supabase.ts`, crear evento, búsqueda, filtrado de data, helpers, RSVP co-host, fallos de consulta). Prueba de mutación: con el control desactivado fallan 50 → los tests detectan el hueco. lib 261/261; web tsc 0; suite web sin regresiones (siguen solo los 3 archivos de pago que ya fallaban).
+
+**Cambio de comportamiento a comunicar:** un organizer que hoy edite tiers, códigos o eventos **no asignados** (web o app) recibirá 403. Si alguno trabaja así, hay que asignarle esos eventos.
+
+**Fuera de alcance (pendiente de decisión):**
+- Scanner (`qr-scanner/checkin|verify`): autoriza por rol de plataforma (`users.role`) + membresía, o por código de puerta del evento. No se tocó: endurecerlo puede dejar sin escanear al personal de puerta la noche del evento.
+- Lecturas directas de la app móvil a Supabase (RLS con JWT de Clerk): no auditadas en esta sesión.
+- Payouts ya exigían owner/admin; miembros/asignaciones ya exigían owner/admin.
