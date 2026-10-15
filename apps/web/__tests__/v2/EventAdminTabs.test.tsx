@@ -7,6 +7,9 @@ import PromotersTab from "../../app/v2/organizer/event/[id]/tabs/PromotersTab";
 import PromotionsTab from "../../app/v2/organizer/event/[id]/tabs/PromotionsTab";
 import { renderV2, mockFetch } from "./helpers";
 
+// Many clicks per test: slower machines (Windows) needed > 5 s with the default per-key delay.
+vi.setConfig({ testTimeout: 20_000 });
+
 afterEach(() => vi.unstubAllGlobals());
 
 const event = {
@@ -55,7 +58,7 @@ describe("TiersTab", () => {
   it("switches PATCH the tier and refresh; edit link goes to v1", async () => {
     const f = mockFetch([{ match: (u) => u === "/api/ticket-tiers", body: {} }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<TiersTab event={event} purchases={purchases} canEdit slug="kora" onChanged={onChanged} />);
     const general = screen.getByRole("heading", { name: "General" }).closest("article")!;
     await user.click(within(general).getByRole("switch", { name: "Sold out" }));
@@ -73,7 +76,7 @@ describe("TiersTab", () => {
   it("a failed PATCH shows the error and does not refresh", async () => {
     mockFetch([{ match: () => true, status: 403, body: { error: "Insufficient permissions" } }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<TiersTab event={event} purchases={purchases} canEdit slug="kora" onChanged={onChanged} />);
     await user.click(screen.getAllByRole("switch", { name: "Sold out" })[0]);
     expect(await screen.findByText("Insufficient permissions")).toBeInTheDocument();
@@ -99,7 +102,7 @@ describe("PromotersTab", () => {
 
   it("validates like the API before calling it", async () => {
     const f = mockFetch([]);
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotersTab event={event} canEdit onChanged={vi.fn()} />);
     await user.type(screen.getByPlaceholderText("Code"), "ab");
     await user.click(screen.getByRole("button", { name: "Generate link" }));
@@ -118,7 +121,7 @@ describe("PromotersTab", () => {
   it("creates with the uppercased code and optional name", async () => {
     const f = mockFetch([{ match: (u) => u === "/api/organizer/promoter-links", body: {} }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotersTab event={event} canEdit onChanged={onChanged} />);
     await user.type(screen.getByPlaceholderText("Code"), "vale10");
     await user.click(screen.getByRole("button", { name: "Generate link" }));
@@ -129,7 +132,7 @@ describe("PromotersTab", () => {
 
   it("copies the same URL as v1", async () => {
     mockFetch([]);
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     // __tests__/setup.ts replaces window.location with an object without `origin`.
@@ -143,7 +146,7 @@ describe("PromotersTab", () => {
   it("deleting asks first; cancel does nothing, confirm calls DELETE", async () => {
     const f = mockFetch([{ match: (u, i) => i?.method === "DELETE", body: {} }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotersTab event={event} canEdit onChanged={onChanged} />);
     await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     const dialog = screen.getByRole("dialog");
@@ -173,7 +176,7 @@ describe("PromotionsTab", () => {
   it("creates a code with discount and usage limit", async () => {
     const f = mockFetch([{ match: (u) => u === "/api/organizer/promotional-codes", body: {} }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotionsTab event={event} canEdit onChanged={onChanged} />);
     await user.type(screen.getByRole("textbox", { name: "Code" }), "summer");
     await user.selectOptions(screen.getByRole("combobox", { name: "Discount" }), "25");
@@ -187,7 +190,7 @@ describe("PromotionsTab", () => {
 
   it("rejects a duplicate code, an empty limit or a limit below 1 without calling the API", async () => {
     const f = mockFetch([]);
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotionsTab event={event} canEdit onChanged={vi.fn()} />);
     const code = screen.getByRole("textbox", { name: "Code" });
     const limit = screen.getByRole("spinbutton", { name: "Usage limit" });
@@ -211,7 +214,7 @@ describe("PromotionsTab", () => {
   it("delete: confirm calls DELETE; a failure is shown", async () => {
     mockFetch([{ match: (u, i) => i?.method === "DELETE", status: 404, body: { error: "Code not found" } }]);
     const onChanged = vi.fn();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderV2(<PromotionsTab event={event} canEdit onChanged={onChanged} />);
     await user.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     expect(screen.getByRole("dialog")).toHaveTextContent("Delete code VIP10?");

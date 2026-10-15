@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "path";
 import react from "@vitejs/plugin-react";
 import { readFileSync } from "fs";
@@ -97,6 +97,9 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: "jsdom", // Default to jsdom for React components
+      // Tests that write to a real database run only with `test:integration`
+      // (vitest.integration.config.ts), never by accident in `test` / `test:run`.
+      exclude: [...configDefaults.exclude, "__tests__/integration/**"],
       setupFiles: ["./__tests__/setup.ts"], // Setup file for testing-library
       // Unit tests (.test.ts) can override to 'node' if needed
       // Integration tests (.test.tsx) will use jsdom

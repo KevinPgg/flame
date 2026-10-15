@@ -62,7 +62,7 @@ const routesWith = (extra: Route[] = []) => [
 
 function setup(props: Partial<React.ComponentProps<typeof SendTab>> = {}, language: "en" | "es" = "en") {
   const onChanged = vi.fn();
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   renderV2(<SendTab event={event} canEdit onChanged={onChanged} {...props} />, language);
   return { user, onChanged };
 }
@@ -73,6 +73,9 @@ async function findPerson(user: ReturnType<typeof userEvent.setup>, email: strin
   await user.type(input, email);
   await user.click(screen.getByRole("button", { name: "Search" }));
 }
+
+// Many clicks per test: slower machines (Windows) needed > 5 s with the default per-key delay.
+vi.setConfig({ testTimeout: 20_000 });
 
 afterEach(() => vi.unstubAllGlobals());
 
