@@ -1,39 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import {
-  buildOrganizerEventList,
-  canAccessOrgSettings,
   canCreateEvents,
-  canManageMembers,
   canManagePayouts,
-  canViewAllEvents,
   formatCentsAsPrice,
   formatEventDateTime,
-  revenueByCurrency,
   searchEventsByName,
-  splitEventsByTime,
-  totalPendingRsvps,
   type OrgMemberRole,
 } from "@project-flame/lib";
-import type { OrganizerData, Event as OrganizerEvent } from "../../lib/hooks/useOrganizerData";
+import type { Event as OrganizerEvent } from "../../lib/hooks/useOrganizerData";
 import { useStripeConnectStatus } from "../../lib/hooks/useStripeConnectStatus";
-import { useMemberRoleContext } from "../../contexts/MemberRoleContext";
 import { useI18n } from "../../lib/i18n";
-import { Icon, type IconName } from "../components/Icon";
+import { Icon } from "../components/Icon";
 import { OrgAvatar } from "../components/OrgAvatar";
 import { Skeleton } from "../components/Skeleton";
+import { Flyer } from "../components/Flyer";
+import { Kpi } from "../components/Kpi";
+import { ErrorBox } from "../components/ErrorBox";
 import { routes } from "../lib/routes";
-
-type Org = { id: string; name: string; slug: string; logo_url: string | null };
+import { OrganizerShell } from "./OrganizerShell";
+import { useOrganizerModel, type Org } from "./useOrganizerModel";
 
 /**
  * Flame 2.0 · organizer dashboard (web, responsive).
- * Same data and rules as v1 (OrganizerAdminView): same API, same React Query cache key,
- * same role scoping; the rules themselves live in @project-flame/lib (organizer/dashboard).
- * Desktop: sidebar. Phone: bottom bar (Events, RSVPs, Scan, Team, Settings).
+ * Same data and rules as v1 (OrganizerAdminView); see useOrganizerModel + @project-flame/lib.
  */
 export default function OrganizerDashboard({
   organization,
@@ -45,208 +37,71 @@ export default function OrganizerDashboard({
   organizations: Org[];
 }) {
   const { t } = useI18n();
-  const fullAccess = canViewAllEvents(role);
-
-  // Keep the shared role context in sync so v1 screens opened from here scope correctly.
-  const { setSelectedOrgId } = useMemberRoleContext();
-  useEffect(() => {
-    setSelectedOrgId(organization.id);
-  }, [organization.id, setSelectedOrgId]);
-
-  // Same key + endpoint + polling as v1 → one cache, one source of truth.
-  const dataQuery = useQuery<OrganizerData>({
-    queryKey: ["organizer-data", organization.slug],
-    queryFn: async () => {
-      const res = await fetch(`/api/organizer/data?org=${encodeURIComponent(organization.slug)}`);
-      if (!res.ok) throw new Error(`organizer data ${res.status}`);
-      return res.json();
-    },
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
-    placeholderData: (previous) => previous,
-  });
-
-  // Organizer role: only the events assigned to them (same endpoint/key as v1).
-  const assignmentsQuery = useQuery<{ assignments: Array<{ event_id: string }> }>({
-    queryKey: ["my-event-assignments", organization.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/organizations/${organization.id}/event-assignments?mine=true`);
-      if (!res.ok) throw new Error("Failed to load assignments");
-      return res.json();
-    },
-    enabled: !fullAccess,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const loading = dataQuery.isLoading || (!fullAccess && assignmentsQuery.isLoading);
-  const failed = dataQuery.isError && !dataQuery.data;
-
-  const model = useMemo(() => {
-    const data = dataQuery.data;
-    if (!data) return null;
-    const assigned = fullAccess
-      ? undefined
-      : assignmentsQuery.data?.assignments.map((a) => a.event_id);
-    if (!fullAccess && assigned === undefined) return null;
-    const list = buildOrganizerEventList<OrganizerEvent>({
-      events: data.events ?? [],
-      cohostEvents: data.cohost_events ?? [],
-      ownerCohostAssignments: data.owner_cohost_assignments ?? [],
-      assignedEventIds: assigned,
-    });
-    return {
-      ...list,
-      ...splitEventsByTime(list.all),
-      revenue: revenueByCurrency(list.owned),
-      pending: totalPendingRsvps(list.all),
-    };
-  }, [dataQuery.data, assignmentsQuery.data, fullAccess]);
-
+  const { model, loading, failed, fullAccess, refetch } = useOrganizerModel(organization, role);
   const [tab, setTab] = useState<"current" | "past">("current");
   const [search, setSearch] = useState("");
   const visible = model ? searchEventsByName(tab === "current" ? model.current : model.past, search) : [];
 
-  const nav: Array<{ key: string; icon: IconName; label: string; href: string; active?: boolean; badge?: number }> = [
-    { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: true },
-    { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: model?.pending || 0 },
-    { key: "scan", icon: "scan", label: t("tabs.scan"), href: routes.scanner() },
-    ...(canManageMembers(role)
-      ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug) }]
-      : []),
-    ...(canAccessOrgSettings(role)
-      ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug) }]
-      : []),
-  ];
-
   return (
-    <div className="min-h-full lg:flex">
-      {/* ---------- Desktop sidebar ---------- */}
-      <aside className="sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col gap-6 border-r border-v2-c10 bg-[#050505] p-4 lg:flex">
-        <OrgSwitcher current={organization} organizations={organizations} />
-        <nav className="flex flex-col gap-1">
-          {nav.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              aria-current={item.active ? "page" : undefined}
-              className={`flex h-10 items-center gap-3 rounded-v2-md px-3 text-[14px] font-v2-ui-medium transition-colors ${
-                item.active ? "bg-v2-ink3 text-v2-cream" : "text-v2-c70 hover:bg-v2-ink2 hover:text-v2-cream"
-              }`}
-            >
-              <Icon name={item.icon} size={18} />
-              <span className="flex-1">{item.label}</span>
-              {item.badge ? <Badge n={item.badge} /> : null}
-            </Link>
-          ))}
-        </nav>
-        {model && model.current.length > 0 && (
-          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto border-t border-v2-c10 pt-4">
-            {model.current.slice(0, 12).map((e) => (
-              <Link
-                key={e.id}
-                href={routes.event(e.id, organization.slug)}
-                className="flex items-center gap-3 rounded-v2-md p-2 text-v2-c70 hover:bg-v2-ink2 hover:text-v2-cream"
-              >
-                <Flyer src={e.image_url} size={32} />
-                <span className="min-w-0 flex-1 truncate text-[13px]">{e.name}</span>
-              </Link>
-            ))}
-          </div>
-        )}
-        <Link
-          href={routes.attendeeHome()}
-          className="mt-auto flex h-10 items-center gap-3 rounded-v2-md px-3 text-[13px] text-v2-c50 hover:text-v2-cream"
-        >
-          <Icon name="ticket" size={16} />
-          {t("organizer.attendeeApp")}
-        </Link>
-      </aside>
+    <OrganizerShell
+      organization={organization}
+      organizations={organizations}
+      role={role}
+      pending={model?.pending ?? 0}
+      currentEvents={model?.current ?? []}
+    >
+      <Hero organization={organization} role={role} model={model} loading={loading} fullAccess={fullAccess} />
 
-      {/* ---------- Main ---------- */}
-      <main className="min-w-0 flex-1 pb-28 lg:pb-12">
-        <div className="px-4 pt-4 lg:hidden">
-          <OrgSwitcher current={organization} organizations={organizations} compact />
+      <section className="mx-auto max-w-[1120px] px-4 lg:px-10">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2" role="tablist">
+            {(["current", "past"] as const).map((k) => {
+              const count = model ? (k === "current" ? model.current.length : model.past.length) : null;
+              const on = tab === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setTab(k)}
+                  className={`inline-flex h-9 items-center gap-2 rounded-v2-pill px-4 text-[13px] font-v2-ui-semibold transition-colors ${
+                    on ? "bg-v2-cream text-v2-ink" : "bg-v2-ink3 text-v2-c70 hover:text-v2-cream"
+                  }`}
+                >
+                  {k === "current" ? t("organizer.currentUpcoming") : t("organizer.pastEvents")}
+                  {count !== null && <span className={on ? "text-v2-ink/50" : "text-v2-c50"}>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex h-10 items-center gap-2 rounded-v2-pill bg-v2-ink2 px-4 sm:w-[280px]">
+            <Icon name="search" size={16} className="text-v2-c50" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("organizer.searchEvents")}
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none"
+            />
+          </label>
         </div>
 
-        <Hero organization={organization} role={role} model={model} loading={loading} fullAccess={fullAccess} />
+        {!fullAccess && <p className="mb-3 text-[13px] text-v2-c50">{t("organizer.assignedOnly")}</p>}
 
-        <section className="mx-auto max-w-[1120px] px-4 lg:px-10">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-2" role="tablist">
-              {(["current", "past"] as const).map((k) => {
-                const count = model ? (k === "current" ? model.current.length : model.past.length) : null;
-                const on = tab === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => setTab(k)}
-                    className={`inline-flex h-9 items-center gap-2 rounded-v2-pill px-4 text-[13px] font-v2-ui-semibold transition-colors ${
-                      on ? "bg-v2-cream text-v2-ink" : "bg-v2-ink3 text-v2-c70 hover:text-v2-cream"
-                    }`}
-                  >
-                    {k === "current" ? t("organizer.currentUpcoming") : t("organizer.pastEvents")}
-                    {count !== null && (
-                      <span className={on ? "text-v2-ink/50" : "text-v2-c50"}>{count}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="flex h-10 items-center gap-2 rounded-v2-pill bg-v2-ink2 px-4 sm:w-[280px]">
-              <Icon name="search" size={16} className="text-v2-c50" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("organizer.searchEvents")}
-                className="min-w-0 flex-1 bg-transparent text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none"
-              />
-            </label>
-          </div>
-
-          {!fullAccess && <p className="mb-3 text-[13px] text-v2-c50">{t("organizer.assignedOnly")}</p>}
-
-          {failed ? (
-            <ErrorBox onRetry={() => dataQuery.refetch()} />
-          ) : (
-            <EventsTable
-              loading={loading || !model}
-              events={visible}
-              slug={organization.slug}
-              partners={model?.cohostPartners ?? {}}
-              empty={search.trim() ? t("organizer.noMatch") : t("organizer.noEvents")}
-            />
-          )}
-        </section>
-      </main>
-
-      {/* ---------- Phone bottom bar ---------- */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-v2-c10 bg-black/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-        {nav.map((item) => (
-          <Link
-            key={item.key}
-            href={item.href}
-            aria-current={item.active ? "page" : undefined}
-            className={`relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-v2-ui-medium ${
-              item.active ? "text-v2-cream" : "text-v2-c50"
-            }`}
-          >
-            <Icon name={item.icon} size={22} />
-            {item.label}
-            {item.badge ? (
-              <span className="absolute right-[calc(50%-20px)] top-2">
-                <Badge n={item.badge} />
-              </span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
-    </div>
+        {failed ? (
+          <ErrorBox onRetry={refetch} />
+        ) : (
+          <EventsTable
+            loading={loading || !model}
+            events={visible}
+            slug={organization.slug}
+            partners={model?.cohostPartners ?? {}}
+            empty={search.trim() ? t("organizer.noMatch") : t("organizer.noEvents")}
+          />
+        )}
+      </section>
+    </OrganizerShell>
   );
 }
 
@@ -337,17 +192,6 @@ function Hero({
   );
 }
 
-function Kpi({ label, loading, children }: { label: string; loading: boolean; children: React.ReactNode }) {
-  return (
-    <div className="min-w-[96px]">
-      <div className="text-[12px] uppercase tracking-[0.04em] text-v2-c50">{label}</div>
-      <div className="mt-1 font-v2-display-bold text-[24px] leading-tight tracking-[-0.02em] tabular-nums lg:text-[28px]">
-        {loading ? <Skeleton className="mt-1 h-7 w-20" /> : children}
-      </div>
-    </div>
-  );
-}
-
 function StripeBadge({ orgId, slug }: { orgId: string; slug: string }) {
   const { t } = useI18n();
   const { data, isLoading } = useStripeConnectStatus(orgId);
@@ -367,49 +211,6 @@ function StripeBadge({ orgId, slug }: { orgId: string; slug: string }) {
       <Icon name="alert" size={13} />
       {t("organizer.stripeIncomplete")}
     </Link>
-  );
-}
-
-function OrgSwitcher({ current, organizations, compact }: { current: Org; organizations: Org[]; compact?: boolean }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const others = organizations.filter((o) => o.id !== current.id);
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={t("organizer.switchOrganizer")}
-        className={`flex w-full items-center gap-3 rounded-v2-md text-left hover:bg-v2-ink2 ${compact ? "p-1" : "p-2"}`}
-      >
-        <OrgAvatar name={current.name} logoUrl={current.logo_url} size={compact ? 32 : 36} />
-        <span className="min-w-0 flex-1 truncate font-v2-ui-semibold text-[14px]">{current.name}</span>
-        <Icon name="down" size={16} className="text-v2-c50" />
-      </button>
-      {open && (
-        <div className="absolute inset-x-0 top-full z-30 mt-1 rounded-v2-card border border-v2-c10 bg-v2-ink2 p-1 shadow-2xl">
-          {others.map((o) => (
-            <Link
-              key={o.id}
-              href={routes.dashboard(o.slug)}
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-v2-md p-2 hover:bg-v2-ink3"
-            >
-              <OrgAvatar name={o.name} logoUrl={o.logo_url} size={28} />
-              <span className="truncate text-[14px]">{o.name}</span>
-            </Link>
-          ))}
-          <Link
-            href={routes.organizers()}
-            className="mt-1 flex items-center gap-3 rounded-v2-md border-t border-v2-c10 p-2 pt-3 text-[13px] text-v2-c70 hover:text-v2-cream"
-          >
-            <Icon name="users" size={16} />
-            {t("organizer.myOrganizers")}
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -524,45 +325,6 @@ function EventsTable({
           })}
         </ul>
       )}
-    </div>
-  );
-}
-
-function Flyer({ src, size }: { src?: string | null; size: number }) {
-  return (
-    <span
-      className="block shrink-0 overflow-hidden rounded-v2-sm bg-v2-ink4"
-      style={{ width: size, height: size }}
-    >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- thumbnails; storage host differs per env
-        <img src={src} alt="" width={size} height={size} loading="lazy" className="h-full w-full object-cover" />
-      ) : null}
-    </span>
-  );
-}
-
-function Badge({ n }: { n: number }) {
-  return (
-    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-v2-pill bg-v2-flame px-1.5 text-[11px] font-v2-ui-bold text-white">
-      {n > 99 ? "99+" : n}
-    </span>
-  );
-}
-
-function ErrorBox({ onRetry }: { onRetry: () => void }) {
-  const { t } = useI18n();
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-v2-card bg-v2-ink2 p-5">
-      <p className="text-[14px] text-v2-c70">{t("errors.generic")}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="inline-flex h-9 items-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink"
-      >
-        <Icon name="refresh" size={14} />
-        {t("common.retry")}
-      </button>
     </div>
   );
 }

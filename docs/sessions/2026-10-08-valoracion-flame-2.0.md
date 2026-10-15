@@ -70,3 +70,13 @@ Todo aditivo: ninguna pantalla actual cambia. Verificado en un Postgres 16 + Pos
 
 **Pendiente de Kevin:** `supabase migration up` (aplica el fix) · correr tests · abrir `localhost:3000/v2/organizer` con su usuario.
 **Siguiente en fase 1:** detalle de evento v2 (tabs Tiers / Purchases / Breakdown / Promoter links / Promotions / Send tickets).
+
+## Fase 1 — detalle de evento v2 (2026-10-13)
+- Ruta `/v2/organizer/event/[id]?org=slug&tab=…`. El dashboard v2 ya enlaza aquí (`routes.event`); "Editar evento", agregar/editar tiers y "Enviar tickets" siguen en v1 (`routes.eventV1`).
+- Estructura compartida extraída: `OrganizerShell` (sidebar / barra inferior / selector) y `useOrganizerModel` (misma API y cache que v1).
+- Encabezado: flyer con fondo desenfocado, estado (publicado / borrador / finalizado), co-organizadores (modal v1 reutilizado, solo org dueña), indicadores Tickets / Solicitados / Vendidos / Ingresos (mismas fórmulas que v1).
+- Pestañas: **Tiers** (vendidos vs total, pendientes, ingresos por tier, interruptores Agotado/Oculto vía `PATCH /api/ticket-tiers`), **Compras** (tabla, búsqueda, Export XLSX con el mismo builder de lib), **Desglose** (NUEVO: tarjeta vs transferencia vs gratis, comisiones, total del organizador, ventas por tier y por promotor), **Links de promotor** (ranking, crear con validación igual a la API, copiar, borrar con confirmación), **Códigos** (tarjetas con barra de uso, Activo/Agotado, alta validada, borrar con confirmación), **Enviar tickets** (abre v1).
+- Eventos co-organizados: solo lectura; las ventas las ve el organizador dueño.
+- Errores 5xx → mensaje genérico traducido; 4xx → mensaje del servidor.
+- Lógica en `packages/lib/src/organizer/event-detail.ts` (lib 217/217). Web tsc 0 errores. Verificado con datos simulados en escritorio y teléfono, en/es, incluidas validaciones, confirmación de borrado y error de API.
+- **Siguiente:** "Enviar tickets" en v2 (buscar usuario → tier y cantidad → confirmar; historial al lado), luego RSVPs v2.

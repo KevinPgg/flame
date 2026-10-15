@@ -8,8 +8,11 @@ export const routes = {
   // v2
   organizers: () => "/v2/organizer",
   dashboard: (slug: string) => `/v2/organizer?${q(slug)}`,
+  event: (eventId: string, slug: string, tab?: string) =>
+    `/v2/organizer/event/${eventId}?${q(slug)}${tab ? `&tab=${tab}` : ""}`,
   // still v1
-  event: (eventId: string, slug: string) => `/organizer/event/${eventId}?${q(slug)}`,
+  /** v1 event page: edit event / tiers form and "Send tickets" still live there. */
+  eventV1: (eventId: string, slug: string) => `/organizer/event/${eventId}?${q(slug)}`,
   rsvps: (slug: string) => `/organizer?${q(slug)}&tab=rsvps`,
   createEvent: (slug: string) => `/organizer?${q(slug)}&tab=create-event`,
   team: (slug: string) => `/organizer/team?${q(slug)}`,
