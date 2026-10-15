@@ -268,7 +268,7 @@ export default function EventAdmin({
         ) : tab === "promotions" ? (
           isOwnerOrg ? <PromotionsTab event={event} canEdit={canEdit} onChanged={invalidate} /> : <NoSales />
         ) : isOwnerOrg ? (
-          <SendTab event={event} slug={organization.slug} />
+          <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
         ) : (
           <NoSales />
         )}
