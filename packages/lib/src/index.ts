@@ -264,6 +264,7 @@ export {
   validatePromoterCode,
   validatePromoCode,
   promoCodeStatus,
+  bankOrderNetCents,
   PROMO_DISCOUNT_OPTIONS,
 } from "./organizer/event-detail";
 export type {
@@ -276,6 +277,30 @@ export type {
   PromoCodeRow,
   CodeValidationError,
 } from "./organizer/event-detail";
+
+export {
+  sendOptions,
+  defaultSendOption,
+  isValidSendQuantity,
+  parseCustomPrice,
+  normalizeEmail,
+  isLikelyEmail,
+  personName,
+  initialsOf,
+  sentHistory,
+  SEND_MAX_QUANTITY,
+  SEND_MAX_CUSTOM_PRICE_CENTS,
+} from "./organizer/send-tickets";
+export type {
+  SendMode,
+  SendStageRow,
+  SendTierRow,
+  SendOption,
+  CustomPriceError,
+  SentCompRow,
+  SentBankRow,
+  SentEntry,
+} from "./organizer/send-tickets";
 
 // ============================================================================
 // SUPABASE
