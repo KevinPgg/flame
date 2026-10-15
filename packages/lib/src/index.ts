@@ -254,6 +254,29 @@ export type {
   CurrencyTotal,
 } from "./organizer/dashboard";
 
+export {
+  summarizeEventSales,
+  tierStats,
+  eventBreakdown,
+  salesByTier,
+  promoterLeaderboard,
+  promoterLinkUrl,
+  validatePromoterCode,
+  validatePromoCode,
+  promoCodeStatus,
+  PROMO_DISCOUNT_OPTIONS,
+} from "./organizer/event-detail";
+export type {
+  PurchaseRow,
+  TierRow,
+  TierStat,
+  BankTransferRow,
+  CompRow,
+  PromoterLinkRow,
+  PromoCodeRow,
+  CodeValidationError,
+} from "./organizer/event-detail";
+
 // ============================================================================
 // SUPABASE
 // ============================================================================
