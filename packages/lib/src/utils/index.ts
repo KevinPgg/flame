@@ -68,6 +68,7 @@ export {
   canCreateEvents,
   canViewAllEvents,
   canManageAssignedEvents,
+  canActOnEvent,
   canAccessOrgSettings,
   canManagePayouts,
   canManageAccessCodes,

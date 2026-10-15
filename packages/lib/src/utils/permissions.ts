@@ -39,3 +39,17 @@ export function canManagePayouts(role: OrgMemberRole | null): boolean {
 export function canManageAccessCodes(role: OrgMemberRole | null): boolean {
   return role === "owner" || role === "admin";
 }
+
+/**
+ * Event-level access inside the event's own organization (send tickets, codes, promoter links,
+ * tiers, RSVPs, editing the event, sales data):
+ *   owner / admin → every event of the organization
+ *   organizer     → only events explicitly assigned to them (event_assignments)
+ *   viewer / none → nothing
+ * The server enforces it in apps/web/app/lib/auth/event-access.ts; screens use it to hide tools.
+ */
+export function canActOnEvent(role: OrgMemberRole | null, assignedToEvent: boolean): boolean {
+  if (role === "owner" || role === "admin") return true;
+  if (role === "organizer") return assignedToEvent;
+  return false;
+}
