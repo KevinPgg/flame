@@ -383,6 +383,18 @@ export {
   canForceReduce,
 } from "./organizer/tier-editor";
 export type { EditorStage, EditorTier, EditorEvent, TierEditorState, TierSavePlan } from "./organizer/tier-editor";
+export {
+  ASSIGNABLE_ROLES,
+  memberName,
+  memberInitials,
+  sortTeam,
+  assignmentCounts,
+  assignedEventIds,
+  editableRole,
+  assignableEvents,
+  memberHasActions,
+} from "./organizer/team";
+export type { TeamMember, TeamAssignment, AssignableRole, AssignableEvent } from "./organizer/team";
 export type {
   StageDraft,
   TierDraft,
