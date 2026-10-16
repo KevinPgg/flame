@@ -216,7 +216,7 @@ export default function EventAdmin({
                 )}
                 {canEdit && (
                   <Link
-                    href={routes.eventV1(event.id, organization.slug)}
+                    href={routes.editEvent(event.id, organization.slug)}
                     className="inline-flex h-10 items-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper"
                   >
                     {t("eventAdmin.edit")}

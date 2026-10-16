@@ -14,15 +14,22 @@ export interface FlyerValue {
   preview: string;
 }
 
-/** Flyer slot (prototype "cf-flyer"): pick → checked, resized to 4:5 and previewed locally. */
+/**
+ * Flyer slot (prototype "cf-flyer"): pick → checked, resized to 4:5 and previewed locally.
+ * Edit mode: `existingUrl` is the saved flyer, shown until replaced; `onRemoveExisting` clears it.
+ */
 export function FlyerPicker({
   value,
   onChange,
   disabled,
+  existingUrl,
+  onRemoveExisting,
 }: {
   value: FlyerValue | null;
   onChange: (next: FlyerValue | null) => void;
   disabled?: boolean;
+  existingUrl?: string | null;
+  onRemoveExisting?: () => void;
 }) {
   const { t } = useI18n();
   const input = useRef<HTMLInputElement>(null);
@@ -54,18 +61,21 @@ export function FlyerPicker({
     }
   };
 
+  const shown = value?.preview ?? existingUrl ?? null;
+  const remove = value ? () => onChange(null) : existingUrl ? onRemoveExisting : undefined;
+
   return (
     <div>
       <div className="relative mx-auto w-[220px] sm:w-[240px]">
         <label
           htmlFor="ef-flyer"
           className={`flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center gap-1.5 overflow-hidden rounded-v2-card border border-dashed text-center ${
-            value ? "border-transparent" : "border-v2-c30 bg-v2-ink2 hover:bg-v2-ink3"
+            shown ? "border-transparent" : "border-v2-c30 bg-v2-ink2 hover:bg-v2-ink3"
           } ${disabled ? "pointer-events-none opacity-60" : ""}`}
         >
-          {value ? (
-            // eslint-disable-next-line @next/next/no-img-element -- local blob preview
-            <img src={value.preview} alt={t("eventForm.flyerAdd")} className="h-full w-full object-cover" />
+          {shown ? (
+            // eslint-disable-next-line @next/next/no-img-element -- local blob preview / storage URL
+            <img src={shown} alt={t("eventForm.flyerAdd")} className="h-full w-full object-cover" />
           ) : (
             <>
               <Icon name="camera" size={26} className="text-v2-c70" />
@@ -73,17 +83,17 @@ export function FlyerPicker({
               <small className="px-4 text-[12px] text-v2-c50">{t("eventForm.flyerHint")}</small>
             </>
           )}
-          {value ? (
+          {shown ? (
             <span className="absolute bottom-2 left-2 inline-flex items-center gap-1.5 rounded-v2-pill bg-black/70 px-3 py-1.5 text-[12px] font-v2-ui-semibold backdrop-blur">
               <Icon name="camera" size={14} />
               {t("eventForm.flyerChange")}
             </span>
           ) : null}
         </label>
-        {value && !disabled ? (
+        {remove && !disabled ? (
           <button
             type="button"
-            onClick={() => onChange(null)}
+            onClick={remove}
             aria-label={t("eventForm.flyerRemove")}
             className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/70 backdrop-blur hover:bg-black"
           >
