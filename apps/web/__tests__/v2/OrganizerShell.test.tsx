@@ -66,7 +66,7 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(within(side).getByRole("link", { name: /RSVPs/ })).toHaveTextContent("3");
     expect(within(side).getByRole("link", { name: "Team" })).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Settings" })).toBeInTheDocument();
-    expect(within(side).getByRole("link", { name: "Scan" })).toHaveAttribute("href", "/qr-scanner");
+    expect(within(side).getByRole("link", { name: "Scan" })).toHaveAttribute("href", "/v2/scanner");
     expect(within(side).getByRole("link", { name: "Create event" })).toHaveAttribute("href", "/v2/organizer/create?org=kora");
     expect(within(side).getByText("Upcoming")).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: /Event a/ })).toHaveAttribute("href", "/v2/organizer/event/a?org=kora");

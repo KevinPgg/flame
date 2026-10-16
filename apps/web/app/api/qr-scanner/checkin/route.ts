@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
-import { getUserRole } from "@/app/lib/roles";
-import { resolveDbUserFromClerkId } from "@/app/lib/auth";
+import { accessCodesEnabled, getScanAccess, scanUserFromClerk } from "@/app/lib/utils/scan-access";
 import { z } from "zod";
 
 // Define typed interface for ticket with event data
@@ -42,71 +41,36 @@ async function authorizeViaAccessCode(
   };
 }
 
+/**
+ * Signed-in scanner: member of the event's (or a co-host) organization, platform admin, or
+ * designated for this event (event_scanners). Before: any users.role = 'organizer' of the
+ * event's org, and attendees could never be door staff without the shared code.
+ */
 async function authorizeViaUserAuth(
   ticket: TicketWithEvent
 ): Promise<{ authorized: boolean; error?: string; status?: number }> {
   const authResult = await auth();
   const userId = authResult.userId;
-
   if (!userId) {
     return { authorized: false, error: "Unauthorized", status: 401 };
   }
-
-  // Check if user has permission to check in tickets
-  const userRole = await getUserRole(userId);
-  if (!userRole || userRole === "user") {
-    return {
-      authorized: false,
-      error: "Insufficient permissions",
-      status: 403,
-    };
+  if (!supabaseAdmin) {
+    return { authorized: false, error: "Database not configured", status: 500 };
   }
-
-  // Check if user has access to this event
-  if (userRole === "organizer") {
-    let dbUser;
-    try {
-      dbUser = await resolveDbUserFromClerkId(userId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const status = message === "User not found" ? 404 : 500;
-      return { authorized: false, error: message, status };
-    }
-
-    if (!supabaseAdmin) {
-      return {
-        authorized: false,
-        error: "Database not configured",
-        status: 500,
-      };
-    }
-
-    const { data: userOrgs, error: orgMemberError } = await supabaseAdmin
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", dbUser.id);
-
-    if (orgMemberError) {
-      console.error("Error fetching organization memberships:", orgMemberError);
-      return {
-        authorized: false,
-        error: "Failed to verify permissions",
-        status: 500,
-      };
-    }
-
-    const organizationIds = userOrgs?.map(org => org.organization_id) || [];
-
-    if (!organizationIds.includes(ticket.events.organization_id)) {
-      return {
-        authorized: false,
-        error: "You can only check in tickets for your own events",
-        status: 403,
-      };
-    }
+  let scanUser;
+  try {
+    scanUser = await scanUserFromClerk(supabaseAdmin, userId);
+  } catch {
+    return { authorized: false, error: "Failed to verify permissions", status: 500 };
   }
-
-  return { authorized: true };
+  if (!scanUser) {
+    return { authorized: false, error: "User not found", status: 404 };
+  }
+  const access = await getScanAccess(supabaseAdmin, scanUser, ticket.events);
+  if (access.allowed) return { authorized: true };
+  return access.failed
+    ? { authorized: false, error: "Failed to verify permissions", status: 500 }
+    : { authorized: false, error: "You can't check in tickets for this event", status: 403 };
 }
 
 export async function POST(req: NextRequest) {
@@ -226,6 +190,13 @@ export async function POST(req: NextRequest) {
     let isAuthorized = false;
     let authError = "Unauthorized";
     let authStatus = 403;
+
+    if (accessCode && !accessCodesEnabled()) {
+      return NextResponse.json(
+        { error: "Access codes are no longer accepted. Sign in to scan." },
+        { status: 403 }
+      );
+    }
 
     if (accessCode) {
       const result = await authorizeViaAccessCode(

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
-import { getUserRole } from "@/app/lib/roles";
-import { resolveDbUserFromClerkId } from "@/app/lib/auth";
+import { accessCodesEnabled, getScanAccess, scanUserFromClerk } from "@/app/lib/utils/scan-access";
 
 interface QRData {
   orderId: string;
@@ -72,8 +71,14 @@ export async function POST(req: NextRequest) {
 
     // Authentication Logic
     let isAuthorized = false;
-    let userRole = null;
     let userId = null;
+
+    if (accessCode && !accessCodesEnabled()) {
+      return NextResponse.json(
+        { error: "Access codes are no longer accepted. Sign in to scan." },
+        { status: 403 }
+      );
+    }
 
     // 1. If access code is provided, validate it matches the event code
     if (accessCode) {
@@ -111,15 +116,7 @@ export async function POST(req: NextRequest) {
       if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-
-      // Check if user has permission to scan QR codes
-      userRole = await getUserRole(userId);
-      if (!userRole || userRole === "user") {
-        return NextResponse.json(
-          { error: "Insufficient permissions" },
-          { status: 403 }
-        );
-      }
+      // Who may scan this event is decided once the ticket (and its event) is known.
       isAuthorized = true;
     }
 
@@ -272,43 +269,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Event mismatch" }, { status: 400 });
     }
 
-    // If authenticated via user, check organization permissions
-    if (!accessCode && userId && userRole === "organizer") {
-      let dbUser;
+    // Signed-in scanner: member of the event's (or a co-host) organization, platform admin,
+    // or designated for this event (event_scanners).
+    if (!accessCode && userId) {
+      let scanUser;
       try {
-        dbUser = await resolveDbUserFromClerkId(userId);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        const status = message === "User not found" ? 404 : 500;
-        return NextResponse.json({ error: message }, { status });
+        scanUser = await scanUserFromClerk(supabaseAdmin, userId);
+      } catch {
+        return NextResponse.json({ error: "Failed to verify permissions" }, { status: 500 });
       }
-
-      const { data: userOrgs, error: orgMemberError } = await supabaseAdmin!
-        .from("organization_members")
-        .select("organization_id")
-        .eq("user_id", dbUser.id);
-
-      if (orgMemberError) {
-        console.error(
-          "Error fetching organization memberships:",
-          orgMemberError
-        );
-        return NextResponse.json(
-          { error: "Failed to verify permissions" },
-          { status: 500 }
-        );
+      if (!scanUser) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
-
-      const organizationIds = userOrgs?.map(org => org.organization_id) || [];
-
-      if (!organizationIds.includes(ticket.events.organization_id)) {
-        return NextResponse.json(
-          {
-            error: "You can only scan tickets for your own events",
-          },
-          { status: 403 }
-        );
+      const access = await getScanAccess(supabaseAdmin, scanUser, ticket.events);
+      if (!access.allowed) {
+        return access.failed
+          ? NextResponse.json({ error: "Failed to verify permissions" }, { status: 500 })
+          : NextResponse.json({ error: "You can't scan tickets for this event" }, { status: 403 });
       }
     }
 

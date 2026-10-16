@@ -395,6 +395,8 @@ export {
   memberHasActions,
 } from "./organizer/team";
 export type { TeamMember, TeamAssignment, AssignableRole, AssignableEvent } from "./organizer/team";
+export { parseTicketQr, scanResultKind, scanErrorKind, scannerEventList, isHappeningNow } from "./organizer/scanner";
+export type { TicketQrData, ScanResultKind, VerifiedTicket, ScannerEvent } from "./organizer/scanner";
 export type {
   StageDraft,
   TierDraft,

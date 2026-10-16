@@ -304,3 +304,27 @@ Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
 **Tests:** `__tests__/v2/Team.test.tsx` (14), `organizer-v2-redirect.test.ts` (5), avisos de tiers ocultos (CreateEvent + TiersTab). Web v2 143/143, API organizador + redirección 327 en total con v2; lib 346/346; tsc 0. Revisado visualmente (1300 y 390, en/es).
 
 **Fase 1 — pendiente:** ajustes de organización, payouts, scanner (v1).
+
+
+## Escáner v2 + nuevo modelo de acceso (2026-10-16)
+**Decisión de Kevin:** los miembros de la organización escanean por defecto cualquier evento de su organización; además se puede designar a usuarios concretos (sean o no de la organización) para eventos específicos, eligiéndolos por usuario.
+
+**Cómo era (respuesta a Kevin):** el scanner NO se asignaba a usuarios. Había un código compartido por evento (`events.qr_scanner_code`, 4–8 caracteres) que cualquiera con el código podía usar sin sesión, y además un chequeo de rol global (`users.role` organizer/admin): cualquier "organizer" de la plataforma podía validar tickets de cualquier evento.
+
+**Cómo queda:**
+- Migración `supabase/migrations/20261016150000_event_scanners.sql`: tabla `event_scanners(event_id, user_id, added_by)` única por (evento, persona), RLS (la propia persona o miembros de la organización del evento). **Kevin debe aplicarla.**
+- `app/lib/utils/scan-access.ts`: `getScanAccess` = admin de plataforma, miembro de la organización, miembro de una organización co-organizadora, o designado en `event_scanners`. Error de BD → deniega. `scannableEventIds` para la lista.
+- `verify` y `checkin` (sesión iniciada) usan ese acceso por evento → 403 "You can't scan tickets for this event". Se cierra el hueco del rol global.
+- API `api/organizer/events/[id]/scanners` (GET/POST email/DELETE) con la misma regla que el resto del evento (`requireEventAccess`); códigos NOT_FOUND / ALREADY_MEMBER / ALREADY_SCANNER.
+- API `api/qr-scanner/events`: eventos que la persona puede escanear (publicados, no terminados hace más de 12 h).
+- Pestaña **Escáner** en el evento v2 (`ScannersTab`): explicación del acceso por defecto, agregar por email, lista, quitar.
+- Pantalla `/v2/scanner[?event=]` (`ScannerApp` + `useQrCamera` con `@zxing/library`): elegir evento (abre directo si hay uno solo en curso), cámara con marco, resultado grande por color (verde válido / ámbar ya registrado / rojo no válido u otro evento), registrar entrada, recientes, flash si el equipo lo soporta. El QR de otro evento se rechaza sin llamar al servidor; el mismo QR leído de nuevo en 3 s se ignora. `deviceId` comparte la clave de v1. El menú "Escanear" apunta a `/v2/scanner`.
+- Lib `organizer/scanner.ts` (parseTicketQr, scanResultKind, scanErrorKind, scannerEventList, isHappeningNow), i18n `scanner.*` y `scanners.*`.
+
+**Desacuerdo registrado (códigos de acceso):** no se eliminan aún del servidor. La app móvil publicada y `/qr-scanner` los usan; quitarlos hoy deja sin escáner a la puerta de cualquier evento con la app vieja. Se quitaron de la UI v2 y quedan detrás de `SCANNER_ACCESS_CODES` (por defecto activos; `off` los apaga en verify, checkin y validate-code). Retirarlos cuando la app nueva (fase 2/3) esté en las tiendas.
+
+**Fix:** el formulario de la pestaña Escáner usaba `type="email"` sin `noValidate` → el navegador bloqueaba el envío con su mensaje nativo y el nuestro nunca aparecía (lo detectó el test). Tipado explícito del `gate` de la API de scanners.
+
+**Tests:** `scan-access.test.ts` (37: acceso por rol/co-organizador/designado/admin/extraño, verify, checkin, validate-code con y sin flag, API de scanners, lista de eventos), `__tests__/v2/Scanner.test.tsx` (17: selector, auto-apertura, válido→registrar, ya registrado, otro evento, QR ajeno, 404/403, 409 en check-in, promocional, cambiar evento; pestaña: agregar, códigos de error, email inválido, quitar, solo lectura), lib scanner (7). Web v2 160/160, API organizador + redirección 221/221, lib 353/353; tsc 0. Revisado visualmente (1300 y 390, en/es): en teléfono la cámara es vertical y el resultado es una tarjeta opaca sobre la imagen (el marco se oculta al mostrar resultado); "Escanear siguiente" → "Siguiente" en español porque no cabía.
+
+**Fase 1 — pendiente:** ajustes de organización, payouts. Pendiente aparte: auditoría RLS móvil; force-reduce con RSVPs aprobados (fase 3).

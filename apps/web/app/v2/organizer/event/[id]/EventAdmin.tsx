@@ -28,8 +28,9 @@ import BreakdownTab from "./tabs/BreakdownTab";
 import PromotersTab from "./tabs/PromotersTab";
 import PromotionsTab from "./tabs/PromotionsTab";
 import SendTab from "./tabs/SendTab";
+import ScannersTab from "./tabs/ScannersTab";
 
-const TABS = ["tiers", "purchases", "breakdown", "promoters", "promotions", "send"] as const;
+const TABS = ["tiers", "purchases", "breakdown", "promoters", "promotions", "send", "scanners"] as const;
 export type EventTab = (typeof TABS)[number];
 
 /**
@@ -239,7 +240,7 @@ export default function EventAdmin({
       </header>
 
       {/* ---------- Tabs ---------- */}
-      <div className="sticky top-0 z-10 border-b border-v2-c10 bg-black/85 backdrop-blur-xl">
+      <div className="sticky top-[60px] z-10 border-b border-v2-c10 bg-black/85 backdrop-blur-xl lg:top-[72px]">
         <div ref={tabBar} className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 lg:px-10" role="tablist">
           {TABS.map((k) => (
             <button
@@ -277,6 +278,8 @@ export default function EventAdmin({
           isOwnerOrg ? <PromotersTab event={event} canEdit={canEdit} onChanged={invalidate} /> : <NoSales />
         ) : tab === "promotions" ? (
           isOwnerOrg ? <PromotionsTab event={event} canEdit={canEdit} onChanged={invalidate} /> : <NoSales />
+        ) : tab === "scanners" ? (
+          <ScannersTab event={event} organizationName={found?.ownerName ?? organization.name} canEdit={canEdit} />
         ) : isOwnerOrg ? (
           <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
         ) : (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
+import { accessCodesEnabled } from "@/app/lib/utils/scan-access";
 
 /**
  * Validate a per-event scanner access code.
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!accessCodesEnabled()) {
+      return NextResponse.json(
+        { error: "Access codes are no longer accepted. Sign in to scan." },
+        { status: 403 }
+      );
+    }
     const { code, orgId } = body;
 
     if (typeof code !== "string" || !code) {
