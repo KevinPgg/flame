@@ -855,6 +855,20 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Last-tier check BEFORE touching stages: it used to run after the stages were deleted, so
+    // trying to delete an event's only (staged) tier left it with no stages and a 400.
+    const { data: allTiers } = await supabaseAdmin
+      .from("ticket_tiers")
+      .select("id")
+      .eq("event_id", tierCheck.events.id);
+
+    if (allTiers && allTiers.length <= 1) {
+      return NextResponse.json(
+        { error: "Cannot delete the last ticket tier for an event" },
+        { status: 400 }
+      );
+    }
+
     // Delete all stages for this tier (if any)
     if (stages && stages.length > 0) {
       const { error: deleteStagesError } = await supabaseAdmin
@@ -871,18 +885,6 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    // Check if this is the last tier for the event
-    const { data: allTiers } = await supabaseAdmin
-      .from("ticket_tiers")
-      .select("id")
-      .eq("event_id", tierCheck.events.id);
-
-    if (allTiers && allTiers.length <= 1) {
-      return NextResponse.json(
-        { error: "Cannot delete the last ticket tier for an event" },
-        { status: 400 }
-      );
-    }
 
     // Delete the ticket tier
     const { error: deleteError } = await supabaseAdmin
