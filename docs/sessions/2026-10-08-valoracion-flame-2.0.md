@@ -198,3 +198,30 @@ select 'orders_org', e.organization_id, count(*) from orders o join events e on 
 - Verificado: las 79 rutas de `app/api` cargan con las variables del `.env` de Kevin (valores ficticios) y sin `DATAFAST_*`; con la versión anterior falla exactamente esa ruta. El `next build` completo no pudo correrse en el entorno de verificación (VM de 4 GB, el proceso murió durante la compilación).
 - El aviso `MODULE_TYPELESS_PACKAGE_JSON` de `tailwind.config.ts` es solo de rendimiento; no rompe el build. No se tocó (añadir `"type": "module"` cambiaría cómo Node interpreta todos los `.js` de apps/web).
 - Pendiente ya conocido (`ESTADO_ACTUAL.md`): retirar Datafast.
+
+## `upload-image` sin control de rol/asignación (2026-10-16)
+- `POST/DELETE /api/upload-image` solo verificaba que el usuario fuera miembro de la organización del evento: un viewer o un organizer no asignado podía subir o borrar el flyer de cualquier evento de la organización.
+- Fix: `requireEventAccess` (el mismo de las demás rutas de organizador) después de cargar el evento, en POST y DELETE.
+- Tests: matriz de `event-access.test.ts` ampliada a upload-image (7 perfiles × 18 funciones, 143 tests). El fake de Supabase ganó `storage` (upload/getPublicUrl/remove/list). Mutación: quitando el chequeo fallan 6.
+
+## Fase 1 — Crear evento v2 (2026-10-16)
+**Pantalla:** `/v2/organizer/create?org=` (solo owner/admin, igual que `POST /api/events`; el resto vuelve al dashboard). El botón "Crear evento" del dashboard v2 ya apunta aquí (`routes.createEvent`).
+**Orden del prototipo:** flyer → nombre → cuándo → dónde → descripción → tiers → invitados (RSVP) → ajustes (enlace, moneda, zona horaria) → "Publicar evento". Errores junto a cada campo solo después del primer intento, contador "Corrige N campos", salto al primer error.
+**Misma API y flujo que v1:** `POST /api/events`; si hay flyer, se sube después (`POST /api/upload-image` con `eventId`) y se guarda con `PATCH /api/events`. Al terminar abre el evento en v2.
+
+**Decisiones:**
+- Etapas de precio = opción avanzada por tier ("El precio cambia según se vende", decisión de Kevin). Al activarla crea Early Bird / Regular con el precio y los cupos repartidos; mínimo 2 etapas, nombres únicos (reglas de v1).
+- Formulario de registro **por tier** como el prototipo (preguntas en orden, ayuda, tipo, obligatoria, subir/bajar, reutilizar preguntas de tiers anteriores). Se guarda en el modelo actual: una pregunta del evento por etiqueta (`registration_form_config`) y cada tier con la lista de ids que pregunta (`registration_form_fields`, `[]` = ninguna). La misma etiqueta en dos tiers con distinto tipo/ayuda/obligatoriedad → error. El orden de preguntas lo marca el primer tier donde aparece (la pantalla del invitado sigue el orden del evento). Solo con RSVP activo (como v1).
+- Al elegir el inicio, el fin se sugiere 5 h después (prototipo) hasta que el organizador lo cambie. El enlace sigue al nombre (sin tildes) hasta que se edita a mano.
+- Validaciones = las del servidor (inicio ≥ ahora + 2 h en la zona del evento, fin > inicio, ventas que terminan antes del fin del evento, límite 1–50, código ≥ 3, descripción 520 / tier 120, máx. 10 tiers) + tope de precio $10.000 como en Enviar tickets.
+- Si el flyer falla después de crear el evento: aviso "el evento está publicado, el flyer no se subió" + "Ir al evento"; el formulario queda bloqueado para no publicar dos veces.
+
+**Diferencias deliberadas con el prototipo (decisión pendiente de Kevin):**
+- Ciudad: se mantiene el autocompletado de Google de v1 (el prototipo usa una lista fija por país).
+- Fechas: selector nativo del navegador (el prototipo tiene calendario + ruedas propias).
+- Tipos de pregunta: los 5 que existen (texto, números, email, fecha, casilla). "Cédula (10 dígitos)" del prototipo no existe en el modelo; agregarla toca el formulario del invitado y la validación del servidor.
+
+**Archivos:** lib `organizer/event-form.ts` (borrador, validación con claves i18n tipadas, payload, slugify, precios con coma, etapas, preguntas; 29 tests) + i18n `eventForm.*` en/es. Web: `v2/organizer/create/{page,CreateEvent}.tsx`, `v2/organizer/event-form/{ui,FlyerPicker,TierFields,QuestionsBuilder}.tsx` (reutilizables para editar evento y editor de tiers), iconos `close`/`camera`, `routes.createEvent`. `__tests__/v2/helpers.tsx`: `mockFetch` acepta cuerpos FormData.
+**Tests:** `__tests__/v2/CreateEvent.test.tsx` (18: vacío sin envío, enlace y fin derivados, payload exacto, etapas, mínimo 2 etapas, preguntas por tier con reutilización, RSVP apagado, error 400, flyer ok/falla, archivo grande/no imagen, tier oculto + código + inicio de ventas, español, redirección por rol). Mutaciones (sin guardia de rol, sin aviso de flyer, sin fin sugerido) → 10 fallan. lib 306/306; web v2 80/80; tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
+
+**Fase 1 — pendiente:** editar evento (reutiliza `event-form/*`; nombre, enlace, moneda, zona y RSVP no editables por la API), editor de tiers (agregar/editar con etapas, reducción forzada con confirmación clara), equipo, ajustes, payouts, scanner.
