@@ -116,6 +116,45 @@ export async function PUT(
     }
     const { userId: targetUserId, eventIds } = putSchema.parse(body);
 
+    // Only members of this organization can be scoped, and only to events this organization
+    // owns or co-hosts. Before, any user id / any event id was accepted.
+    const { data: targetMember, error: targetError } = await supabaseAdmin
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", orgId)
+      .eq("user_id", targetUserId)
+      .maybeSingle();
+    if (targetError) {
+      console.error("[PUT event-assignments] member lookup error", targetError);
+      return NextResponse.json({ error: "Failed to validate member" }, { status: 500 });
+    }
+    if (!targetMember) {
+      return NextResponse.json({ error: "User is not a member of this organization" }, { status: 400 });
+    }
+
+    const uniqueEventIds = Array.from(new Set(eventIds));
+    if (uniqueEventIds.length > 0) {
+      const [owned, cohosted] = await Promise.all([
+        supabaseAdmin.from("events").select("id").eq("organization_id", orgId).in("id", uniqueEventIds),
+        supabaseAdmin
+          .from("event_assignments")
+          .select("event_id")
+          .eq("cohost_organization_id", orgId)
+          .in("event_id", uniqueEventIds),
+      ]);
+      if (owned.error || cohosted.error) {
+        console.error("[PUT event-assignments] event lookup error", owned.error ?? cohosted.error);
+        return NextResponse.json({ error: "Failed to validate events" }, { status: 500 });
+      }
+      const allowed = new Set<string>([
+        ...(owned.data ?? []).map((e: { id: string }) => e.id),
+        ...(cohosted.data ?? []).map((e: { event_id: string }) => e.event_id),
+      ]);
+      if (uniqueEventIds.some((id) => !allowed.has(id))) {
+        return NextResponse.json({ error: "Some events don't belong to this organization" }, { status: 400 });
+      }
+    }
+
     // Clear existing assignments for this user in this org, then insert the new set.
     const { error: deleteError } = await supabaseAdmin
       .from("event_assignments")
@@ -131,8 +170,8 @@ export async function PUT(
       );
     }
 
-    if (eventIds.length > 0) {
-      const rows = eventIds.map(eventId => ({
+    if (uniqueEventIds.length > 0) {
+      const rows = uniqueEventIds.map(eventId => ({
         organization_id: orgId,
         user_id: targetUserId,
         event_id: eventId,
