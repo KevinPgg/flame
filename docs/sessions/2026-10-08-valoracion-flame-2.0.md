@@ -288,3 +288,19 @@ Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
 - Reducción forzada = bajar los cupos de un tier por debajo de lo que ya está "comprometido" (vendidos + compras en curso + RSVPs pendientes/aprobados). Los vendidos nunca se tocan; las compras en curso se cancelan y los RSVPs se rechazan todos.
 - "Agotado" no aparece al crear (solo en el editor de tiers). "Ocultar tier" sí, a propósito: tiers que solo se envían (cortesías, transferencias) o que se muestran más tarde.
 - Cambio a v2: hoy v2 vive en `/v2` al lado de v1. El plan dejaba el paso a versión base en la fase 5; propuesta: pasar el organizador web al terminar la fase 1 (falta equipo, ajustes, payouts, scanner) tras una ronda de prueba manual de Kevin.
+
+## Organizador web pasa a v2 + aviso de tiers ocultos + Equipo v2 (2026-10-16)
+**Decisión de Kevin:** el organizador web es v2 desde ya (estamos en desarrollo, se prueba todo ahora).
+- `middleware.ts` + `app/lib/utils/organizer-v2-redirect.ts`: `/organizer` (con `tab=create-event` / `tab=rsvps`), `/organizer/event/[id]`, `/organizer/rsvps/[id]` y `/organizer/team` redirigen a su pantalla v2 conservando `org`. Quedan en v1: ajustes/payouts, página pública `/organizer/[slug]`, scanner. Interruptor de emergencia: `ORGANIZER_V1=true`. Así todos los enlaces viejos (correos, push, botones de v1) caen en v2 sin tocar cada uno.
+- Lista de pruebas manuales para Kevin: `apps/to_delete/PRUEBAS_ORGANIZADOR_V2.md`.
+
+**Aviso "todos los tiers ocultos":** no es un botón; es un aviso (no bloquea) cuando todos los tiers del evento quedan con "Ocultar tier": la página pública no ofrecería tickets. Aparece al crear evento, en el editor de tiers y en la pestaña Tiers.
+
+**Equipo v2** (`/v2/organizer/team?org=`, owner/admin): lista (tabla en escritorio, tarjetas en teléfono) con rol, "(tú)" y eventos asignados; agregar miembro por email exacto (cuenta existente, como v1; las invitaciones por email del prototipo son fase 4), cambiar rol (admin/organizer), asignar eventos (propios y co-organizados), quitar con confirmación (quitarse a sí mismo avisa y sale). Mismas APIs y cache que v1. Nuevo `v2/components/Modal.tsx`; lib `organizer/team.ts` (5 tests); i18n `team.*`; `me.email` en `loadOrganizerContext` para marcar "(tú)".
+- Menú lateral: los hijos ya no se encogen cuando la lista es larga (el botón "Crear evento" se aplastaba en pantallas bajas).
+
+**Fix de seguridad:** `PUT /api/organizations/[id]/event-assignments` aceptaba cualquier usuario y cualquier evento (un admin podía asignar a alguien a eventos de otra organización o a una persona que no es miembro). Ahora exige que la persona sea miembro y que cada evento sea propio o co-organizado; si no, 400 sin escribir nada. Test: `event-assignments-put.test.ts` (5).
+
+**Tests:** `__tests__/v2/Team.test.tsx` (14), `organizer-v2-redirect.test.ts` (5), avisos de tiers ocultos (CreateEvent + TiersTab). Web v2 143/143, API organizador + redirección 327 en total con v2; lib 346/346; tsc 0. Revisado visualmente (1300 y 390, en/es).
+
+**Fase 1 — pendiente:** ajustes de organización, payouts, scanner (v1).
