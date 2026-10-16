@@ -204,6 +204,16 @@ export default function EventAdmin({
                     )}
                   </button>
                 )}
+                {event.requires_rsvp && (
+                  <Link
+                    href={routes.rsvpEvent(event.id, organization.slug)}
+                    className="inline-flex h-10 items-center gap-2 rounded-v2-pill bg-v2-ink3 px-4 text-[13px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4"
+                  >
+                    <Icon name="rsvp" size={16} />
+                    {t("rsvps.manage")}
+                    {(event.pending_rsvps ?? 0) > 0 && <span className="text-v2-c50">{event.pending_rsvps}</span>}
+                  </Link>
+                )}
                 {canEdit && (
                   <Link
                     href={routes.eventV1(event.id, organization.slug)}

@@ -23,6 +23,7 @@ export function OrganizerShell({
   pending,
   currentEvents,
   activeEventId,
+  section = "events",
   children,
 }: {
   organization: Org;
@@ -31,12 +32,14 @@ export function OrganizerShell({
   pending: number;
   currentEvents: OrganizerEvent[];
   activeEventId?: string;
+  /** Highlighted entry of the menu. */
+  section?: "events" | "rsvps";
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
   const nav: Array<{ key: string; icon: IconName; label: string; href: string; active?: boolean; badge?: number }> = [
-    { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: true },
-    { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending },
+    { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: section === "events" },
+    { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending, active: section === "rsvps" },
     { key: "scan", icon: "scan", label: t("tabs.scan"), href: routes.scanner() },
     ...(canManageMembers(role)
       ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug) }]

@@ -7,6 +7,7 @@ import { useI18n } from "../../lib/i18n";
 export function ConfirmDialog({
   open,
   message,
+  detail,
   confirmLabel,
   busy,
   onConfirm,
@@ -14,6 +15,8 @@ export function ConfirmDialog({
 }: {
   open: boolean;
   message: string;
+  /** Consequence of confirming, in a second, quieter line (e.g. "their card is charged now"). */
+  detail?: string;
   confirmLabel?: string;
   busy?: boolean;
   onConfirm: () => void;
@@ -37,6 +40,7 @@ export function ConfirmDialog({
       className="m-auto w-[min(92vw,400px)] rounded-v2-card bg-v2-ink2 p-5 text-v2-cream backdrop:bg-black/70"
     >
       <p className="text-[15px] leading-relaxed">{message}</p>
+      {detail && <p className="mt-2 text-[13px] leading-relaxed text-v2-c70">{detail}</p>}
       <div className="mt-5 flex justify-end gap-2">
         <button
           type="button"
