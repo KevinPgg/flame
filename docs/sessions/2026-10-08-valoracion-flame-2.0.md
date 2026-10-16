@@ -225,3 +225,24 @@ select 'orders_org', e.organization_id, count(*) from orders o join events e on 
 **Tests:** `__tests__/v2/CreateEvent.test.tsx` (18: vacío sin envío, enlace y fin derivados, payload exacto, etapas, mínimo 2 etapas, preguntas por tier con reutilización, RSVP apagado, error 400, flyer ok/falla, archivo grande/no imagen, tier oculto + código + inicio de ventas, español, redirección por rol). Mutaciones (sin guardia de rol, sin aviso de flyer, sin fin sugerido) → 10 fallan. lib 306/306; web v2 80/80; tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
 
 **Fase 1 — pendiente:** editar evento (reutiliza `event-form/*`; nombre, enlace, moneda, zona y RSVP no editables por la API), editor de tiers (agregar/editar con etapas, reducción forzada con confirmación clara), equipo, ajustes, payouts, scanner.
+
+## Fase 1 — Editar evento v2 (2026-10-16)
+**Pantalla:** `/v2/organizer/event/[id]/edit?org=` (owner/admin, u organizer asignado; viewer vuelve al evento; mismo criterio que `PATCH /api/events`). El botón "Editar" del detalle de evento v2 ya apunta aquí (`routes.editEvent`).
+**Qué se edita (lo que permite la API):** flyer (cambiar o quitar), fechas, lugar, ciudad, descripción. **Solo lectura:** nombre, enlace, moneda, zona horaria, RSVP. **Tiers:** enlace a la pestaña Tiers (el editor de tiers sigue en v1 hasta la próxima entrega).
+
+**Decisiones / diferencias con v1:**
+- Se envía **solo lo que cambió**. v1 mandaba siempre las fechas, y como la API re-valida "inicio ≥ ahora + 2 h" cada vez que recibe fechas, en v1 un evento a menos de 2 h (o en curso) no se podía editar en nada, ni el lugar. En v2 eso sigue funcionando; solo las fechas quedan bloqueadas, con aviso.
+- Fechas en la **zona horaria del evento**. v1 usaba siempre la hora de Ecuador (`utcToEcuadorLocal`): en un evento de Madrid mostraba y guardaba horas corridas.
+- Comparación de fechas al minuto (las fechas guardadas pueden traer segundos; sin esto un evento sin tocar se consideraba "fecha cambiada"). Lo encontró un test.
+- Cambiar una fecha pide **confirmación**: la API manda email y push a todos los que tienen ticket.
+- Si el nuevo fin queda antes del fin de ventas de algún tier → bloqueado, con los nombres de los tiers (igual que v1, sin `alert`).
+- Si el flyer nuevo no sube, no se guarda nada (igual que v1).
+- Las preguntas de registro ya no se editan aquí (en v1 sí, a nivel evento): en v2 viven en cada tier → entran con el editor de tiers.
+- El prototipo trae "Eliminar evento": no existe endpoint para borrar eventos en la API → no se incluyó.
+
+**Hallazgo (no corregido):** las notificaciones de cambio de fecha (`PATCH /api/events`) leen las órdenes sin paginar → con más de 1000 órdenes completadas, los compradores después de la 1000 no reciben email (el push sí sale, va por otra consulta). Fix simple con `selectAllPages`, pendiente de tu OK porque toca envío de correos.
+
+**Archivos:** lib `organizer/event-form.ts` (parte de edición: `editFormFromEvent`, `datesLocked`, `changedDates`, `tiersSellingPastEnd`, `validateEditEventForm`, `buildUpdateEventPayload`; 15 tests) + i18n. Web: `v2/organizer/event/[id]/edit/{page,EditEvent}.tsx`, `FlyerPicker` con flyer existente, `routes.editEvent`, enlace en `EventAdmin`.
+**Tests:** `__tests__/v2/EditEvent.test.tsx` (18: precarga en zona del evento y solo lectura, solo campos cambiados, sin cambios, confirmación de fecha cancelar/confirmar, tiers que venden después del fin, fechas bloqueadas con guardado de otros campos, flyer nuevo/falla/quitar, requeridos, error API, co-organizado, inexistente, español, guardia por rol). Mutaciones (sin confirmación, sin aviso de flyer, sin guardia) → 3 fallan. lib 321/321; web v2 98/98; tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
+
+**Fase 1 — pendiente:** editor de tiers (agregar/editar con etapas, preguntas por tier, reducción forzada con confirmación clara), equipo, ajustes, payouts, scanner.
