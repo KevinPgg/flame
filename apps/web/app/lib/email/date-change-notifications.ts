@@ -2,6 +2,7 @@
  * Email notifications for event date changes
  */
 
+import { SUPPORTED_TIMEZONES } from "@project-flame/lib";
 import { getBaseUrl } from "../utils/url";
 import {
   wrapEmailHtml,
@@ -48,6 +49,8 @@ export function generateDateChangeEmailHtml(data: DateChangeEmailData): string {
   const organizationName = escapeHtml(data.organizationName);
   const eventName = escapeHtml(data.eventName);
   const tz = data.eventTimezone || "America/Guayaquil";
+  // Readers may be in another country: say which clock these times are on.
+  const tzLabel = escapeHtml(SUPPORTED_TIMEZONES.find((z) => z.value === tz)?.label ?? tz);
 
   const bodyHtml = `
     <h1 style="margin: 0 0 8px; font-family: ${font}; font-size: 22px; font-weight: 600; color: ${c.text};">Event Date Changed</h1>
@@ -83,6 +86,8 @@ export function generateDateChangeEmailHtml(data: DateChangeEmailData): string {
         <strong>Ends:</strong> ${formatDateTime(data.newEndDate, tz)}
       </p>
     </div>
+
+    ${emailText(`All times are in the event’s local time zone: <strong>${tzLabel}</strong>.`, { size: "14px" })}
 
     ${emailStatusBox({
       variant: "info",

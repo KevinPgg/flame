@@ -12,6 +12,7 @@ import {
   MAX_TICKET_TIERS_PER_EVENT,
 } from "@project-flame/lib";
 import { sendDateChangeEmail } from "../../lib/email/date-change-notifications";
+import { fetchCompletedOrderBuyers, inBatches } from "../../lib/utils/event-recipients";
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
 import { requireEventAccess } from "@/app/lib/utils/event-access";
 import { canCreateEvents, type OrgMemberRole } from "@project-flame/lib";
@@ -1024,48 +1025,18 @@ export async function PATCH(req: NextRequest) {
     const dateChanged = startsAtChanged || endsAtChanged;
 
     if (dateChanged) {
-      // Fetch all completed orders with user details for this event
-      const { data: orders } = await supabaseAdmin
-        .from("orders")
-        .select(
-          `
-          id,
-          users!inner (
-            id,
-            email,
-            first_name,
-            last_name
-          )
-        `
-        )
-        .eq("event_id", validatedData.id)
-        .eq("status", "completed");
+      // Every buyer with a completed order (all pages — the old single query stopped at 1000
+      // orders), e-mailed in small batches so Brevo isn't hit with thousands of calls at once.
+      try {
+        const buyers = await fetchCompletedOrderBuyers(supabaseAdmin, validatedData.id);
+        if (buyers.length > 0) {
+          const { data: organization } = await supabaseAdmin
+            .from("organizations")
+            .select("name")
+            .eq("id", event.organization_id)
+            .single();
 
-      if (orders && orders.length > 0) {
-        // Get unique users (same user might have multiple orders)
-        const uniqueUsers = new Map();
-        orders.forEach((order: any) => {
-          const user = order.users;
-          if (!uniqueUsers.has(user.id)) {
-            uniqueUsers.set(user.id, {
-              email: user.email,
-              name:
-                `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-                user.email,
-            });
-          }
-        });
-
-        // Get organization name for the email
-        const { data: organization } = await supabaseAdmin
-          .from("organizations")
-          .select("name")
-          .eq("id", event.organization_id)
-          .single();
-
-        // Send notifications and await completion (reliable in serverless)
-        const emailPromises = Array.from(uniqueUsers.values()).map(
-          (user: any) =>
+          const failed = await inBatches(buyers, 10, (user) =>
             sendDateChangeEmail({
               userEmail: user.email,
               userName: user.name,
@@ -1079,19 +1050,14 @@ export async function PATCH(req: NextRequest) {
               organizationName: organization?.name || "Event Organizer",
               eventTimezone: updatedEvent.timezone || "America/Guayaquil",
             })
-        );
-
-        // Send all emails in parallel and await completion
-        // Note: For non-blocking behavior, implement an outbox table + worker/cron to process sends reliably
-        try {
-          await Promise.all(emailPromises);
-          console.log(
-            `📧 Successfully sent date change notifications to ${uniqueUsers.size} ticket holders for event: ${updatedEvent.name}`
           );
-        } catch (err) {
-          console.error("❌ Failed to send date change emails:", err);
-          // Don't rethrow - email failures shouldn't block the event update response
+          console.log(
+            `📧 Date change notifications for ${updatedEvent.name}: ${buyers.length - failed}/${buyers.length} sent`
+          );
         }
+      } catch (err) {
+        // The event is already updated; a failed notification must not turn the save into an error.
+        console.error("❌ Failed to send date change emails:", err);
       }
 
       // Push notification: send to all ticket holders (tickets table), not gated by completed orders

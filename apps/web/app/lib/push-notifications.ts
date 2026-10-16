@@ -6,6 +6,7 @@
  */
 
 import { supabaseAdmin } from "./supabase/server";
+import { fetchTicketHolderIds } from "./utils/event-recipients";
 import type { NotificationType } from "@project-flame/lib";
 import { NON_DISMISSABLE_NOTIFICATION_TYPES } from "@project-flame/lib";
 
@@ -324,22 +325,18 @@ export async function sendPushToEventTicketHolders(
   }
 
   try {
-    const { data: tickets, error } = await supabaseAdmin
-      .from("tickets")
-      .select("user_id")
-      .eq("event_id", eventId);
-
-    if (error) {
+    // Every page: an unpaged read stopped at 1000 tickets (PostgREST max_rows).
+    let uniqueUserIds: string[];
+    try {
+      uniqueUserIds = await fetchTicketHolderIds(supabaseAdmin, eventId);
+    } catch (error) {
       console.error(
         `[push] tickets fanout query failed for event ${eventId}, type ${type}:`,
         error,
       );
       return;
     }
-    if (!tickets?.length) return;
-
-    // Deduplicate user IDs (a user may hold multiple tickets)
-    const uniqueUserIds = [...new Set(tickets.map((t) => t.user_id))];
+    if (!uniqueUserIds.length) return;
 
     const FANOUT_CHUNK_SIZE = 10;
     for (let i = 0; i < uniqueUserIds.length; i += FANOUT_CHUNK_SIZE) {
