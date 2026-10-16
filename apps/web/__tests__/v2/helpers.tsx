@@ -25,11 +25,13 @@ export function renderV2(ui: React.ReactElement, language: "en" | "es" = "en") {
 export type Route = { match: (url: string, init?: RequestInit) => boolean; status?: number; body?: unknown };
 
 export function mockFetch(routes: Route[]) {
-  const calls: Array<{ url: string; method: string; body: unknown }> = [];
+  const calls: Array<{ url: string; method: string; body: any }> = [];
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
-    calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+    // JSON bodies are parsed for assertions; FormData (uploads) is kept as is.
+    const body = typeof init?.body === "string" ? JSON.parse(init.body) : init?.body ?? undefined;
+    calls.push({ url, method, body });
     const r = routes.find((x) => x.match(url, init));
     if (!r) return new Response(JSON.stringify({ error: `unmocked ${method} ${url}` }), { status: 599 });
     return new Response(JSON.stringify(r.body ?? {}), { status: r.status ?? 200 });

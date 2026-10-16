@@ -35,6 +35,7 @@ describe("routes", () => {
     expect(routes.eventV1("e1", "kora")).toBe("/organizer/event/e1?org=kora");
     expect(routes.rsvps("kora")).toBe("/v2/organizer/rsvps?org=kora");
     expect(routes.rsvpEvent("e1", "a b")).toBe("/v2/organizer/rsvps/e1?org=a%20b");
+    expect(routes.createEvent("kora")).toBe("/v2/organizer/create?org=kora");
     expect(routes.payouts("kora")).toBe("/organizer/settings?org=kora&tab=payouts");
   });
 });
