@@ -172,3 +172,29 @@ select 'orders_org', e.organization_id, count(*) from orders o join events e on 
   where o.promoter_code is not null group by e.organization_id having count(*) > 1000;
 ```
 **Siguiente en fase 1:** RSVPs v2.
+
+## Fase 1 — RSVPs v2 (2026-10-15, 18:00)
+**Pantallas:** `/v2/organizer/rsvps?org=` (eventos con RSVP propios y co-organizados, actuales/pasados, búsqueda sin tildes, pendientes por evento) y `/v2/organizer/rsvps/[eventId]?org=` (pestañas Todas/Pendientes/Aprobadas/Rechazadas con conteo, tabla en escritorio y tarjetas en teléfono, aprobar/rechazar, aprobar todas, exportar pendientes XLSX, datos de registro). El menú "RSVPs" del shell y el detalle de evento ("Gestionar RSVPs") ya apuntan a v2.
+**Mismas APIs que v1** (`GET /api/organizer/rsvps`, `PATCH .../approve|reject`), misma cache (`["rsvps-poll", id]`, refresco 15 s).
+
+**Decisiones:**
+- Aprobar **cobra la tarjeta** (captura de la autorización Stripe en el servidor). La confirmación lo dice con el monto que recibe el organizador; si es gratis dice que se envían los tickets. Rechazar dice que se libera la retención.
+- "Aprobar todas" (del prototipo, no existía en v1): confirmación con cuántas son pagadas y total, aprobaciones **una por una** con progreso y botón Detener, resumen (aprobadas / ya gestionadas por otra persona / fallidas con nombres). 409 = otra persona ya la gestionó → aviso, no error.
+- Pestaña "Aprobadas" incluye las ya pagadas (`purchased`), como el prototipo; en v1 quedaban ocultas.
+- Evento terminado: sin botones de decidir (igual que v1), con aviso.
+
+**Corregido de paso:** `GET /api/organizer/rsvps` cortaba en 1000 solicitudes por evento → ahora paginado (`selectAllPages`).
+**Hallazgo (no corregido, camino de pago → fase 3):** `PATCH .../approve` no valida que el evento no haya terminado; solo lo oculta la UI. Por API se puede capturar el pago de un evento pasado.
+
+**Archivos:** lib `organizer/rsvps.ts` (monto, pestañas, quién puede decidir, plan de aprobar todas, datos de registro, lista de eventos; 16 tests) + i18n `rsvps.*` en/es. Web: `v2/organizer/rsvps/*`, `v2/lib/organizer-context.ts` (carga de organización en servidor para páginas v2), `ConfirmDialog` con `detail`, `OrganizerShell` con `section`.
+**Tests:** `__tests__/v2/Rsvps.test.tsx` (15: lista, pestaña inicial y conteos, confirmación con cobro/gratis/rechazo, PATCH exacto, 409, 4xx/5xx, aprobar todas con mezcla de resultados, detener, evento terminado, 403, datos de registro, es) + `api/organizer/rsvps-list.test.ts` (1500 solicitudes, error → 500). lib 277/277; web v2 + organizer 212/212; tsc web 0. Revisado visualmente en 1280 y 412, en/es (corregido un desborde de la lista en teléfono).
+
+**Fase 1 — pendiente:** crear evento, editar evento + formulario de tiers, equipo, ajustes de organización, payouts, scanner (siguen en v1 vía `v2/lib/routes.ts`).
+
+## `next build` fallaba por Datafast (2026-10-16)
+- Síntoma (PC de Kevin): `Failed to collect page data for /api/datafast/verify-payment` — "Missing required Datafast configuration".
+- Causa: `app/api/datafast/verify-payment/route.ts` validaba `DATAFAST_*` **al importar el módulo** (`throw` a nivel superior); el build importa cada ruta, y el `.env` local no tiene credenciales Datafast. Ya existía en `Flme_comp` (archivo idéntico); no lo causaron los cambios recientes. `create-checkout` ya validaba dentro del handler.
+- Fix: validación dentro de `POST`, igual que `create-checkout` → sin credenciales responde 500 "Payment system configuration error" en vez de romper el build. Comportamiento con credenciales: idéntico.
+- Verificado: las 79 rutas de `app/api` cargan con las variables del `.env` de Kevin (valores ficticios) y sin `DATAFAST_*`; con la versión anterior falla exactamente esa ruta. El `next build` completo no pudo correrse en el entorno de verificación (VM de 4 GB, el proceso murió durante la compilación).
+- El aviso `MODULE_TYPELESS_PACKAGE_JSON` de `tailwind.config.ts` es solo de rendimiento; no rompe el build. No se tocó (añadir `"type": "module"` cambiaría cómo Node interpreta todos los `.js` de apps/web).
+- Pendiente ya conocido (`ESTADO_ACTUAL.md`): retirar Datafast.
