@@ -10,7 +10,7 @@ import { Flyer } from "../../components/Flyer";
 import { Skeleton } from "../../components/Skeleton";
 import { ErrorBox } from "../../components/ErrorBox";
 import { routes } from "../../lib/routes";
-import { OrganizerShell } from "../OrganizerShell";
+import { OrganizerShell, type ShellUser } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
 
 /**
@@ -21,10 +21,12 @@ export default function RsvpEvents({
   organization,
   organizations,
   role,
+  me = null,
 }: {
   organization: Org;
   organizations: Org[];
   role: OrgMemberRole | null;
+  me?: ShellUser | null;
 }) {
   const { t, locale } = useI18n();
   const { model, loading, failed, refetch } = useOrganizerModel(organization, role);
@@ -40,11 +42,17 @@ export default function RsvpEvents({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
       section="rsvps"
+      title={t("rsvps.title")}
+      crumbs={[
+        { label: t("organizer.myOrganizers"), href: routes.organizers() },
+        { label: organization.name, href: routes.dashboard(organization.slug) },
+      ]}
+      me={me}
     >
-      <section className="mx-auto max-w-[1120px] px-4 pt-6 lg:px-10 lg:pt-10">
-        <h1 className="font-v2-display-bold text-[30px] leading-none tracking-[-0.03em] lg:text-[36px]">{t("rsvps.title")}</h1>
-        <p className="mt-2 text-[14px] text-v2-c70">{t("rsvps.lede")}</p>
+      <section className="mx-auto max-w-[1120px] px-4 pt-5 lg:px-10 lg:pt-8">
+        <p className="text-[14px] text-v2-c70">{t("rsvps.lede")}</p>
 
         <div className="mb-4 mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2" role="tablist">

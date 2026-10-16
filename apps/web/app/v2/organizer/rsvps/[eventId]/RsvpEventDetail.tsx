@@ -32,7 +32,7 @@ import { ErrorBox } from "../../../components/ErrorBox";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { apiErrorMessage } from "../../../lib/api-error";
 import { routes } from "../../../lib/routes";
-import { OrganizerShell } from "../../OrganizerShell";
+import { OrganizerShell, type ShellUser } from "../../OrganizerShell";
 import { useOrganizerModel, type Org } from "../../useOrganizerModel";
 import { exportPendingRsvps } from "./exportPending";
 
@@ -58,11 +58,13 @@ export default function RsvpEventDetail({
   organization,
   organizations,
   role,
+  me = null,
 }: {
   eventId: string;
   organization: Org;
   organizations: Org[];
   role: OrgMemberRole | null;
+  me?: ShellUser | null;
 }) {
   const { t, locale } = useI18n();
   const queryClient = useQueryClient();
@@ -233,21 +235,25 @@ export default function RsvpEventDetail({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
       activeEventId={eventId}
       section="rsvps"
+      title={event?.name ?? t("rsvps.title")}
+      backHref={routes.rsvps(organization.slug)}
+      crumbs={[
+        { label: organization.name, href: routes.dashboard(organization.slug) },
+        { label: t("rsvps.title"), href: routes.rsvps(organization.slug) },
+      ]}
+      me={me}
     >
-      <section className="mx-auto max-w-[1120px] px-4 pt-5 lg:px-10 lg:pt-10">
-        <Link href={routes.rsvps(organization.slug)} className="mb-5 inline-flex items-center gap-1 text-[13px] text-v2-c70 hover:text-v2-cream">
-          <Icon name="back" size={16} />
-          {t("rsvps.back")}
-        </Link>
+      <section className="mx-auto max-w-[1120px] px-4 pt-5 lg:px-10 lg:pt-8">
 
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center">
           {event ? (
             <>
               <Flyer src={event.image_url} size={72} className="!rounded-v2-md" />
               <div className="min-w-0 flex-1">
-                <h1 className="font-v2-display-bold text-[26px] leading-[1.05] tracking-[-0.03em] lg:text-[30px]">{event.name}</h1>
+                <h2 className="font-v2-display-bold text-[26px] leading-[1.05] tracking-[-0.03em] lg:text-[30px]">{event.name}</h2>
                 <p className="mt-1.5 text-[13px] text-v2-c70">
                   {when?.date} · {when?.time}
                   {event.venue || event.city ? ` · ${[event.venue, event.city].filter(Boolean).join(", ")}` : ""}

@@ -23,4 +23,7 @@ export const routes = {
   payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,
   scanner: () => "/qr-scanner",
   attendeeHome: () => "/",
+  discover: () => "/discover",
+  myTickets: () => "/account",
+  profile: () => "/profile",
 } as const;

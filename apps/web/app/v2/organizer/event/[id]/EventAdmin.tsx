@@ -20,7 +20,7 @@ import { Kpi } from "../../../components/Kpi";
 import { Skeleton } from "../../../components/Skeleton";
 import { ErrorBox } from "../../../components/ErrorBox";
 import { routes } from "../../../lib/routes";
-import { OrganizerShell } from "../../OrganizerShell";
+import { OrganizerShell, type ShellUser } from "../../OrganizerShell";
 import { useOrganizerModel, type Org } from "../../useOrganizerModel";
 import TiersTab from "./tabs/TiersTab";
 import PurchasesTab from "./tabs/PurchasesTab";
@@ -41,11 +41,13 @@ export default function EventAdmin({
   organization,
   role,
   organizations,
+  me = null,
 }: {
   eventId: string;
   organization: Org;
   role: OrgMemberRole | null;
   organizations: Org[];
+  me?: ShellUser | null;
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -109,7 +111,12 @@ export default function EventAdmin({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
       activeEventId={eventId}
+      title={event?.name ?? ""}
+      backHref={routes.dashboard(organization.slug)}
+      crumbs={[{ label: organization.name, href: routes.dashboard(organization.slug) }]}
+      me={me}
     >
       {children}
     </OrganizerShell>
@@ -135,14 +142,7 @@ export default function EventAdmin({
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-v2-ink" />
         </div>
-        <div className="relative mx-auto max-w-[1120px] px-4 pb-6 pt-5 lg:px-10 lg:pt-10">
-          <Link
-            href={routes.dashboard(organization.slug)}
-            className="mb-5 inline-flex items-center gap-1 text-[13px] text-v2-c70 hover:text-v2-cream"
-          >
-            <Icon name="back" size={16} />
-            {t("eventAdmin.back")}
-          </Link>
+        <div className="relative mx-auto max-w-[1120px] px-4 pb-6 pt-6 lg:px-10 lg:pt-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
             <div className="aspect-[4/5] w-[120px] shrink-0 overflow-hidden rounded-v2-flyer bg-v2-ink3 shadow-2xl sm:w-[148px]">
               {event?.image_url ? (
@@ -173,9 +173,9 @@ export default function EventAdmin({
                       </span>
                     )}
                   </span>
-                  <h1 className="font-v2-display-bold text-[28px] leading-[1.05] tracking-[-0.03em] lg:text-[36px]">
+                  <h2 className="font-v2-display-bold text-[28px] leading-[1.05] tracking-[-0.03em] lg:text-[36px]">
                     {event.name}
-                  </h1>
+                  </h2>
                   <p className="mt-2 text-[14px] text-v2-c70">
                     {when?.date} · {when?.time}
                     {event.venue || event.city ? ` · ${[event.venue, event.city].filter(Boolean).join(", ")}` : ""}

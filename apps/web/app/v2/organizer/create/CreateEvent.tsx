@@ -27,7 +27,7 @@ import { CityAutocompleteField } from "../../../components/organizer/CityAutocom
 import { Icon } from "../../components/Icon";
 import { apiErrorMessage } from "../../lib/api-error";
 import { routes } from "../../lib/routes";
-import { OrganizerShell } from "../OrganizerShell";
+import { OrganizerShell, type ShellUser } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
 import { FlyerPicker, type FlyerValue } from "../event-form/FlyerPicker";
 import { TierFields } from "../event-form/TierFields";
@@ -53,10 +53,12 @@ export default function CreateEvent({
   organization,
   organizations,
   role,
+  me = null,
 }: {
   organization: Org;
   organizations: Org[];
   role: OrgMemberRole | null;
+  me?: ShellUser | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -184,13 +186,18 @@ export default function CreateEvent({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
+      title={t("eventForm.titleCreate")}
+      backHref={routes.dashboard(organization.slug)}
+      crumbs={[
+        { label: t("organizer.myOrganizers"), href: routes.organizers() },
+        { label: organization.name, href: routes.dashboard(organization.slug) },
+        { label: t("organizer.createEvent") },
+      ]}
+      hideTabbar
+      me={me}
     >
-      <section className="mx-auto max-w-[640px] px-4 pb-10 pt-5 lg:px-0 lg:pt-10">
-        <Link href={routes.dashboard(organization.slug)} className="mb-5 inline-flex items-center gap-1 text-[13px] text-v2-c70 hover:text-v2-cream">
-          <Icon name="back" size={16} />
-          {organization.name}
-        </Link>
-        <h1 className="mb-6 font-v2-display-bold text-[30px] leading-none tracking-[-0.03em] lg:text-[36px]">{t("eventForm.titleCreate")}</h1>
+      <section className="mx-auto max-w-[640px] px-4 pt-6 lg:px-0 lg:pt-8">
 
         <fieldset disabled={busy} className="min-w-0">
           <FlyerPicker value={flyer} onChange={(v) => { setDirty(true); setFlyer(v); }} disabled={busy} />
@@ -386,7 +393,7 @@ export default function CreateEvent({
           </Section>
         </fieldset>
 
-        <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-10 -mx-4 mt-8 border-t border-v2-c10 bg-black/90 px-4 py-3 backdrop-blur-xl lg:bottom-0 lg:mx-0 lg:rounded-t-v2-card lg:px-0">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-6 bg-gradient-to-t from-black from-70% to-transparent px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-6 lg:mx-0 lg:px-0">
           {createdWithoutFlyer ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <p role="status" className="flex-1 text-[13px] text-v2-warn">{t("eventForm.flyerUploadFailed")}</p>

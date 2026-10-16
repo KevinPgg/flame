@@ -31,6 +31,7 @@ const PATHS = {
   send: '<path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4z"/>',
   percent: '<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   camera:
     '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
 } as const;

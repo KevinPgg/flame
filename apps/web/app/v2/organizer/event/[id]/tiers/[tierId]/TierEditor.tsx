@@ -26,7 +26,7 @@ import { ConfirmDialog } from "../../../../../components/ConfirmDialog";
 import { ErrorBox } from "../../../../../components/ErrorBox";
 import { Skeleton } from "../../../../../components/Skeleton";
 import { routes } from "../../../../../lib/routes";
-import { OrganizerShell } from "../../../../OrganizerShell";
+import { OrganizerShell, type ShellUser } from "../../../../OrganizerShell";
 import { useOrganizerModel, type Org } from "../../../../useOrganizerModel";
 import { TierFields } from "../../../../event-form/TierFields";
 import { fieldId } from "../../../../event-form/ui";
@@ -51,12 +51,14 @@ export default function TierEditor({
   organization,
   organizations,
   role,
+  me = null,
 }: {
   eventId: string;
   tierId: string;
   organization: Org;
   organizations: Org[];
   role: OrgMemberRole | null;
+  me?: ShellUser | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -90,14 +92,19 @@ export default function TierEditor({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
       activeEventId={eventId}
+      title={title}
+      backHref={backHref}
+      crumbs={[
+        { label: organization.name, href: routes.dashboard(organization.slug) },
+        ...(event ? [{ label: event.name, href: backHref }] : []),
+        { label: isNew ? t("eventForm.titleNewTier") : t("eventAdmin.tiers.editTier") },
+      ]}
+      hideTabbar
+      me={me}
     >
-      <section className="mx-auto max-w-[640px] px-4 pb-10 pt-5 lg:px-0 lg:pt-10">
-        <Link href={backHref} className="mb-5 inline-flex max-w-full items-center gap-1 text-[13px] text-v2-c70 hover:text-v2-cream">
-          <Icon name="back" size={16} />
-          <span className="truncate">{event?.name ?? t("eventForm.backToTiers")}</span>
-        </Link>
-        <h1 className="mb-6 font-v2-display-bold text-[30px] leading-none tracking-[-0.03em] lg:text-[36px]">{title}</h1>
+      <section className="mx-auto max-w-[640px] px-4 pt-6 lg:px-0 lg:pt-8">
         {children}
       </section>
     </OrganizerShell>
@@ -290,7 +297,7 @@ export default function TierEditor({
         )}
       </fieldset>
 
-      <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-10 -mx-4 mt-8 border-t border-v2-c10 bg-black/90 px-4 py-3 backdrop-blur-xl lg:bottom-0 lg:mx-0 lg:px-0">
+      <div className="sticky bottom-0 z-10 -mx-4 mt-6 bg-gradient-to-t from-black from-70% to-transparent px-4 pb-[calc(16px+env(safe-area-inset-bottom))] pt-6 lg:mx-0 lg:px-0">
         {showErrors && Object.keys(errors).length > 0 && (
           <p role="alert" className="mb-2 text-center text-[13px] text-v2-errorText">
             {t("eventForm.fixFields", { count: Object.keys(errors).length })}

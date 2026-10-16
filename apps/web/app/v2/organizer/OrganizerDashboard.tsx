@@ -11,7 +11,6 @@ import {
   type OrgMemberRole,
 } from "@project-flame/lib";
 import type { Event as OrganizerEvent } from "../../lib/hooks/useOrganizerData";
-import { useStripeConnectStatus } from "../../lib/hooks/useStripeConnectStatus";
 import { useI18n } from "../../lib/i18n";
 import { Icon } from "../components/Icon";
 import { OrgAvatar } from "../components/OrgAvatar";
@@ -20,7 +19,8 @@ import { Flyer } from "../components/Flyer";
 import { Kpi } from "../components/Kpi";
 import { ErrorBox } from "../components/ErrorBox";
 import { routes } from "../lib/routes";
-import { OrganizerShell } from "./OrganizerShell";
+import { OrganizerShell, type ShellUser } from "./OrganizerShell";
+import { StripeBadge } from "../components/StripeBadge";
 import { useOrganizerModel, type Org } from "./useOrganizerModel";
 
 /**
@@ -31,10 +31,12 @@ export default function OrganizerDashboard({
   organization,
   role,
   organizations,
+  me = null,
 }: {
   organization: Org;
   role: OrgMemberRole | null;
   organizations: Org[];
+  me?: ShellUser | null;
 }) {
   const { t } = useI18n();
   const { model, loading, failed, fullAccess, refetch } = useOrganizerModel(organization, role);
@@ -49,6 +51,10 @@ export default function OrganizerDashboard({
       role={role}
       pending={model?.pending ?? 0}
       currentEvents={model?.current ?? []}
+      pastEvents={model?.past ?? []}
+      title={organization.name}
+      crumbs={[{ label: t("organizer.myOrganizers"), href: routes.organizers() }]}
+      me={me}
     >
       <Hero organization={organization} role={role} model={model} loading={loading} fullAccess={fullAccess} />
 
@@ -138,9 +144,9 @@ function Hero({
         <div className="flex items-center gap-4">
           <OrgAvatar name={organization.name} logoUrl={organization.logo_url} size={72} />
           <div className="min-w-0">
-            <h1 className="truncate font-v2-display-bold text-[26px] leading-tight tracking-[-0.03em] lg:text-[30px]">
+            <h2 className="truncate font-v2-display-bold text-[26px] leading-tight tracking-[-0.03em] lg:text-[30px]">
               {organization.name}
-            </h1>
+            </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {role && role !== "owner" && (
                 <span className="rounded-v2-pill bg-v2-ink3 px-2.5 py-1 text-[12px] text-v2-c70">
@@ -189,28 +195,6 @@ function Hero({
         </div>
       </div>
     </header>
-  );
-}
-
-function StripeBadge({ orgId, slug }: { orgId: string; slug: string }) {
-  const { t } = useI18n();
-  const { data, isLoading } = useStripeConnectStatus(orgId);
-  if (isLoading) return <Skeleton className="h-6 w-28 !rounded-v2-pill" />;
-  if (!data) return null; // same as v1: hide on error instead of a misleading state
-  const ok = data.connected && data.chargesEnabled && data.payoutsEnabled;
-  return ok ? (
-    <span className="inline-flex items-center gap-1.5 rounded-v2-pill bg-v2-good/15 px-2.5 py-1 text-[12px] text-v2-good">
-      <Icon name="check" size={13} strokeWidth={2.4} />
-      {t("organizer.stripeConnected")}
-    </span>
-  ) : (
-    <Link
-      href={routes.payouts(slug)}
-      className="inline-flex items-center gap-1.5 rounded-v2-pill bg-v2-warn/15 px-2.5 py-1 text-[12px] text-v2-warn hover:bg-v2-warn/25"
-    >
-      <Icon name="alert" size={13} />
-      {t("organizer.stripeIncomplete")}
-    </Link>
   );
 }
 
