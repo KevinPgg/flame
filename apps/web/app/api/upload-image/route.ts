@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../lib/supabase/server";
 import path from "path";
+import { requireEventAccess } from "@/app/lib/utils/event-access";
 
 const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB (Vercel serverless body limit)
 
@@ -186,6 +187,11 @@ export async function POST(req: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    // Role + assignment (2026-10-16): organizers only touch flyers of events assigned to them;
+    // owner/admin of the event's organization: any. Before, any member of the org could.
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
@@ -383,6 +389,11 @@ export async function DELETE(req: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    // Role + assignment (2026-10-16): organizers only touch flyers of events assigned to them;
+    // owner/admin of the event's organization: any. Before, any member of the org could.
+    const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, event.id, event.organization_id);
+    if (denied) return denied;
 
     // Reconstruct the path to ensure it's safe (defense in depth)
     const safePath = `events/${folderIdentifier}/${path.basename(pathParts[2])}`;

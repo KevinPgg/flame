@@ -56,6 +56,7 @@ import * as events from "@/app/api/events/route";
 import * as searchUsers from "@/app/api/organizer/search-users/route";
 import * as rsvps from "@/app/api/organizer/rsvps/route";
 import * as organizerData from "@/app/api/organizer/data/route";
+import * as uploadImage from "@/app/api/upload-image/route";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const OTHER_ORG = "22222222-2222-4222-8222-222222222222";
@@ -171,6 +172,22 @@ const ROUTES: Array<[string, () => Promise<Response>]> = [
   ["DELETE ticket-tiers", () => tiers.DELETE(req(`/api/ticket-tiers?id=${TIER}`, "DELETE"))],
   ["PATCH events", () => events.PATCH(req("/api/events", "PATCH", { id: EV, name: "Renamed" }))],
   ["GET rsvps", () => rsvps.GET(req(`/api/organizer/rsvps?event_id=${EV}`))],
+  [
+    "POST upload-image",
+    () => {
+      const form = new FormData();
+      form.append("file", new File([new Uint8Array([255, 216, 255])], "flyer.jpg", { type: "image/jpeg" }));
+      form.append("eventId", EV);
+      // jsdom can't stream a multipart body: hand the parsed form to the route directly.
+      const request = new NextRequest("http://localhost/api/upload-image", { method: "POST" });
+      Object.defineProperty(request, "formData", { value: async () => form });
+      return uploadImage.POST(request);
+    },
+  ],
+  [
+    "DELETE upload-image",
+    () => uploadImage.DELETE(req(`/api/upload-image?path=events/${EV}/${EV}-poster-1760000000000.jpg`, "DELETE")),
+  ],
 ];
 
 const passed = (r: { status: number; error?: string }) =>

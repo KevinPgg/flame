@@ -85,7 +85,14 @@ export function fakeSupabase(
   return {
     from,
     rpc: async () => ({ data: null, error: null }),
-    storage: { from: () => ({ upload: async () => ({ data: null, error: null }) }) },
+    storage: {
+      from: () => ({
+        upload: async (path: string) => ({ data: { path }, error: null }),
+        getPublicUrl: (path: string) => ({ data: { publicUrl: `https://storage.test/${path}` } }),
+        remove: async () => ({ data: [], error: null }),
+        list: async () => ({ data: [], error: null }),
+      }),
+    },
     calls,
     writes: () => calls.filter((c) => c.op !== "select"),
   };
