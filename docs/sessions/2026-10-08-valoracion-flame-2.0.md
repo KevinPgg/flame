@@ -272,3 +272,19 @@ select 'orders_org', e.organization_id, count(*) from orders o join events e on 
 **Tests:** `__tests__/v2/TierEditor.test.tsx` (17: precarga y diff, sin cambios, bajo vendidos, reducción forzada confirmar/cancelar con orden de llamadas, etapas, sin forzado en etapas, preguntas guardadas de solo lectura, nuevo tier, pregunta nueva con pin+config+POST, fallo de pregunta, eliminar, último tier, error API, inexistente, guardia de rol). Mutaciones (forzado en etapas, sin pins) → fallan. lib 341/341; web v2 + API organizador 291/291; suite web completa: solo los 3 archivos que ya fallaban antes (purchase-page.integration, create-payment-intent, payment-protection). tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
 
 **Fase 1 — pendiente:** equipo, ajustes de organización, payouts, scanner (siguen en v1 vía `routes.ts`).
+
+## Shell del organizador como el prototipo (2026-10-16)
+Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
+- `OrganizerShell` reescrito (prototipo `ow-layout`): barra lateral fija (logo Flame → Mis organizadores, selector de organización con rol, estado de Stripe para owner/admin, Eventos, RSVPs con pendientes, Equipo y Ajustes según rol, Escanear, "Crear evento" para owner/admin, Próximos y Pasados (3), Descubrir, Mis tickets, usuario → Perfil). El contenido es un `<main id="v2-main">` con scroll propio y barra superior fija (menú en teléfono, atrás, migas, título, avatar). La página ya no hace scroll; solo el contenido.
+- Teléfono: la barra lateral es un cajón (botón menú, se cierra con ×, Escape o tocando fuera) y abajo va una barra flotante tipo píldora. En crear/editar evento y editor de tiers la barra inferior se oculta (`hideTabbar`) y la barra de acción del formulario queda pegada abajo con degradado, como `cf-bar`.
+- Cada pantalla pasa `title`, `crumbs`, `backHref`; se quitaron los "volver" y títulos duplicados dentro de las páginas (el título del evento en su cabecera pasó a `h2`).
+- `loadOrganizerContext` devuelve también `me` (nombre y foto de Clerk); dashboard y detalle de evento ahora usan esa misma carga en vez de repetir la lógica.
+- `StripeBadge` sale del dashboard a `v2/components/StripeBadge.tsx` (pastilla en el dashboard, línea en el menú).
+- Diferencia con el prototipo: "Manage" (hub de organización) aún no existe → en su lugar Equipo y Ajustes directos (siguen en v1).
+- Texto de "Ocultar tier" aclarado: no aparece en la página del evento, pero sus tickets se pueden enviar desde "Enviar tickets".
+- Tests: `__tests__/v2/OrganizerShell.test.tsx` (9: barra superior, menú completo, viewer sin equipo/ajustes/crear/Stripe, Stripe incompleto → payouts, cajón abrir/cerrar/Escape, barra inferior oculta en formularios, selector de organización, español). Web v2 126/126; tsc web 0. Revisado visualmente en 1300 y 390 (en/es), la página no hace scroll, sin desborde horizontal.
+
+**Respuestas a Kevin (para el registro):**
+- Reducción forzada = bajar los cupos de un tier por debajo de lo que ya está "comprometido" (vendidos + compras en curso + RSVPs pendientes/aprobados). Los vendidos nunca se tocan; las compras en curso se cancelan y los RSVPs se rechazan todos.
+- "Agotado" no aparece al crear (solo en el editor de tiers). "Ocultar tier" sí, a propósito: tiers que solo se envían (cortesías, transferencias) o que se muestran más tarde.
+- Cambio a v2: hoy v2 vive en `/v2` al lado de v1. El plan dejaba el paso a versión base en la fase 5; propuesta: pasar el organizador web al terminar la fase 1 (falta equipo, ajustes, payouts, scanner) tras una ronda de prueba manual de Kevin.
