@@ -411,6 +411,11 @@ export default function CreateEvent({
                   {t("eventForm.fixFields", { count: errorCount })}
                 </p>
               )}
+              {form.tiers.length > 0 && form.tiers.every((x) => x.hidden) && (
+                <p role="status" className="mb-2 text-center text-[13px] text-v2-warn">
+                  {t("eventForm.allHiddenWarning")}
+                </p>
+              )}
               {serverError && (
                 <p role="alert" className="mb-2 text-center text-[13px] text-v2-errorText">
                   {serverError}

@@ -84,6 +84,17 @@ describe("TiersTab", () => {
     expect(onChanged).not.toHaveBeenCalled();
   });
 
+  it("warns when every tier is hidden (event page shows no tickets)", () => {
+    const hidden = { ...(event as object), ticket_tiers: ((event as unknown as { ticket_tiers: Array<Record<string, unknown>> }).ticket_tiers).map((x) => ({ ...x, is_hidden: true })) };
+    renderV2(<TiersTab event={hidden as never} purchases={[]} canEdit slug="kora" onChanged={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Every tier is hidden");
+  });
+
+  it("no warning while one tier is visible", () => {
+    renderV2(<TiersTab event={event as never} purchases={purchases} canEdit slug="kora" onChanged={vi.fn()} />);
+    expect(screen.queryByText(/Every tier is hidden/)).not.toBeInTheDocument();
+  });
+
   it("no tiers", () => {
     mockFetch([]);
     renderV2(<TiersTab event={{ ...(event as object), ticket_tiers: [] } as never} purchases={[]} canEdit={false} slug="kora" onChanged={vi.fn()} />);

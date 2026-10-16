@@ -47,6 +47,7 @@ export async function loadOrganizerContext(org: string | undefined): Promise<{
           user.emailAddresses?.[0]?.emailAddress ||
           "",
         imageUrl: user.imageUrl ?? null,
+        email: (user.primaryEmailAddress?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress ?? "").toLowerCase() || null,
       }
     : null;
   return {

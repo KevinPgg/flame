@@ -305,6 +305,20 @@ describe("CreateEvent v2", () => {
     });
   });
 
+  it("warns (without blocking) when every tier is hidden", async () => {
+    const { user, fetchMock } = setup();
+    await fillBasics(user);
+    expect(screen.queryByText(/Every tier is hidden/)).not.toBeInTheDocument();
+    await user.click(within(tierCard(1)).getByRole("switch", { name: /Hide tier/ }));
+    expect(screen.getByText(/Every tier is hidden: the event page won’t offer any tickets/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add Tier 2" }));
+    expect(screen.queryByText(/Every tier is hidden/)).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Remove tier" })[1]!);
+    await user.click(publishBtn());
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(eventPost(fetchMock.calls)!.body.ticket_tiers[0].is_hidden).toBe(true);
+  });
+
   it("speaks Spanish", async () => {
     const { user } = setup({ language: "es" });
     expect(screen.getByRole("heading", { name: "Nuevo evento" })).toBeInTheDocument();

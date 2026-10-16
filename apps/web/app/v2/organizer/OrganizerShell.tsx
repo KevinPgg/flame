@@ -23,6 +23,8 @@ import type { Org } from "./useOrganizerModel";
 export interface ShellUser {
   name: string;
   imageUrl: string | null;
+  /** Lower-case primary e-mail (marks "you" in lists). */
+  email?: string | null;
 }
 
 export interface Crumb {
@@ -61,7 +63,7 @@ export function OrganizerShell({
   pastEvents?: OrganizerEvent[];
   activeEventId?: string;
   /** Highlighted entry of the menu. */
-  section?: "events" | "rsvps";
+  section?: "events" | "rsvps" | "team";
   /** Title of the sticky top bar. */
   title: string;
   crumbs?: Crumb[];
@@ -87,7 +89,7 @@ export function OrganizerShell({
     { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: section === "events" },
     { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending, active: section === "rsvps" },
     ...(canManageMembers(role)
-      ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug) }]
+      ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug), active: section === "team" }]
       : []),
     ...(canAccessOrgSettings(role)
       ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug) }]
@@ -133,7 +135,7 @@ export function OrganizerShell({
       {/* Sidebar: static on desktop, drawer on phone */}
       <aside
         aria-label={t("organizer.menu")}
-        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col gap-3 overflow-y-auto border-r border-[#161616] bg-[#050505] px-3.5 py-[18px] transition-transform duration-300 [scrollbar-width:none] lg:static lg:z-auto lg:w-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col gap-3 overflow-y-auto [&>*]:shrink-0 border-r border-[#161616] bg-[#050505] px-3.5 py-[18px] transition-transform duration-300 [scrollbar-width:none] lg:static lg:z-auto lg:w-auto lg:translate-x-0 ${
           drawer ? "translate-x-0 shadow-[20px_0_60px_rgba(0,0,0,0.5)]" : "-translate-x-[105%]"
         }`}
       >

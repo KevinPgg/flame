@@ -308,6 +308,11 @@ export default function TierEditor({
             {t("eventForm.forceStaged", { sold: force.sold, reserved: force.reserved, count: force.requested })}
           </p>
         )}
+        {state.draft.hidden && ((event.ticket_tiers ?? []) as EditorTier[]).every((x) => x.id === original?.id || x.is_hidden === true) && (
+          <p role="status" className="mb-2 text-center text-[13px] text-v2-warn">
+            {t("eventForm.allHiddenWarning")}
+          </p>
+        )}
         {message && (
           <p role="alert" className="mb-2 text-center text-[13px] text-v2-c90">
             {message}

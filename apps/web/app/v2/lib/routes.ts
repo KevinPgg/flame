@@ -17,8 +17,8 @@ export const routes = {
   /** Tier editor; `tierId` = "new" for a new tier. */
   tier: (eventId: string, slug: string, tierId: string) =>
     `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
+  team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
   // still v1
-  team: (slug: string) => `/organizer/team?${q(slug)}`,
   settings: (slug: string) => `/organizer/settings?${q(slug)}&tab=organization`,
   payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,
   scanner: () => "/qr-scanner",

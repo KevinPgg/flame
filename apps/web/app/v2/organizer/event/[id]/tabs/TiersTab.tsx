@@ -58,6 +58,11 @@ export default function TiersTab({
     <div className="flex flex-col gap-3">
       {error && <p className="rounded-v2-md bg-v2-flame/30 px-4 py-3 text-[13px] text-v2-errorText">{error}</p>}
       {stats.length === 0 && <p className="text-[14px] text-v2-c50">{t("eventAdmin.tiers.none")}</p>}
+      {tiers.length > 0 && tiers.every((x) => x.is_hidden) && (
+        <p role="status" className="rounded-v2-md bg-v2-warn/10 px-4 py-3 text-[13px] text-v2-warn">
+          {t("eventForm.allHiddenWarning")}
+        </p>
+      )}
       {stats.map((s) => (
         <article key={s.tier.id} className="rounded-v2-card bg-v2-ink2 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">

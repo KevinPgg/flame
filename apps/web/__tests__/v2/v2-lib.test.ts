@@ -33,6 +33,7 @@ describe("routes", () => {
     expect(routes.event("e1", "kora")).toBe("/v2/organizer/event/e1?org=kora");
     expect(routes.event("e1", "kora", "send")).toBe("/v2/organizer/event/e1?org=kora&tab=send");
     expect(routes.tier("e1", "kora", "new")).toBe("/v2/organizer/event/e1/tiers/new?org=kora");
+    expect(routes.team("kora")).toBe("/v2/organizer/team?org=kora");
     expect(routes.rsvps("kora")).toBe("/v2/organizer/rsvps?org=kora");
     expect(routes.rsvpEvent("e1", "a b")).toBe("/v2/organizer/rsvps/e1?org=a%20b");
     expect(routes.createEvent("kora")).toBe("/v2/organizer/create?org=kora");
