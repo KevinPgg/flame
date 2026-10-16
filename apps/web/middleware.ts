@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { organizerV2Redirect } from "./app/lib/utils/organizer-v2-redirect";
 
 // Define protected routes that require authentication.
 // NOTE: /organizer/[slug] (public org page) is intentionally NOT matched here
@@ -56,6 +57,13 @@ export default clerkMiddleware(async (auth, req) => {
         return NextResponse.redirect(maintenanceUrl);
       }
     }
+  }
+
+  // Organizer web runs on Flame 2.0: v1 organizer screens that have a v2 redirect there
+  // (settings / payouts / public org page stay on v1). ORGANIZER_V1=true switches it off.
+  if (process.env.ORGANIZER_V1 !== "true") {
+    const target = organizerV2Redirect(req.nextUrl.pathname, req.nextUrl.searchParams);
+    if (target) return NextResponse.redirect(new URL(target, req.url));
   }
 
   // Protect organizer and scanner routes (except public legal pages)
