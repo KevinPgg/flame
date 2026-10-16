@@ -70,7 +70,8 @@ describe("TiersTab", () => {
       { url: "/api/ticket-tiers", method: "PATCH", body: { id: "gl", is_hidden: false } },
     ]);
     expect(onChanged).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("link", { name: "Add or edit tiers" })).toHaveAttribute("href", "/organizer/event/ev1?org=kora");
+    expect(screen.getByRole("link", { name: "New tier" })).toHaveAttribute("href", "/v2/organizer/event/ev1/tiers/new?org=kora");
+    expect(screen.getAllByRole("link", { name: /^Edit / })[0]).toHaveAttribute("href", expect.stringMatching(/^\/v2\/organizer\/event\/ev1\/tiers\/.+\?org=kora$/));
   });
 
   it("a failed PATCH shows the error and does not refresh", async () => {

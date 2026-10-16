@@ -14,9 +14,10 @@ export const routes = {
   rsvpEvent: (eventId: string, slug: string) => `/v2/organizer/rsvps/${eventId}?${q(slug)}`,
   createEvent: (slug: string) => `/v2/organizer/create?${q(slug)}`,
   editEvent: (eventId: string, slug: string) => `/v2/organizer/event/${eventId}/edit?${q(slug)}`,
+  /** Tier editor; `tierId` = "new" for a new tier. */
+  tier: (eventId: string, slug: string, tierId: string) =>
+    `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
   // still v1
-  /** v1 event page: the tier editor still lives there. */
-  eventV1: (eventId: string, slug: string) => `/organizer/event/${eventId}?${q(slug)}`,
   team: (slug: string) => `/organizer/team?${q(slug)}`,
   settings: (slug: string) => `/organizer/settings?${q(slug)}&tab=organization`,
   payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,

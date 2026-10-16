@@ -33,6 +33,10 @@ export function TierFields({
   errorText,
   onChange,
   onRemove,
+  sold = 0,
+  stagesLocked = false,
+  soldOut,
+  reusableLabel,
 }: {
   tier: TierDraft;
   index: number;
@@ -46,6 +50,13 @@ export function TierFields({
   errorText: (path: string) => string | null;
   onChange: (next: TierDraft) => void;
   onRemove: () => void;
+  /** Tier editor: tickets already sold (spots can't go below). */
+  sold?: number;
+  /** Tier editor: an existing tier can't switch stages on/off (v1 rule; the API can't convert). */
+  stagesLocked?: boolean;
+  /** Tier editor: the "Mark as sold out" switch. */
+  soldOut?: { checked: boolean; onChange: (next: boolean) => void };
+  reusableLabel?: string;
 }) {
   const { t } = useI18n();
   const p = `tiers.${tier.key}`;
@@ -86,6 +97,7 @@ export function TierFields({
         )}
       </div>
       <FieldError path={`${p}.name`} message={errorText(`${p}.name`)} />
+      {sold > 0 && <p className="mt-2 text-[12.5px] text-v2-c70">{t("eventForm.soldInfo", { count: sold })}</p>}
 
       {!tier.useStages ? (
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -127,9 +139,13 @@ export function TierFields({
                     placeholder={t("eventForm.stageName")}
                     className={`${fieldCls} h-10 flex-1 bg-v2-ink2`}
                   />
+                  {(s.sold ?? 0) > 0 && (
+                    <span className="shrink-0 text-[12px] text-v2-c50">{t("eventForm.stageSold", { count: s.sold ?? 0 })}</span>
+                  )}
                   <button
                     type="button"
                     className={iconBtn}
+                    disabled={(s.sold ?? 0) > 0}
                     onClick={() => set({ stages: tier.stages.filter((_, j) => j !== i) })}
                     aria-label={t("eventForm.removeStage")}
                   >
@@ -247,7 +263,21 @@ export function TierFields({
             invalid={inv(`${p}.salesEnd`)}
           />
           <SwitchRow title={t("eventForm.hide")} hint={t("eventForm.hideHint")} checked={tier.hidden} onChange={(hidden) => set({ hidden })} />
-          <SwitchRow title={t("eventForm.stagesToggle")} hint={t("eventForm.stagesHint")} checked={tier.useStages} onChange={toggleStages} />
+          {soldOut && (
+            <SwitchRow
+              title={t("eventForm.soldOutToggle")}
+              hint={t("eventForm.soldOutHint")}
+              checked={soldOut.checked}
+              onChange={soldOut.onChange}
+            />
+          )}
+          <SwitchRow
+            title={t("eventForm.stagesToggle")}
+            hint={stagesLocked ? t("eventForm.stagesLockedExisting") : t("eventForm.stagesHint")}
+            checked={tier.useStages}
+            onChange={toggleStages}
+            disabled={stagesLocked}
+          />
         </Group>
         <FieldError path={`${p}.salesStart`} message={errorText(`${p}.salesStart`)} />
         <FieldError path={`${p}.salesEnd`} message={errorText(`${p}.salesEnd`)} />
@@ -258,6 +288,7 @@ export function TierFields({
           tierKey={tier.key}
           questions={tier.questions}
           reusable={reusable}
+          reusableLabel={reusableLabel}
           onChange={(questions) => set({ questions })}
           errors={errors}
           errorText={errorText}

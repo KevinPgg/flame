@@ -1,6 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { viewerTimeIfDifferent } from "@project-flame/lib";
+import { useI18n } from "../../../lib/i18n";
 
 /** Building blocks shared by the v2 create-event form and (next) the edit / tier forms. */
 
@@ -80,19 +82,22 @@ export function SwitchRow({
   hint,
   checked,
   onChange,
+  disabled,
 }: {
   title: string;
   hint?: string;
   checked: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left"
+      className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] font-v2-ui-semibold">{title}</span>
@@ -109,3 +114,30 @@ export function SwitchRow({
 
 export const iconBtn =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-v2-c70 hover:bg-v2-ink4 hover:text-v2-cream disabled:opacity-30 disabled:hover:bg-transparent";
+
+/**
+ * Dates are entered on the event's clock (where it happens). When the person filling the form is
+ * in another time zone, show the same moment on their clock so there's no doubt.
+ */
+export function ViewerTimeHint({ local, eventTimezone }: { local: string; eventTimezone: string }) {
+  const { t, locale } = useI18n();
+  const [viewerTz, setViewerTz] = useState("");
+  useEffect(() => {
+    try {
+      setViewerTz(Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
+    } catch {
+      setViewerTz("");
+    }
+  }, []);
+  const iso = viewerTimeIfDifferent(local, eventTimezone, viewerTz);
+  if (!iso) return null;
+  const time = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: viewerTz,
+  }).format(new Date(iso));
+  return <p className="mt-1 px-1 text-[12px] text-v2-c50">{t("eventForm.yourTime", { time, tz: viewerTz.replace(/_/g, " ") })}</p>;
+}

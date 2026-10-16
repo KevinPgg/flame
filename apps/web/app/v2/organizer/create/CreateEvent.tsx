@@ -31,7 +31,7 @@ import { OrganizerShell } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
 import { FlyerPicker, type FlyerValue } from "../event-form/FlyerPicker";
 import { TierFields } from "../event-form/TierFields";
-import { FieldError, Group, Labeled, Row, Section, SwitchRow, fieldCls, fieldId } from "../event-form/ui";
+import { ViewerTimeHint, FieldError, Group, Labeled, Row, Section, SwitchRow, fieldCls, fieldId } from "../event-form/ui";
 
 type Stage = "idle" | "publishing" | "flyer";
 
@@ -225,6 +225,7 @@ export default function CreateEvent({
                   aria-invalid={inv("startsAt")}
                   className={`${fieldCls} h-10 bg-v2-ink3 [color-scheme:dark]`}
                 />
+                <ViewerTimeHint local={form.startsAt} eventTimezone={form.timezone} />
               </Row>
               <Row label={t("eventForm.ends")} htmlFor={fieldId("endsAt")}>
                 <input
@@ -239,6 +240,7 @@ export default function CreateEvent({
                   aria-invalid={inv("endsAt")}
                   className={`${fieldCls} h-10 bg-v2-ink3 [color-scheme:dark]`}
                 />
+                <ViewerTimeHint local={form.endsAt} eventTimezone={form.timezone} />
               </Row>
             </Group>
             <FieldError path="startsAt" message={errorText("startsAt")} />

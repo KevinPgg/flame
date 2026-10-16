@@ -28,7 +28,7 @@ import { routes } from "../../../../lib/routes";
 import { OrganizerShell } from "../../../OrganizerShell";
 import { useOrganizerModel, type Org } from "../../../useOrganizerModel";
 import { FlyerPicker, type FlyerValue } from "../../../event-form/FlyerPicker";
-import { FieldError, Group, Row, Section, fieldCls, fieldId } from "../../../event-form/ui";
+import { ViewerTimeHint, FieldError, Group, Row, Section, fieldCls, fieldId } from "../../../event-form/ui";
 
 const EDIT_ORDER = ["startsAt", "endsAt", "venue", "city", "description"] as const;
 
@@ -218,6 +218,7 @@ export default function EditEvent({
                 aria-invalid={inv("startsAt")}
                 className={`${fieldCls} h-10 bg-v2-ink3 [color-scheme:dark] disabled:opacity-60`}
               />
+                <ViewerTimeHint local={form.startsAt} eventTimezone={tz} />
             </Row>
             <Row label={t("eventForm.ends")} htmlFor={fieldId("endsAt")}>
               <input
@@ -229,6 +230,7 @@ export default function EditEvent({
                 aria-invalid={inv("endsAt")}
                 className={`${fieldCls} h-10 bg-v2-ink3 [color-scheme:dark] disabled:opacity-60`}
               />
+                <ViewerTimeHint local={form.endsAt} eventTimezone={tz} />
             </Row>
           </Group>
           {locked && <p className="mt-1.5 text-[12.5px] text-v2-c50">{t("eventForm.datesLockedHint")}</p>}

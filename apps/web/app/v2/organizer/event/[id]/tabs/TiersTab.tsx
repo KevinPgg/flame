@@ -14,7 +14,7 @@ import { apiErrorMessage } from "../../../../lib/api-error";
 /**
  * Tiers as their own tab (v1: buried inside Edit event). Each tier shows sold vs total,
  * pending reservations and net revenue; Sold out / Hidden are one-tap switches
- * (PATCH /api/ticket-tiers, same endpoint the v1 tier form uses).
+ * (PATCH /api/ticket-tiers). "New tier" and "Edit" open the v2 tier editor.
  */
 export default function TiersTab({
   event,
@@ -96,6 +96,13 @@ export default function TiersTab({
                 onChange={(v) => patch(s.tier.id, { is_hidden: v })}
                 label={t("eventAdmin.tiers.hidden")}
               />
+              <Link
+                href={routes.tier(event.id, slug, s.tier.id)}
+                aria-label={`${t("eventAdmin.tiers.editTier")} ${s.tier.name}`}
+                className="ml-auto inline-flex h-8 items-center rounded-v2-pill bg-v2-ink3 px-3.5 text-[13px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4"
+              >
+                {t("eventAdmin.tiers.editTier")}
+              </Link>
             </div>
           ) : (
             (s.tier.is_manually_sold_out || s.tier.is_hidden) && (
@@ -109,11 +116,11 @@ export default function TiersTab({
       ))}
       {canEdit && (
         <Link
-          href={routes.eventV1(event.id, slug)}
+          href={routes.tier(event.id, slug, "new")}
           className="inline-flex h-10 w-fit items-center gap-2 rounded-v2-pill bg-v2-ink3 px-4 text-[13px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4"
         >
           <Icon name="plus" size={16} />
-          {t("eventAdmin.tiers.edit")}
+          {t("eventAdmin.tiers.newTier")}
         </Link>
       )}
     </div>

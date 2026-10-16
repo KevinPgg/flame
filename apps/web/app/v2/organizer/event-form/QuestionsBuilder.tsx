@@ -23,6 +23,7 @@ export function QuestionsBuilder({
   onChange,
   errors,
   errorText,
+  reusableLabel,
 }: {
   tierKey: string;
   questions: QuestionDraft[];
@@ -30,6 +31,8 @@ export function QuestionsBuilder({
   onChange: (next: QuestionDraft[]) => void;
   errors: EventFormErrors;
   errorText: (path: string) => string | null;
+  /** Caption over the reuse chips (create: earlier tiers; tier editor: the event's questions). */
+  reusableLabel?: string;
 }) {
   const { t } = useI18n();
   const set = (i: number, patch: Partial<QuestionDraft>) =>
@@ -49,6 +52,8 @@ export function QuestionsBuilder({
         {questions.map((q, i) => {
           const p = base(q);
           const labelErr = errorText(`${p}.label`);
+          // Saved event question: shared with other tiers and answers on file → not editable here.
+          const locked = Boolean(q.fieldId);
           return (
             <li key={q.key} className="rounded-v2-md bg-v2-ink2 p-2.5">
               <div className="flex items-center gap-2">
@@ -61,6 +66,7 @@ export function QuestionsBuilder({
                   onChange={(e) => set(i, { label: e.target.value })}
                   placeholder={t("eventForm.questionPlaceholder")}
                   aria-label={t("eventForm.question")}
+                  readOnly={locked}
                   aria-invalid={labelErr ? true : undefined}
                   className={`${fieldCls} h-10 flex-1 bg-v2-ink3`}
                 />
@@ -86,10 +92,12 @@ export function QuestionsBuilder({
                 onChange={(e) => set(i, { placeholder: e.target.value })}
                 placeholder={t("eventForm.hintPlaceholder")}
                 aria-label={t("eventForm.hintPlaceholder")}
+                readOnly={locked}
                 aria-invalid={errors[`${p}.placeholder`] ? true : undefined}
                 className={`${fieldCls} mt-2 h-10 bg-v2-ink3`}
               />
               <FieldError message={errorText(`${p}.placeholder`)} />
+              {locked && <p className="mt-1.5 px-1 text-[11.5px] text-v2-c50">{t("eventForm.questionShared")}</p>}
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                 <div role="radiogroup" aria-label={t("eventForm.questionType")} className="flex flex-wrap gap-1">
                   {QUESTION_TYPES.map((type) => (
@@ -98,6 +106,7 @@ export function QuestionsBuilder({
                       type="button"
                       role="radio"
                       aria-checked={q.type === type}
+                      disabled={locked && q.type !== type}
                       onClick={() => set(i, { type })}
                       className={`h-8 rounded-v2-pill px-3 text-[12.5px] ${
                         q.type === type ? "bg-v2-cream font-v2-ui-semibold text-v2-ink" : "bg-v2-ink3 text-v2-c70 hover:text-v2-cream"
@@ -111,6 +120,7 @@ export function QuestionsBuilder({
                   type="button"
                   role="switch"
                   aria-checked={q.required}
+                  disabled={locked}
                   onClick={() => set(i, { required: !q.required })}
                   className="inline-flex items-center gap-2 text-[12.5px] text-v2-c70"
                 >
@@ -127,7 +137,7 @@ export function QuestionsBuilder({
 
       {reusable.length > 0 && (
         <div className="mt-3 px-1">
-          <span className="text-[12px] text-v2-c50">{t("eventForm.reuse")}</span>
+          <span className="text-[12px] text-v2-c50">{reusableLabel ?? t("eventForm.reuse")}</span>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {reusable.map((q) => (
               <button

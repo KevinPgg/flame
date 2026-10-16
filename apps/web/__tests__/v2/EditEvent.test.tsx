@@ -229,6 +229,33 @@ describe("EditEvent v2", () => {
     expect(await screen.findByText("This event isn’t available.")).toBeInTheDocument();
   });
 
+  it("organizer in another time zone also sees the time on their own clock", async () => {
+    const real = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...real.call(this), timeZone: "Europe/Madrid" };
+    });
+    try {
+      setup();
+      expect(await screen.findByText(/Sun, Jun 16,? 4:00\s?AM on your clock \(Europe\/Madrid\)/)).toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("no extra hint when the organizer is on the event's clock", async () => {
+    const real = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...real.call(this), timeZone: "America/Guayaquil" };
+    });
+    try {
+      setup();
+      await screen.findByLabelText("Venue");
+      expect(screen.queryByText(/on your clock/)).not.toBeInTheDocument();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("speaks Spanish", async () => {
     setup({ language: "es" });
     expect(await screen.findByRole("heading", { name: "Editar evento" })).toBeInTheDocument();
