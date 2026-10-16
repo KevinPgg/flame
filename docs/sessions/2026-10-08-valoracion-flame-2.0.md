@@ -246,3 +246,29 @@ select 'orders_org', e.organization_id, count(*) from orders o join events e on 
 **Tests:** `__tests__/v2/EditEvent.test.tsx` (18: precarga en zona del evento y solo lectura, solo campos cambiados, sin cambios, confirmación de fecha cancelar/confirmar, tiers que venden después del fin, fechas bloqueadas con guardado de otros campos, flyer nuevo/falla/quitar, requeridos, error API, co-organizado, inexistente, español, guardia por rol). Mutaciones (sin confirmación, sin aviso de flyer, sin guardia) → 3 fallan. lib 321/321; web v2 98/98; tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
 
 **Fase 1 — pendiente:** editor de tiers (agregar/editar con etapas, preguntas por tier, reducción forzada con confirmación clara), equipo, ajustes, payouts, scanner.
+
+## Correo y push de cambio de fecha + hora del que mira (2026-10-16)
+- **Fix (Kevin lo aprobó):** al cambiar la fecha de un evento, los correos solo llegaban a los compradores de las primeras 1000 órdenes y el push a los dueños de los primeros 1000 tickets (consultas sin paginar; la nota anterior decía que el push sí salía: era incorrecto, tenía el mismo corte). Ahora `app/lib/utils/event-recipients.ts` (`fetchCompletedOrderBuyers`, `fetchTicketHolderIds`, paginados) y los correos salen en tandas de 10 (`inBatches`) en vez de miles de llamadas simultáneas a Brevo. Un fallo de correos ya no puede convertir un cambio guardado en error.
+- **Correo:** además de la zona abreviada que ya traía cada hora (GMT-5), dice explícitamente "All times are in the event’s local time zone: Ecuador (ECT, UTC-5)".
+- **Hora del que mira (pedido de Kevin), con matiz:** las fechas se siguen ingresando y guardando en la zona del evento (donde ocurre). Si quien llena el formulario está en otra zona, debajo de cada fecha se muestra la misma hora en su reloj ("4:00 AM on your clock (Europe/Madrid)"). Aplica a crear y editar evento. Las pantallas públicas del asistente son de la fase 2.
+- Tests: `__tests__/api/organizer/date-change-notifications.test.ts` (2600 órdenes/1300 compradores, 1800 tickets, error de BD, tandas, PATCH real envía 1300 correos, fallo de correos → 200, correo con la zona) + `viewerTimeIfDifferent` en lib + 2 tests de UI.
+
+## Fase 1 — Editor de tiers v2 (2026-10-16)
+**Pantalla:** `/v2/organizer/event/[id]/tiers/[tierId|new]?org=` (owner/admin u organizer asignado). La pestaña Tiers tiene "Nuevo tier" y "Editar" en cada tier (antes enlazaba a v1).
+**Qué hace:** la misma tarjeta de tier del crear evento + lo que solo existe con ventas: vendidos (los cupos no bajan de eso; por etapa también), interruptor "Agotado", etapas existentes (con id, se actualizan con el RPC en vez de recrearse; descripción de etapa conservada), eliminar tier con confirmación.
+**Envío:** PATCH solo con lo que cambió (cambiar solo el nombre ya no re-envía cupos, que podían chocar con reservas).
+
+**Decisiones:**
+- Etapas: no se pueden activar/desactivar en un tier existente (regla de v1, la API no convierte). Etapa con ventas: no se puede quitar ni bajar de lo vendido.
+- Preguntas de registro por tier: las del evento se eligen con un toque; las guardadas no se pueden reescribir (las comparten otros tiers y hay respuestas). Pregunta nueva → se agrega a `registration_form_config` del evento; antes, los tiers que preguntaban "todo" (`null`) se fijan a su lista actual para que no la hereden sin querer. Si guardar la pregunta falla, no se crea/edita el tier.
+- **Reducción forzada** (cuando compras en curso / RSVPs no caben): confirmación que dice exactamente lo que hace el servidor — cancela **todas** las compras en curso y rechaza **todos** los RSVPs pendientes y aprobados del tier (no solo los que sobran), con email a cada uno. Después de reducir, se guardan el resto de cambios (v1 los perdía). **No se ofrece en tiers con etapas**: el endpoint cambia `quantity_total` sin tocar etapas y las descuadraría; se pide revisar RSVPs primero.
+- Eliminar: deshabilitado con motivo si tiene ventas o es el único tier.
+
+**Corregido de paso:** `DELETE /api/ticket-tiers` borraba las etapas **antes** de comprobar "es el último tier" → al intentar borrar el único tier (con etapas) respondía 400 pero ya había borrado sus etapas. Ahora la comprobación va primero. Test: `ticket-tiers-delete.test.ts`.
+
+**Hallazgo grave (no corregido, pagos → fase 3, decisión de Kevin):** `force-reduce` rechaza también RSVPs **aprobados**. Aprobado = cobro ya capturado esperando el webhook; el endpoint solo cancela PaymentIntents no capturados → esa persona queda **cobrada, con RSVP rechazado y sin reembolso**. Normalmente "aprobado" dura segundos, pero si el webhook falló se queda ahí.
+
+**Archivos:** lib `organizer/tier-editor.ts` (lectura de tier, validación, plan de guardado con diff/preguntas/pins, `canForceReduce`; 20 tests), `event-form.ts` (`validateTierFields` compartida, `quantityBelowSold`, etapas con id/vendidos/descripción, preguntas con `fieldId`) + i18n. Web: `v2/organizer/event/[id]/tiers/[tierId]/{page,TierEditor}.tsx`, `TierFields`/`QuestionsBuilder`/`SwitchRow` ampliados, `TiersTab`, `routes.tier` (se quitó `eventV1`).
+**Tests:** `__tests__/v2/TierEditor.test.tsx` (17: precarga y diff, sin cambios, bajo vendidos, reducción forzada confirmar/cancelar con orden de llamadas, etapas, sin forzado en etapas, preguntas guardadas de solo lectura, nuevo tier, pregunta nueva con pin+config+POST, fallo de pregunta, eliminar, último tier, error API, inexistente, guardia de rol). Mutaciones (forzado en etapas, sin pins) → fallan. lib 341/341; web v2 + API organizador 291/291; suite web completa: solo los 3 archivos que ya fallaban antes (purchase-page.integration, create-payment-intent, payment-protection). tsc lib y web 0. Revisado visualmente en 1280 y 390 (en/es).
+
+**Fase 1 — pendiente:** equipo, ajustes de organización, payouts, scanner (siguen en v1 vía `routes.ts`).
