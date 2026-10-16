@@ -8,7 +8,7 @@
  * Rules mirror the server (apps/web/app/api/events/route.ts createEventSchema + checks)
  * so the organizer sees the problem next to the field instead of a generic 400.
  */
-import { localToUtc } from "../utils/timezone";
+import { localToUtc, utcToLocal } from "../utils/timezone";
 import { normalizeOptionalTicketTierSecretCode } from "../validators/ticket-tier-secret-code";
 import { MAX_TICKET_TIERS_PER_EVENT, TIER_DESCRIPTION_MAX_LENGTH } from "../constants/event-limits";
 import type { FormField, FormFieldType } from "../types/registration-form";
@@ -247,6 +247,8 @@ export function tierStartingPriceCents(tier: TierDraft): number | null {
 
 /** Error keys live under `eventForm.errors.*`. Paths: "name", "tiers.<key>.price", "tiers.<key>.stages.<key>.name", "tiers.<key>.questions.<key>.label" … */
 export type EventFormErrorKey =
+  "datesLocked" |
+  "tierSalesAfterEnd" |
   "nameRequired" |
   "nameTooLong" |
   "slugRequired" |
@@ -545,5 +547,151 @@ export function buildCreateEventPayload(
         description: tierDescription ? tierDescription : null,
       };
     }),
+  };
+}
+
+// ============================================================================
+// EDIT EVENT
+// ============================================================================
+
+/**
+ * What PATCH /api/events lets an organizer change after publishing. Name, link, currency,
+ * timezone and RSVP are fixed by the API; tiers have their own endpoints.
+ */
+export interface EditEventFormState {
+  startsAt: string;
+  endsAt: string;
+  venue: string;
+  city: string;
+  description: string;
+}
+
+export interface EditableEvent {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  venue: string | null;
+  city: string | null;
+  description: string | null;
+  timezone?: string | null;
+  ticket_tiers?: Array<{ id: string; name: string; sales_end?: string | null }> | null;
+}
+
+const eventTimezone = (event: Pick<EditableEvent, "timezone">) => event.timezone || "America/Guayaquil";
+
+/** Form values for an existing event (dates shown in the event's own timezone). */
+export function editFormFromEvent(event: EditableEvent): EditEventFormState {
+  const tz = eventTimezone(event);
+  return {
+    startsAt: utcToLocal(event.starts_at, tz),
+    endsAt: utcToLocal(event.ends_at, tz),
+    venue: event.venue ?? "",
+    city: event.city ?? "",
+    description: event.description ?? "",
+  };
+}
+
+/**
+ * The API re-checks "starts ≥ now + 2 h" whenever any date is sent, even an unchanged start,
+ * so once the event is that close (or running / over) its dates can't be changed at all.
+ */
+export function datesLocked(event: Pick<EditableEvent, "starts_at">, now: Date = new Date()): boolean {
+  return new Date(event.starts_at).getTime() < now.getTime() + EVENT_MIN_LEAD_MS;
+}
+
+/** Same minute: the form edits minutes, while stored timestamps may carry seconds. */
+const sameInstant = (a: string, b: string) => {
+  const x = Math.floor(new Date(a).getTime() / 60_000);
+  const y = Math.floor(new Date(b).getTime() / 60_000);
+  return Number.isFinite(x) && Number.isFinite(y) && x === y;
+};
+
+/** Which dates the organizer actually moved (compared as instants, not strings). */
+export function changedDates(form: EditEventFormState, event: EditableEvent): { starts: boolean; ends: boolean } {
+  const tz = eventTimezone(event);
+  return {
+    starts: !sameInstant(toUtc(form.startsAt, tz), event.starts_at),
+    ends: !sameInstant(toUtc(form.endsAt, tz), event.ends_at),
+  };
+}
+
+/** Tiers whose sales would end after the (new) event end — v1 blocks saving until they're fixed. */
+export function tiersSellingPastEnd(event: EditableEvent, endsAtIso: string): Array<{ id: string; name: string }> {
+  const end = new Date(endsAtIso).getTime();
+  if (!Number.isFinite(end)) return [];
+  return (event.ticket_tiers ?? [])
+    .filter((t) => t.sales_end && new Date(t.sales_end).getTime() > end)
+    .map((t) => ({ id: t.id, name: t.name }));
+}
+
+export function validateEditEventForm(form: EditEventFormState, event: EditableEvent, now: Date = new Date()): EventFormErrors {
+  const e: EventFormErrors = {};
+  const venue = form.venue.trim();
+  if (!venue) e.venue = "venueRequired";
+  else if (venue.length > EVENT_VENUE_MAX) e.venue = "venueTooLong";
+  const city = form.city.trim();
+  if (!city) e.city = "cityRequired";
+  else if (city.length > EVENT_CITY_MAX) e.city = "cityTooLong";
+  if (form.description.length > EVENT_DESCRIPTION_MAX) e.description = "descriptionTooLong";
+
+  const moved = changedDates(form, event);
+  if (!moved.starts && !moved.ends) return e;
+
+  if (datesLocked(event, now)) {
+    e.startsAt = "datesLocked";
+    return e;
+  }
+  const tz = eventTimezone(event);
+  const startIso = toUtc(form.startsAt, tz);
+  const endIso = toUtc(form.endsAt, tz);
+  if (!form.startsAt) e.startsAt = "startRequired";
+  else if (!startIso) e.startsAt = "dateInvalid";
+  else if (new Date(startIso).getTime() < now.getTime() + EVENT_MIN_LEAD_MS) e.startsAt = "startTooSoon";
+  if (!form.endsAt) e.endsAt = "endRequired";
+  else if (!endIso) e.endsAt = "dateInvalid";
+  else if (startIso && new Date(endIso).getTime() <= new Date(startIso).getTime()) e.endsAt = "endBeforeStart";
+  else if (tiersSellingPastEnd(event, endIso).length > 0) e.endsAt = "tierSalesAfterEnd";
+  return e;
+}
+
+export interface UpdateEventPayload {
+  id: string;
+  starts_at?: string;
+  ends_at?: string;
+  venue?: string;
+  city?: string;
+  description?: string;
+  image_url?: string;
+}
+
+/**
+ * Body for PATCH /api/events with only what changed. Dates go only when moved (the API
+ * e-mails and pushes every ticket holder on a date change, and re-validates the 2-hour rule).
+ * `imageUrl`: undefined = flyer untouched, "" = remove it, URL = new flyer.
+ */
+export function buildUpdateEventPayload(
+  form: EditEventFormState,
+  event: EditableEvent,
+  imageUrl?: string,
+): { payload: UpdateEventPayload; datesChanged: boolean; changed: boolean } {
+  const tz = eventTimezone(event);
+  const payload: UpdateEventPayload = { id: event.id };
+  const moved = changedDates(form, event);
+  if (moved.starts || moved.ends) {
+    // The API compares both against each other: send the pair.
+    payload.starts_at = toUtc(form.startsAt, tz);
+    payload.ends_at = toUtc(form.endsAt, tz);
+  }
+  const venue = form.venue.trim();
+  if (venue !== (event.venue ?? "")) payload.venue = venue;
+  const city = form.city.trim();
+  if (city !== (event.city ?? "")) payload.city = city;
+  const description = form.description.trim();
+  if (description !== (event.description ?? "").trim()) payload.description = description;
+  if (imageUrl !== undefined) payload.image_url = imageUrl;
+  return {
+    payload,
+    datesChanged: moved.starts || moved.ends,
+    changed: Object.keys(payload).length > 1,
   };
 }

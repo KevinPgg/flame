@@ -363,6 +363,12 @@ export {
   validateEventForm,
   firstErrorPath,
   buildCreateEventPayload,
+  editFormFromEvent,
+  datesLocked,
+  changedDates,
+  tiersSellingPastEnd,
+  validateEditEventForm,
+  buildUpdateEventPayload,
 } from "./organizer/event-form";
 export type {
   StageDraft,
@@ -372,6 +378,9 @@ export type {
   EventFormErrors,
   EventFormErrorKey,
   CreateEventPayload,
+  EditEventFormState,
+  EditableEvent,
+  UpdateEventPayload,
 } from "./organizer/event-form";
 
 // ============================================================================
