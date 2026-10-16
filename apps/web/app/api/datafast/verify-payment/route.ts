@@ -13,22 +13,9 @@ import {
 // Datafast Configuration - ALL values must be provided via environment variables
 // NO HARDCODED CREDENTIALS for security compliance
 
-// Validate all required credentials are present
-if (
-  !process.env.DATAFAST_URL ||
-  !process.env.DATAFAST_ENTITY_ID ||
-  !process.env.DATAFAST_BEARER_TOKEN
-) {
-  throw new Error(
-    "Missing required Datafast configuration. All DATAFAST_* environment variables must be set. " +
-      "Required: DATAFAST_URL, DATAFAST_ENTITY_ID, DATAFAST_BEARER_TOKEN"
-  );
-}
-
-// After validation, we can safely assert these are strings
-const DATAFAST_URL: string = process.env.DATAFAST_URL;
-const DATAFAST_ENTITY_ID: string = process.env.DATAFAST_ENTITY_ID;
-const DATAFAST_BEARER_TOKEN: string = process.env.DATAFAST_BEARER_TOKEN;
+// Credentials are validated per request (like create-checkout), not at import time: a
+// module-level throw broke `next build` on any machine without Datafast credentials
+// ("Failed to collect page data for /api/datafast/verify-payment").
 
 // Initialize Supabase admin client for transaction logging
 const supabaseAdmin = createClient(
@@ -50,6 +37,18 @@ const SUCCESS_CODES = [
 
 export async function POST(req: NextRequest) {
   let userId: string | null = null;
+  const DATAFAST_URL = process.env.DATAFAST_URL;
+  const DATAFAST_ENTITY_ID = process.env.DATAFAST_ENTITY_ID;
+  const DATAFAST_BEARER_TOKEN = process.env.DATAFAST_BEARER_TOKEN;
+  if (!DATAFAST_URL || !DATAFAST_ENTITY_ID || !DATAFAST_BEARER_TOKEN) {
+    console.error(
+      "❌ Missing required Datafast configuration (DATAFAST_URL, DATAFAST_ENTITY_ID, DATAFAST_BEARER_TOKEN)"
+    );
+    return NextResponse.json(
+      { error: "Payment system configuration error" },
+      { status: 500 }
+    );
+  }
   try {
     const authResult = await auth();
     userId = authResult.userId;
