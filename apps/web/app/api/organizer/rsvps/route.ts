@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "../../../lib/supabase/server";
 import { canManageEventRsvps } from "../../../lib/utils/event-rsvp-authz";
+import { selectAllPages } from "../../../lib/utils/supabase-pagination";
 
 /**
  * GET /api/organizer/rsvps?event_id={eventId}
@@ -64,10 +65,15 @@ export async function GET(request: Request) {
       );
     }
 
-    // Fetch RSVPs for this event with all necessary joins
-    const { data: rsvps, error: rsvpsError } = await supabaseAdmin
-      .from("rsvps")
-      .select(
+    // Fetch RSVPs for this event with all necessary joins. Paged: PostgREST cuts
+    // every response at 1000 rows, so a popular event used to lose requests silently.
+    let rsvps: any[] | null = null;
+    let rsvpsError: unknown = null;
+    try {
+      rsvps = await selectAllPages<any>((from, to) =>
+        supabaseAdmin!
+          .from("rsvps")
+          .select(
         `
         id,
         user_id,
@@ -99,8 +105,14 @@ export async function GET(request: Request) {
         )
       `
       )
-      .eq("event_id", eventId)
-      .order("requested_at", { ascending: false });
+          .eq("event_id", eventId)
+          .order("requested_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
+    } catch (error) {
+      rsvpsError = error;
+    }
 
     if (rsvpsError) {
       console.error("Error fetching RSVPs:", rsvpsError);
