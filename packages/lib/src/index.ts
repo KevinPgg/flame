@@ -328,6 +328,52 @@ export type {
   RegistrationEntry,
 } from "./organizer/rsvps";
 
+export {
+  EVENT_NAME_MAX,
+  EVENT_SLUG_MAX,
+  EVENT_VENUE_MAX,
+  EVENT_CITY_MAX,
+  EVENT_DESCRIPTION_MAX,
+  TIER_NAME_MAX,
+  TIER_ACCESS_CODE_MIN,
+  PER_USER_LIMIT_MAX,
+  QUESTION_LABEL_MAX,
+  QUESTION_PLACEHOLDER_MAX,
+  DEFAULT_EVENT_DURATION_HOURS,
+  EVENT_MIN_LEAD_MS,
+  TIER_MAX_PRICE_CENTS,
+  QUESTION_TYPES,
+  draftKey,
+  questionId,
+  newStageDraft,
+  newTierDraft,
+  newQuestionDraft,
+  reusableQuestions,
+  copyQuestion,
+  moveItem,
+  suggestEnd,
+  emptyEventForm,
+  slugify,
+  parsePriceInput,
+  parseIntInput,
+  defaultStages,
+  tierTotalQuantity,
+  tierStartingPriceCents,
+  toUtc as eventFormToUtc,
+  validateEventForm,
+  firstErrorPath,
+  buildCreateEventPayload,
+} from "./organizer/event-form";
+export type {
+  StageDraft,
+  TierDraft,
+  QuestionDraft,
+  EventFormState,
+  EventFormErrors,
+  EventFormErrorKey,
+  CreateEventPayload,
+} from "./organizer/event-form";
+
 // ============================================================================
 // SUPABASE
 // ============================================================================
