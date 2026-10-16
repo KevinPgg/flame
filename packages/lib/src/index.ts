@@ -361,15 +361,28 @@ export {
   tierStartingPriceCents,
   toUtc as eventFormToUtc,
   validateEventForm,
+  validateTierFields,
   firstErrorPath,
   buildCreateEventPayload,
   editFormFromEvent,
+  viewerTimeIfDifferent,
   datesLocked,
   changedDates,
   tiersSellingPastEnd,
   validateEditEventForm,
   buildUpdateEventPayload,
 } from "./organizer/event-form";
+export {
+  activeEventFields,
+  tierQuestions,
+  reusableEventQuestions,
+  tierEditorFromTier,
+  newTierEditor,
+  validateTierEditor,
+  buildTierSave,
+  canForceReduce,
+} from "./organizer/tier-editor";
+export type { EditorStage, EditorTier, EditorEvent, TierEditorState, TierSavePlan } from "./organizer/tier-editor";
 export type {
   StageDraft,
   TierDraft,

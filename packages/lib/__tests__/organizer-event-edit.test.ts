@@ -6,6 +6,7 @@ import {
   tiersSellingPastEnd,
   validateEditEventForm,
   buildUpdateEventPayload,
+  viewerTimeIfDifferent,
   type EditableEvent,
 } from "../src";
 
@@ -125,5 +126,17 @@ describe("buildUpdateEventPayload", () => {
     expect(buildUpdateEventPayload(base, EVENT).payload.image_url).toBeUndefined();
     expect(buildUpdateEventPayload(base, EVENT, "").payload).toEqual({ id: "ev1", image_url: "" });
     expect(buildUpdateEventPayload(base, EVENT, "https://cdn/x.jpg")).toMatchObject({ changed: true, payload: { image_url: "https://cdn/x.jpg" } });
+  });
+});
+
+describe("viewerTimeIfDifferent", () => {
+  it("returns the instant when the viewer's clock reads differently", () => {
+    expect(viewerTimeIfDifferent("2026-11-30T21:00", "America/Guayaquil", "Europe/Madrid")).toBe("2026-12-01T02:00:00.000Z");
+  });
+  it("null for the same zone, a zone with the same offset that day, or empty input", () => {
+    expect(viewerTimeIfDifferent("2026-11-30T21:00", "America/Guayaquil", "America/Guayaquil")).toBeNull();
+    expect(viewerTimeIfDifferent("2026-11-30T21:00", "America/Guayaquil", "America/Bogota")).toBeNull();
+    expect(viewerTimeIfDifferent("", "America/Guayaquil", "Europe/Madrid")).toBeNull();
+    expect(viewerTimeIfDifferent("2026-11-30T21:00", "America/Guayaquil", "")).toBeNull();
   });
 });

@@ -36,6 +36,10 @@ export interface StageDraft {
   name: string;
   price: string;
   quantity: string;
+  /** Existing stage (tier editor): its id, tickets already sold, and description to keep. */
+  id?: string;
+  sold?: number;
+  description?: string | null;
 }
 
 export interface TierDraft {
@@ -67,6 +71,8 @@ export interface QuestionDraft {
   placeholder: string;
   type: FormFieldType;
   required: boolean;
+  /** Tier editor: an existing event question (shared with other tiers, answers on file) — not editable. */
+  fieldId?: string;
 }
 
 export interface EventFormState {
@@ -247,6 +253,7 @@ export function tierStartingPriceCents(tier: TierDraft): number | null {
 
 /** Error keys live under `eventForm.errors.*`. Paths: "name", "tiers.<key>.price", "tiers.<key>.stages.<key>.name", "tiers.<key>.questions.<key>.label" … */
 export type EventFormErrorKey =
+  "quantityBelowSold" |
   "datesLocked" |
   "tierSalesAfterEnd" |
   "nameRequired" |
@@ -305,9 +312,84 @@ function validQuantity(input: string): EventFormErrorKey | null {
   return null;
 }
 
+/**
+ * The same moment on the viewer's clock, when it differs from the event's: an organizer in Madrid
+ * entering 21:00 for a Guayaquil event sees "= 04:00 your time". Returns an ISO instant to format,
+ * or null when both clocks read the same (same zone or same offset that day) or input is empty.
+ */
+export function viewerTimeIfDifferent(local: string, eventTimezone: string, viewerTimezone: string): string | null {
+  if (!local || !viewerTimezone || viewerTimezone === eventTimezone) return null;
+  const utc = localToUtc(local, eventTimezone);
+  if (!utc) return null;
+  return utcToLocal(utc, viewerTimezone) === local.slice(0, 16) ? null : utc;
+}
+
 /** ISO of a datetime-local value in the event timezone; "" when empty/invalid. */
 export function toUtc(local: string, timezone: string): string {
   return local ? localToUtc(local, timezone) : "";
+}
+
+/**
+ * One tier's own fields (shared by the create form and the tier editor). Error paths are
+ * `tiers.<key>.<field>` / `tiers.<key>.stages.<key>.<field>`. Stages that already sold tickets
+ * can't go below what they sold (`sold` on the draft).
+ */
+export function validateTierFields(
+  t: TierDraft,
+  ctx: { timezone: string; eventEndIso: string; now: Date; sold?: number },
+  e: EventFormErrors,
+): void {
+  const p = `tiers.${t.key}.`;
+  const end = ctx.eventEndIso ? new Date(ctx.eventEndIso) : null;
+  const tn = t.name.trim();
+  if (!tn) e[p + "name"] = "tierNameRequired";
+  else if (tn.length > TIER_NAME_MAX) e[p + "name"] = "tierNameTooLong";
+
+  if (t.useStages) {
+    if (t.stages.length < 2) e[p + "stages"] = "stagesMin";
+    const seen = new Set<string>();
+    for (const s of t.stages) {
+      const sp = `${p}stages.${s.key}.`;
+      const sn = s.name.trim();
+      if (!sn) e[sp + "name"] = "stageNameRequired";
+      else if (sn.length > TIER_NAME_MAX) e[sp + "name"] = "tierNameTooLong";
+      else if (seen.has(sn.toLowerCase())) e[sp + "name"] = "stageNameDuplicate";
+      seen.add(sn.toLowerCase());
+      const pe = validPrice(s.price);
+      if (pe) e[sp + "price"] = pe;
+      const qe = validQuantity(s.quantity);
+      if (qe) e[sp + "quantity"] = qe;
+      else if ((s.sold ?? 0) > 0 && (parseIntInput(s.quantity) ?? 0) < (s.sold ?? 0)) e[sp + "quantity"] = "quantityBelowSold";
+    }
+  } else {
+    const pe = validPrice(t.price);
+    if (pe) e[p + "price"] = pe;
+    const qe = validQuantity(t.quantity);
+    if (qe) e[p + "quantity"] = qe;
+    else if ((ctx.sold ?? 0) > 0 && (parseIntInput(t.quantity) ?? 0) < (ctx.sold ?? 0)) e[p + "quantity"] = "quantityBelowSold";
+  }
+
+  const limit = parseIntInput(t.perUserLimit);
+  if (limit === null || limit < 1 || limit > PER_USER_LIMIT_MAX) e[p + "perUserLimit"] = "perUserLimitInvalid";
+
+  if (t.accessCode.length > TIER_ACCESS_CODE_MAX) e[p + "accessCode"] = "accessCodeTooLong";
+  else {
+    const code = normalizeOptionalTicketTierSecretCode(t.accessCode);
+    if (code !== null && code.length < TIER_ACCESS_CODE_MIN) e[p + "accessCode"] = "accessCodeTooShort";
+  }
+
+  if (t.description.length > TIER_DESCRIPTION_MAX_LENGTH) e[p + "description"] = "tierDescriptionTooLong";
+
+  const salesStartIso = toUtc(t.salesStart, ctx.timezone);
+  const salesEndIso = t.salesEnd ? toUtc(t.salesEnd, ctx.timezone) : ctx.eventEndIso;
+  if (t.salesStart && !salesStartIso) e[p + "salesStart"] = "dateInvalid";
+  if (t.salesEnd && !salesEndIso) e[p + "salesEnd"] = "dateInvalid";
+  else if (salesEndIso) {
+    const se = new Date(salesEndIso).getTime();
+    const ss = salesStartIso ? new Date(salesStartIso).getTime() : ctx.now.getTime();
+    if (end && se > end.getTime()) e[p + "salesEnd"] = "salesEndAfterEvent";
+    else if (se <= ss) e[p + "salesEnd"] = "salesEndBeforeStart";
+  }
 }
 
 export function validateEventForm(form: EventFormState, now: Date = new Date()): EventFormErrors {
@@ -344,54 +426,7 @@ export function validateEventForm(form: EventFormState, now: Date = new Date()):
   else if (form.tiers.length > MAX_TICKET_TIERS_PER_EVENT) e.tiers = "tiersTooMany";
 
   for (const t of form.tiers) {
-    const p = `tiers.${t.key}.`;
-    const tn = t.name.trim();
-    if (!tn) e[p + "name"] = "tierNameRequired";
-    else if (tn.length > TIER_NAME_MAX) e[p + "name"] = "tierNameTooLong";
-
-    if (t.useStages) {
-      if (t.stages.length < 2) e[p + "stages"] = "stagesMin";
-      const seen = new Set<string>();
-      for (const s of t.stages) {
-        const sp = `${p}stages.${s.key}.`;
-        const sn = s.name.trim();
-        if (!sn) e[sp + "name"] = "stageNameRequired";
-        else if (sn.length > TIER_NAME_MAX) e[sp + "name"] = "tierNameTooLong";
-        else if (seen.has(sn.toLowerCase())) e[sp + "name"] = "stageNameDuplicate";
-        seen.add(sn.toLowerCase());
-        const pe = validPrice(s.price);
-        if (pe) e[sp + "price"] = pe;
-        const qe = validQuantity(s.quantity);
-        if (qe) e[sp + "quantity"] = qe;
-      }
-    } else {
-      const pe = validPrice(t.price);
-      if (pe) e[p + "price"] = pe;
-      const qe = validQuantity(t.quantity);
-      if (qe) e[p + "quantity"] = qe;
-    }
-
-    const limit = parseIntInput(t.perUserLimit);
-    if (limit === null || limit < 1 || limit > PER_USER_LIMIT_MAX) e[p + "perUserLimit"] = "perUserLimitInvalid";
-
-    if (t.accessCode.length > TIER_ACCESS_CODE_MAX) e[p + "accessCode"] = "accessCodeTooLong";
-    else {
-      const code = normalizeOptionalTicketTierSecretCode(t.accessCode);
-      if (code !== null && code.length < TIER_ACCESS_CODE_MIN) e[p + "accessCode"] = "accessCodeTooShort";
-    }
-
-    if (t.description.length > TIER_DESCRIPTION_MAX_LENGTH) e[p + "description"] = "tierDescriptionTooLong";
-
-    const salesStartIso = toUtc(t.salesStart, form.timezone);
-    const salesEndIso = t.salesEnd ? toUtc(t.salesEnd, form.timezone) : endIso;
-    if (t.salesStart && !salesStartIso) e[p + "salesStart"] = "dateInvalid";
-    if (t.salesEnd && !salesEndIso) e[p + "salesEnd"] = "dateInvalid";
-    else if (salesEndIso) {
-      const se = new Date(salesEndIso).getTime();
-      const ss = salesStartIso ? new Date(salesStartIso).getTime() : now.getTime();
-      if (end && se > end.getTime()) e[p + "salesEnd"] = "salesEndAfterEvent";
-      else if (se <= ss) e[p + "salesEnd"] = "salesEndBeforeStart";
-    }
+    validateTierFields(t, { timezone: form.timezone, eventEndIso: endIso, now }, e);
   }
 
   if (form.requiresRsvp) {
