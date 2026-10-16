@@ -59,6 +59,12 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
+  // Tickets are scanned only from the phone app (decision 2026-10-16): the web has no scanner.
+  // Old links (/qr-scanner, /v2/scanner) go home. The scanner APIs stay for the app.
+  if (/^\/(qr-scanner|v2\/scanner)(\/|$)/.test(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   // Organizer web runs on Flame 2.0: v1 organizer screens that have a v2 redirect there
   // (settings / payouts / public org page stay on v1). ORGANIZER_V1=true switches it off.
   if (process.env.ORGANIZER_V1 !== "true") {

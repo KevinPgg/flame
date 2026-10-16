@@ -328,3 +328,32 @@ Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
 **Tests:** `scan-access.test.ts` (37: acceso por rol/co-organizador/designado/admin/extraño, verify, checkin, validate-code con y sin flag, API de scanners, lista de eventos), `__tests__/v2/Scanner.test.tsx` (17: selector, auto-apertura, válido→registrar, ya registrado, otro evento, QR ajeno, 404/403, 409 en check-in, promocional, cambiar evento; pestaña: agregar, códigos de error, email inválido, quitar, solo lectura), lib scanner (7). Web v2 160/160, API organizador + redirección 221/221, lib 353/353; tsc 0. Revisado visualmente (1300 y 390, en/es): en teléfono la cámara es vertical y el resultado es una tarjeta opaca sobre la imagen (el marco se oculta al mostrar resultado); "Escanear siguiente" → "Siguiente" en español porque no cabía.
 
 **Fase 1 — pendiente:** ajustes de organización, payouts. Pendiente aparte: auditoría RLS móvil; force-reduce con RSVPs aprobados (fase 3).
+
+## Escáner: la web no escanea + código de acceso como opción permanente (2026-10-16)
+**Decisiones de Kevin:** (1) el escaneo se hace solo desde el celular; la web no debe mostrar ninguna opción de escanear. (2) El código de acceso por evento se mantiene vivo y **separado** de las cuentas autorizadas, para asignar un teléfono sin crear cuenta. Migración `20261016150000_event_scanners.sql` ya aplicada por Kevin.
+
+**Web sin escáner:**
+- Borrados: `/v2/scanner` (ScannerApp, useQrCamera), `/qr-scanner` v1 (QRScannerApp, EnterCodeModal, QRScannerModal sin uso, hook `useQRScanner` web) y sus tests (`Scanner.test.tsx`, `qr-scanner.integration.test.tsx`).
+- Quitado "Escanear" del menú lateral y de la barra inferior v2, y el icono/entrada "QR Scanner" del Navbar v1. `middleware.ts`: `/qr-scanner` y `/v2/scanner` → `/`.
+- Se mantienen las APIs (`verify`, `checkin`, `validate-code`, `qr-scanner/events`) y la lib `organizer/scanner.ts` + i18n `scanner.*` para la app v2 (fase 2). `@zxing/library` queda sin uso en web (se puede quitar con `pnpm --filter web remove @zxing/library` en Windows).
+- Mobile (coherencia con Expo web): `apps/mobile/lib/scanner-platform.ts` (`SCANNING_SUPPORTED = Platform.OS !== "web"`) oculta "Scan Tickets" en Ajustes y la tarjeta "QR Scanner" del panel en Expo web; `/scanner` en web redirige a `/`. En iOS/Android no cambia nada.
+
+**Pestaña Escáner (dos secciones):** aviso "se escanea con la app en el celular" · **Cuentas que pueden escanear** (miembros por defecto + designados por email, igual que antes) · **Código de acceso**: ver, copiar, crear (6 caracteres sin 0/O/1/I/L), nuevo código y quitar (con confirmación: los celulares con el código viejo dejan de escanear), elegir uno propio (4–8, se normaliza a mayúsculas sin guiones). Texto de la app en inglés ("Settings → Scan Tickets") porque la app actual no tiene i18n.
+- API nueva `PUT /api/organizer/events/[id]/scanner-code` `{action: generate|set|clear}` → `{code}`; 409 `CODE_TAKEN`; **solo owner/admin** (`canManageAccessCodes`, la misma regla que la app). Guard compartido `app/lib/utils/event-tool-gate.ts` (también lo usa la API de scanners) que devuelve el rol.
+- **Fix:** `PATCH /api/events` dejaba a un organizer asignado cambiar `qr_scanner_code` (la app solo lo ocultaba) → ahora 403 si no es owner/admin.
+- `SCANNER_ACCESS_CODES=off` queda solo como interruptor de emergencia (ya no "a retirar").
+- Lib: `normalizeAccessCode`, `isValidAccessCode`, `generateAccessCode`, `ACCESS_CODE_ALPHABET`.
+
+**Riesgo del código (registrado):** [Probable] bajo. Códigos únicos globales y `validate-code` sin límite de intentos → un código de 4 caracteres se puede adivinar por fuerza bruta, pero solo da el nombre del evento; para registrar entradas hace falta además el QR del ticket. Los generados ahora tienen 6 caracteres (~1.000 millones de combinaciones). Si se quiere cerrar del todo: rate limit en `validate-code` (pendiente, no hecho).
+
+## Fase 1 — Ajustes de organización v2 (2026-10-16)
+`/v2/organizer/settings?org=&tab=personal|organization` (prototipo `ow:settings`). Cualquier miembro entra; owner/admin editan.
+- **Organización:** logo (subir/quitar con confirmación; valida tipo y 4,5 MB antes de subir), nombre solo lectura (como v1 y la API; el prototipo lo deja editable → no se hizo), Instagram con "@" (acepta `@user` o el enlace pegado de Instagram), ciudad, descripción con contador /500, estado "Cambios sin guardar / Todo guardado". Mismas APIs que v1 (`PATCH /api/organizations/[id]`, `/api/upload-org-image`).
+- **Personal:** nombre y email de Clerk (solo lectura), idioma en/es (cambia al instante; si no se guarda vuelve atrás y avisa), cerrar sesión. API nueva `PUT /api/me/language` → `users.language`.
+- Payouts no está aquí (pantalla propia, siguiente paso). `/organizer/settings` (personal/organización) redirige a v2; `tab=payouts` sigue en v1. `routes.settings` apunta a v2; "Ajustes" queda resaltado en el menú.
+- **Fix de seguridad:** `/api/upload-org-image` (POST y DELETE) dejaba a cualquier miembro (viewer incluido) cambiar o borrar el logo. Ahora owner/admin, igual que el resto del perfil. Efecto: en la app actual un organizer/viewer que lo intente recibe error (antes podía).
+- Lib `organizer/org-settings.ts` (form, normalización de Instagram, validación, payload, dirty, ruta de storage del logo, chequeo de archivo).
+
+**Tests:** `ScannersTab.test.tsx` (8), `Settings.test.tsx` (8), `settings-api.test.ts` (5: idioma, logo solo owner/admin), `scan-access.test.ts` +8 (código: generar, propio normalizado, ocupado sin escribir, inválido, quitar, organizer asignado 403, otros roles), redirección de ajustes, lib scanner (+2) y org-settings (6). lib 361/361; web v2 + API organizador + utils 395/395; suite web completa: solo los 3 archivos que ya fallaban (purchase-page.integration, create-payment-intent, payment-protection). tsc lib y web 0. Revisado visualmente (1300 y 390, en/es) con un arnés local: sin desborde horizontal.
+
+**Fase 1 — pendiente:** payouts (y decidir si se hace el hub "Manage" del prototipo junto con payouts). Pendiente aparte: rate limit de `validate-code`, auditoría RLS móvil, force-reduce con RSVPs aprobados (fase 3).

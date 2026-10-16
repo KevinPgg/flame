@@ -11,6 +11,7 @@ import { getTabBarPaddingBottom } from "../components/navigation/CustomTabBar";
 import { DashboardBar } from "../components/dashboard/DashboardBar";
 import { useOptionalAuth } from "../hooks/useOptionalAuth";
 import { deregisterPushToken } from "../lib/notifications";
+import { SCANNING_SUPPORTED } from "../lib/scanner-platform";
 
 const BASE_URL = "https://flme.co";
 
@@ -200,14 +201,16 @@ export default function SettingsScreen() {
           paddingBottom: getTabBarPaddingBottom(insets.bottom),
         }}
       >
-        {/* Public scanner — visible to everyone (signed in or not). */}
-        <View className="mt-4 mx-4 rounded-card bg-white-5 overflow-hidden">
-          <MenuRow
-            item={SCANNER_ITEM}
-            onPress={() => handlePress(SCANNER_ITEM)}
-            isLast
-          />
-        </View>
+        {/* Public scanner — visible to everyone (signed in or not), phones only. */}
+        {SCANNING_SUPPORTED && (
+          <View className="mt-4 mx-4 rounded-card bg-white-5 overflow-hidden">
+            <MenuRow
+              item={SCANNER_ITEM}
+              onPress={() => handlePress(SCANNER_ITEM)}
+              isLast
+            />
+          </View>
+        )}
 
         {/* Main menu items — Account and Notifications gated on auth */}
         <View className="mt-6 mx-4 rounded-card bg-white-5 overflow-hidden">

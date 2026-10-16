@@ -60,13 +60,13 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(screen.getByText("page body").closest("main")).toHaveAttribute("id", "v2-main");
   });
 
-  it("sidebar: sections, scanner, create event, upcoming and past events, attendee links", async () => {
+  it("sidebar: sections (no scanner: the web does not scan), create event, upcoming and past events, attendee links", async () => {
     setup();
     const side = screen.getByRole("complementary", { name: "Menu" });
     expect(within(side).getByRole("link", { name: /RSVPs/ })).toHaveTextContent("3");
     expect(within(side).getByRole("link", { name: "Team" })).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Settings" })).toBeInTheDocument();
-    expect(within(side).getByRole("link", { name: "Scan" })).toHaveAttribute("href", "/v2/scanner");
+    expect(within(side).queryByRole("link", { name: "Scan" })).not.toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Create event" })).toHaveAttribute("href", "/v2/organizer/create?org=kora");
     expect(within(side).getByText("Upcoming")).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: /Event a/ })).toHaveAttribute("href", "/v2/organizer/event/a?org=kora");

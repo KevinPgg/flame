@@ -13,9 +13,8 @@ import { accessCodesEnabled } from "@/app/lib/utils/scan-access";
  * additional org-membership gating on the access-code path.
  *
  * Why no auth/role check here:
- *   • The web `/qr-scanner` page is intentionally not route-gated — it supports
- *     both signed-in organizers and anonymous staff with an access code (see
- *     `apps/web/app/qr-scanner/page.tsx`).
+ *   • The code exists for phones without a Flame account (decision 2026-10-16: kept as
+ *     a permanent option next to per-person access; the web itself no longer scans).
  *   • The mobile in-settings scanner (v1.0.13) sends requests with no Bearer
  *     token, so `auth()` resolves null on those calls regardless.
  *   • Adding an additional auth/role/org-membership gate here while leaving

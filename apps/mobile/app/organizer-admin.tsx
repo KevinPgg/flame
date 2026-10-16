@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SCANNING_SUPPORTED } from "../lib/scanner-platform";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import {
   FlameImage,
@@ -536,14 +537,16 @@ function OrganizerAdminContent() {
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
     onPress: () => void;
-  }> = [
-    {
-      key: "qr",
-      label: "QR Scanner",
-      icon: "qr-code-outline",
-      onPress: handleScanPress,
-    },
-  ];
+  }> = SCANNING_SUPPORTED
+    ? [
+        {
+          key: "qr",
+          label: "QR Scanner",
+          icon: "qr-code-outline",
+          onPress: handleScanPress,
+        },
+      ]
+    : [];
   // Append ?orgId=X only when effectiveOrgId is present. A blank ?orgId=
   // would be treated as truthy by receivers and defeat their fall-back to the
   // shared context's selectedOrgId.

@@ -63,7 +63,7 @@ export function OrganizerShell({
   pastEvents?: OrganizerEvent[];
   activeEventId?: string;
   /** Highlighted entry of the menu. */
-  section?: "events" | "rsvps" | "team";
+  section?: "events" | "rsvps" | "team" | "settings";
   /** Title of the sticky top bar. */
   title: string;
   crumbs?: Crumb[];
@@ -92,10 +92,9 @@ export function OrganizerShell({
       ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug), active: section === "team" }]
       : []),
     ...(canAccessOrgSettings(role)
-      ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug) }]
+      ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug), active: section === "settings" }]
       : []),
   ];
-  const scan: NavItem = { key: "scan", icon: "scan", label: t("tabs.scan"), href: routes.scanner() };
   const short = (e: OrganizerEvent) => formatEventDateTime(e.starts_at, e.timezone, locale).date;
 
   const eventLink = (e: OrganizerEvent) => (
@@ -159,8 +158,6 @@ export function OrganizerShell({
 
         <nav className="flex flex-col gap-0.5">
           {nav.map(navItem)}
-          <div className="mx-1 my-2 h-px bg-v2-c10" />
-          {navItem(scan)}
         </nav>
 
         {canCreateEvents(role) && (
@@ -269,7 +266,7 @@ export function OrganizerShell({
           aria-label={t("organizer.menu")}
           className="fixed inset-x-4 bottom-4 z-30 flex h-16 items-center justify-evenly rounded-v2-pill border border-white/10 bg-[rgba(18,18,18,0.86)] shadow-[0_18px_40px_rgba(0,0,0,0.6)] backdrop-blur-xl lg:hidden"
         >
-          {[nav[0]!, nav[1]!, scan, ...nav.slice(2)].map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.key}
               href={item.href}

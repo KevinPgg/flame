@@ -23,6 +23,13 @@ describe("organizerV2Redirect — v1 organizer links land on v2", () => {
     expect(r("/organizer/team?org=kora")).toBe("/v2/organizer/team?org=kora");
   });
 
+  it("settings: personal / organization go to v2 (payouts stays on v1)", () => {
+    expect(r("/organizer/settings?org=kora")).toBe("/v2/organizer/settings?org=kora");
+    expect(r("/organizer/settings?org=kora&tab=organization")).toBe("/v2/organizer/settings?org=kora&tab=organization");
+    expect(r("/organizer/settings?org=kora&tab=personal")).toBe("/v2/organizer/settings?org=kora&tab=personal");
+    expect(r("/organizer/settings?org=kora&tab=weird")).toBe("/v2/organizer/settings?org=kora");
+  });
+
   it("event and RSVP pages keep their id and org", () => {
     expect(r("/organizer/event/ev1?org=kora")).toBe("/v2/organizer/event/ev1?org=kora");
     expect(r("/organizer/rsvps/ev1?org=kora")).toBe("/v2/organizer/rsvps/ev1?org=kora");

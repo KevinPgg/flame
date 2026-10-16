@@ -21,6 +21,7 @@ import * as checkin from "@/app/api/qr-scanner/checkin/route";
 import * as validateCode from "@/app/api/qr-scanner/validate-code/route";
 import * as scanners from "@/app/api/organizer/events/[id]/scanners/route";
 import * as scannerEvents from "@/app/api/qr-scanner/events/route";
+import * as scannerCode from "@/app/api/organizer/events/[id]/scanner-code/route";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const COHOST = "22222222-2222-4222-8222-222222222222";
@@ -265,5 +266,59 @@ describe("GET /api/qr-scanner/events", () => {
   it("strangers see nothing; anonymous → 401", async () => {
     expect((await list("stranger")).ids).toEqual([]);
     expect((await list(null)).status).toBe(401);
+  });
+});
+
+describe("PUT /api/organizer/events/[id]/scanner-code (access code, separate from accounts)", () => {
+  const params = { params: Promise.resolve({ id: EV }) };
+  const put = (who: Who, body: unknown) => {
+    state.clerk = `c-${who}`;
+    return scannerCode.PUT(json(`/api/organizer/events/${EV}/scanner-code`, "PUT", body), params);
+  };
+  const codeWrites = () => state.db.writes().filter((w: any) => w.table === "events" && w.op === "update");
+
+  it("owner generates a 6-character code without look-alikes", async () => {
+    const res = await put("owner", { action: "generate" });
+    expect(res.status).toBe(200);
+    const { code } = await res.json();
+    expect(code).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{6}$/);
+    expect(codeWrites()).toHaveLength(1);
+  });
+
+  it("custom code is normalized; one used by another event → CODE_TAKEN without writing", async () => {
+    const ok = await put("owner", { action: "set", code: " new-12 " });
+    expect(await ok.json()).toEqual({ code: "NEW12" });
+    const before = codeWrites().length;
+    const taken = await put("owner", { action: "set", code: "door1" }); // EV2 uses DOOR1
+    expect(taken.status).toBe(409);
+    expect((await taken.json()).code).toBe("CODE_TAKEN");
+    expect(codeWrites()).toHaveLength(before);
+    const bad = await put("owner", { action: "set", code: "AB" });
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).code).toBe("INVALID");
+    const junk = await put("owner", { action: "nope" });
+    expect(junk.status).toBe(400);
+  });
+
+  it("clear removes the code", async () => {
+    const res = await put("owner", { action: "clear" });
+    expect(await res.json()).toEqual({ code: null });
+  });
+
+  it("an organizer assigned to the event manages accounts but not the code (owner/admin only)", async () => {
+    state.db.tables.users.push({ id: "u-assigned", role: "organizer", clerk_id: "c-assigned", email: "a@x.com" });
+    state.db.tables.organization_members.push({ id: "m9", user_id: "u-assigned", organization_id: ORG, role: "organizer" });
+    state.db.tables.event_assignments.push({ id: "a9", event_id: EV, organization_id: ORG, user_id: "u-assigned", cohost_organization_id: null });
+    state.clerk = "c-assigned";
+    const res = await scannerCode.PUT(json(`/api/organizer/events/${EV}/scanner-code`, "PUT", { action: "generate" }), params);
+    expect(res.status).toBe(403);
+    const list = await scanners.GET(json(`/api/organizer/events/${EV}/scanners`, "GET"), params);
+    expect(list.status).toBe(200);
+    expect(codeWrites()).toHaveLength(0);
+  });
+
+  it.each(["viewerMember", "unassignedOrganizer", "door", "cohostMember", "otherOrgOrganizer"] as const)("%s can't touch the code", async (who) => {
+    expect((await put(who, { action: "generate" })).status).toBe(403);
+    expect(codeWrites()).toHaveLength(0);
   });
 });

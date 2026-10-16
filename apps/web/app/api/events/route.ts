@@ -15,7 +15,7 @@ import { sendDateChangeEmail } from "../../lib/email/date-change-notifications";
 import { fetchCompletedOrderBuyers, inBatches } from "../../lib/utils/event-recipients";
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
 import { requireEventAccess } from "@/app/lib/utils/event-access";
-import { canCreateEvents, type OrgMemberRole } from "@project-flame/lib";
+import { canCreateEvents, canManageAccessCodes, type OrgMemberRole } from "@project-flame/lib";
 import {
   ensureUniquePublishedSlug,
   ExhaustedSlugError,
@@ -919,6 +919,11 @@ export async function PATCH(req: NextRequest) {
     // Role + assignment: organizers only act on events assigned to them (owner/admin: all).
     const denied = await requireEventAccess(supabaseAdmin, supabaseUser.id, event.id, event.organization_id);
     if (denied) return denied;
+
+    // The door access code is owner/admin only (canManageAccessCodes; the app hides it for others).
+    if (validatedData.qr_scanner_code !== undefined && !canManageAccessCodes(membership.role)) {
+      return NextResponse.json({ error: "Only owners and admins can change the access code" }, { status: 403 });
+    }
 
     // Validate dates if provided
     if (validatedData.starts_at || validatedData.ends_at) {

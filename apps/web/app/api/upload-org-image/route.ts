@@ -127,14 +127,16 @@ async function verifyOrgMembership(
     return { ok: false, error: "Organization not found", status: 404 };
   }
 
+  // Owner/admin only — same rule as PATCH /api/organizations/[id] (logo is part of the org
+  // profile). Before 2026-10-16 any member, viewers included, could replace or delete it.
   const { data: membership } = await supabaseAdmin
     .from("organization_members")
-    .select("id")
+    .select("id, role")
     .eq("user_id", supabaseUser.id)
     .eq("organization_id", org.id)
     .single();
 
-  if (!membership) {
+  if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
     return {
       ok: false,
       error: "You don't have permission to manage this organization's images",

@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { parseTicketQr, scanResultKind, scanErrorKind, scannerEventList, isHappeningNow } from "../src";
+import {
+  parseTicketQr,
+  scanResultKind,
+  scanErrorKind,
+  scannerEventList,
+  isHappeningNow,
+  normalizeAccessCode,
+  isValidAccessCode,
+  generateAccessCode,
+  ACCESS_CODE_ALPHABET,
+} from "../src";
 
 describe("parseTicketQr", () => {
   it("regular ticket", () => {
@@ -51,5 +61,24 @@ describe("scanner events", () => {
     expect(isHappeningNow(ev("a", "2026-10-17T01:30:00Z", "2026-10-17T08:00:00Z"), now)).toBe(true);
     expect(isHappeningNow(ev("b", "2026-10-17T03:00:00Z", "2026-10-17T08:00:00Z"), now)).toBe(false);
     expect(isHappeningNow(ev("c", "2026-10-16T12:00:00Z", "2026-10-16T22:00:00Z"), now)).toBe(false);
+  });
+});
+
+describe("access code", () => {
+  it("normalizes what the organizer types and validates 4–8 letters/digits", () => {
+    expect(normalizeAccessCode(" door-12 ")).toBe("DOOR12");
+    expect(isValidAccessCode("DOOR12")).toBe(true);
+    expect(isValidAccessCode("AB1")).toBe(false);
+    expect(isValidAccessCode("ABCDEFGHI")).toBe(false);
+    expect(isValidAccessCode("DOOR_1")).toBe(false);
+  });
+  it("generated codes: 6 characters from the no-look-alike alphabet, valid for the API", () => {
+    let i = 0;
+    const code = generateAccessCode((max) => i++ % max);
+    expect(code).toBe("ABCDEF");
+    const last = generateAccessCode((max) => max - 1);
+    expect(last).toBe("999999");
+    expect(ACCESS_CODE_ALPHABET).not.toMatch(/[01OIL]/);
+    expect(isValidAccessCode(generateAccessCode((max) => Math.floor(Math.random() * max)))).toBe(true);
   });
 });

@@ -18,12 +18,9 @@ export const routes = {
   tier: (eventId: string, slug: string, tierId: string) =>
     `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
   team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
-  /** Door scanner (any signed-in person who may scan; not tied to one organization). */
-  scanner: (eventId?: string) => `/v2/scanner${eventId ? `?event=${encodeURIComponent(eventId)}` : ""}`,
-  /** v1 scanner: per-event access code (older app versions, people without an account). */
-  scannerWithCode: () => "/qr-scanner",
+  settings: (slug: string, tab?: "personal" | "organization") =>
+    `/v2/organizer/settings?${q(slug)}${tab ? `&tab=${tab}` : ""}`,
   // still v1
-  settings: (slug: string) => `/organizer/settings?${q(slug)}&tab=organization`,
   payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,
 
   attendeeHome: () => "/",

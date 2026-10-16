@@ -46,7 +46,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, Redirect } from "expo-router";
+import { SCANNING_SUPPORTED } from "../lib/scanner-platform";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import type { BarcodeScanningResult } from "expo-camera";
@@ -649,6 +650,8 @@ export default function ScannerScreen() {
   // public mode: staff without a Flame account can scan with just an access code.
   const { public: publicParam } = useLocalSearchParams<{ public?: string }>();
   const isPublicMode = publicParam === "1" || publicParam === "true";
+
+  if (!SCANNING_SUPPORTED) return <Redirect href="/" />;
 
   if (isPublicMode) {
     return <ScannerContent isPublicMode />;

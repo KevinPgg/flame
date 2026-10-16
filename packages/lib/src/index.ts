@@ -395,7 +395,19 @@ export {
   memberHasActions,
 } from "./organizer/team";
 export type { TeamMember, TeamAssignment, AssignableRole, AssignableEvent } from "./organizer/team";
-export { parseTicketQr, scanResultKind, scanErrorKind, scannerEventList, isHappeningNow } from "./organizer/scanner";
+export {
+  parseTicketQr,
+  scanResultKind,
+  scanErrorKind,
+  scannerEventList,
+  isHappeningNow,
+  ACCESS_CODE_PATTERN,
+  ACCESS_CODE_ALPHABET,
+  GENERATED_ACCESS_CODE_LENGTH,
+  normalizeAccessCode,
+  isValidAccessCode,
+  generateAccessCode,
+} from "./organizer/scanner";
 export type { TicketQrData, ScanResultKind, VerifiedTicket, ScannerEvent } from "./organizer/scanner";
 export type {
   StageDraft,
@@ -425,3 +437,18 @@ export type {
   SupabaseClientConfig,
   SupabaseAdminConfig,
 } from "./supabase";
+export {
+  ORG_DESCRIPTION_MAX,
+  ORG_CITY_MAX,
+  ORG_INSTAGRAM_MAX,
+  ORG_LOGO_MAX_BYTES,
+  ORG_LOGO_TYPES,
+  orgFormFrom,
+  normalizeInstagram,
+  validateOrgForm,
+  orgFormPayload,
+  orgFormDirty,
+  orgImageStoragePath,
+  logoFileProblem,
+} from "./organizer/org-settings";
+export type { OrgProfile, OrgForm, OrgFormErrors } from "./organizer/org-settings";

@@ -1,8 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
-import { requireEventAccess } from "@/app/lib/utils/event-access";
+import { eventToolGate } from "@/app/lib/utils/event-tool-gate";
 
 /**
  * People designated to scan one event's tickets (decision 2026-10-16). Members of the
@@ -17,29 +16,7 @@ import { requireEventAccess } from "@/app/lib/utils/event-access";
  */
 
 type Ctx = { params: Promise<{ id: string }> };
-type Gate = { res: NextResponse } | { res?: undefined; callerId: string; event: { id: string; organization_id: string } };
-
-async function gate(eventId: string): Promise<Gate> {
-  const { userId } = await auth();
-  if (!userId) return { res: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  if (!supabaseAdmin) return { res: NextResponse.json({ error: "Database not configured" }, { status: 500 }) };
-
-  const { data: caller, error: callerError } = await supabaseAdmin.from("users").select("id").eq("clerk_id", userId).maybeSingle();
-  if (callerError) return { res: NextResponse.json({ error: "Failed to verify permissions" }, { status: 500 }) };
-  if (!caller) return { res: NextResponse.json({ error: "User not found" }, { status: 404 }) };
-
-  const { data: event, error: eventError } = await supabaseAdmin
-    .from("events")
-    .select("id, organization_id")
-    .eq("id", eventId)
-    .maybeSingle();
-  if (eventError) return { res: NextResponse.json({ error: "Failed to load event" }, { status: 500 }) };
-  if (!event) return { res: NextResponse.json({ error: "Event not found" }, { status: 404 }) };
-
-  const denied = await requireEventAccess(supabaseAdmin, caller.id, event.id, event.organization_id);
-  if (denied) return { res: denied };
-  return { callerId: caller.id as string, event: event as { id: string; organization_id: string } };
-}
+const gate = eventToolGate;
 
 type Row = {
   id: string;

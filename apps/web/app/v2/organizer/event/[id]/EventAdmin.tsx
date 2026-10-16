@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
+  canManageAccessCodes,
   canManageAssignedEvents,
   formatCentsAsPrice,
   formatEventDateTime,
@@ -279,7 +280,13 @@ export default function EventAdmin({
         ) : tab === "promotions" ? (
           isOwnerOrg ? <PromotionsTab event={event} canEdit={canEdit} onChanged={invalidate} /> : <NoSales />
         ) : tab === "scanners" ? (
-          <ScannersTab event={event} organizationName={found?.ownerName ?? organization.name} canEdit={canEdit} />
+          <ScannersTab
+            event={event}
+            organizationName={found?.ownerName ?? organization.name}
+            canEdit={canEdit}
+            canManageCode={isOwnerOrg && canManageAccessCodes(role)}
+            onCodeChanged={invalidate}
+          />
         ) : isOwnerOrg ? (
           <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
         ) : (

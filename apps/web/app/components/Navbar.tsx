@@ -10,7 +10,6 @@ import {
   IoPersonCircleOutline,
   IoLogoWhatsapp,
   IoSettingsOutline,
-  IoQrCodeOutline,
 } from "react-icons/io5";
 import { useUser, SignInButton, UserButton } from "@clerk/nextjs";
 
@@ -53,16 +52,6 @@ export default function Navbar() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex md:items-center md:gap-8">
-              {isLoaded && isSignedIn && (
-                <Link
-                  href="/qr-scanner"
-                  aria-label="QR Scanner"
-                  className="text-white-50 hover:text-white-100 transition-colors"
-                >
-                  <IoQrCodeOutline size={22} />
-                </Link>
-              )}
-
               {navLinks.map(link => (
                 <Link
                   key={link.name}
@@ -188,16 +177,6 @@ export default function Navbar() {
 
                 {/* Navigation Links */}
                 <nav className="flex-1 flex flex-col gap-4">
-                  {isLoaded && isSignedIn && (
-                    <Link
-                      href="/qr-scanner"
-                      onClick={toggleMenu}
-                      className="text-white-100 font-poppins-semibold text-3xl py-4 border-b border-white-10 flex items-center justify-between hover:text-white-80 transition-colors"
-                    >
-                      QR SCANNER
-                      <IoQrCodeOutline size={28} />
-                    </Link>
-                  )}
 
                   {navLinks.map(link => (
                     <Link

@@ -90,3 +90,28 @@ export function isHappeningNow(e: ScannerEvent, now: Date = new Date()): boolean
   const t = now.getTime();
   return t >= new Date(e.starts_at).getTime() - 3 * 3_600_000 && t <= new Date(e.ends_at).getTime();
 }
+
+/**
+ * Per-event access code (events.qr_scanner_code): lets a phone without a Flame account scan one
+ * event. 4–8 uppercase letters/digits (what the API and the app accept). Generated codes use 6
+ * characters without look-alikes (0/O, 1/I/L) so door staff can type them without mistakes.
+ */
+export const ACCESS_CODE_PATTERN = /^[A-Z0-9]{4,8}$/;
+export const ACCESS_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const GENERATED_ACCESS_CODE_LENGTH = 6;
+
+/** What the organizer typed → stored form (upper case, no spaces or dashes). */
+export function normalizeAccessCode(input: string): string {
+  return input.toUpperCase().replace(/[\s-]+/g, "");
+}
+
+export function isValidAccessCode(code: string): boolean {
+  return ACCESS_CODE_PATTERN.test(code);
+}
+
+/** `randomInt(max)` → integer in [0, max). Pass a crypto-backed one on the server. */
+export function generateAccessCode(randomInt: (max: number) => number): string {
+  let out = "";
+  for (let i = 0; i < GENERATED_ACCESS_CODE_LENGTH; i++) out += ACCESS_CODE_ALPHABET[randomInt(ACCESS_CODE_ALPHABET.length)];
+  return out;
+}

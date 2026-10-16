@@ -6,6 +6,7 @@ import { selectAllPages } from "./supabase-pagination";
  *  - any member of the event's organization (any role);
  *  - any member of an organization co-hosting the event;
  *  - people designated for that event (event_scanners) — any Flame account.
+ *  - separately, anyone holding the event's access code (no account; see accessCodesEnabled).
  * Before, any users.role = 'organizer' could verify tickets and only org membership was checked
  * for organizers; people without an organizer account could only use the shared event code.
  */
@@ -99,5 +100,9 @@ export async function scannableEventIds(db: any, user: ScanUser): Promise<string
   return Array.from(ids);
 }
 
-/** Per-event access codes stay accepted until SCANNER_ACCESS_CODES=off (old app versions use them). */
+/**
+ * Per-event access code: a permanent second way in (decision 2026-10-16) for phones the organizer
+ * hands to door staff without creating an account. SCANNER_ACCESS_CODES=off is only an emergency
+ * switch (verify, checkin and validate-code then refuse codes).
+ */
 export const accessCodesEnabled = () => process.env.SCANNER_ACCESS_CODES !== "off";
