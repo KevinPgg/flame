@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 export async function POST(req: NextRequest) {
   // DEPRECATED: Datafast route — superseded by Stripe webhooks. Paid purchases use
   // payment_intent.succeeded → createOrderAndTicketsFromHold(); free uses complete-hold-free.
-  // No active flows call this route. Log to detect unexpected usage. See docs/todos/EDGE_CASES_TODOS.md #88.
+  // No active flows call this route. Log to detect unexpected usage. See docs/historico/todos/EDGE_CASES_TODOS.md #88.
   console.warn(
     "[DEPRECATED] POST /api/purchase/complete-hold hit — Datafast flow is legacy/dead. Paid→Stripe webhook, free→complete-hold-free."
   );

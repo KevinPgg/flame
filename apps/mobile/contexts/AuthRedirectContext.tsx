@@ -5,7 +5,7 @@
  * Includes a 15s timeout fallback so the overlay never stays permanently if
  * the destination screen never gains focus (e.g. unexpected route, isLoading stuck).
  *
- * @see docs/fixes/MARCH_2026_FIXES.md #374
+ * @see docs/historico/fixes/MARCH_2026_FIXES.md #374
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback } from "react";

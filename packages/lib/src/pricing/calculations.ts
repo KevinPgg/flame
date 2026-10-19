@@ -347,7 +347,7 @@ export function getBasePriceFromTicket(
  * helper is migration-date aware: returns `total_cents` as-is for rows on/after
  * `STRIPE_CONNECT_MIGRATION_DATE` (modern rows store base directly) and only
  * delegates to `extractBasePriceHistorical` for genuinely pre-Connect rows.
- * See `docs/fixes/MAY_2026_FIXES.md` #2 "Pattern note — when to use which
+ * See `docs/historico/fixes/MAY_2026_FIXES.md` #2 "Pattern note — when to use which
  * pricing helper".
  */
 export function getOrderDisplayCents(

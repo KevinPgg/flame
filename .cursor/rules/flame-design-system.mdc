@@ -215,13 +215,13 @@ For every element in the Figma, verify 1:1 match on:
 
 **During Phase 5 / Phase 7 (logic porting):** Follow the **Web-to-Mobile Logic Porting Protocol** (`project-flame-master.mdc` Section 9) and the **Web Parity Gate** (`project-flame-master.mdc` Section 9.1). Key rules:
 
-- **Read the corresponding web hook/component BEFORE writing any mobile hook.** The web file is the source of truth for what API calls to make, what parameters to send, and what edge cases to handle. Consult the Reference Mapping Table in `docs/project-migrations/IOS_MIGRATION.md` Section 7 for exact file paths.
+- **Read the corresponding web hook/component BEFORE writing any mobile hook.** The web file is the source of truth for what API calls to make, what parameters to send, and what edge cases to handle. Consult the Reference Mapping Table in `docs/historico/project-migrations/IOS_MIGRATION.md` Section 7 for exact file paths.
 - **Import shared logic from `@project-flame/lib`** — never reimplement fee calculations, validations, or formatting.
 - Use the existing "Load Once, Cache Locally" pattern via `useAppEvents()` or similar hooks.
 - If the new screen needs additional data fields (e.g., `timeRange`), extend existing interfaces with **optional** fields to maintain backward compatibility.
 - Filter/sort in memory using `useMemo` — never add new Supabase queries for client-side filtering.
 - **NEVER write logic from scratch.** Port it from the web, adapting only the minimal platform-specific parts (Stripe PaymentSheet instead of Elements, Expo Router instead of Next.js Router, etc.).
-- **Apply Industry Standards to technical patterns, not just UI.** When porting data fetching, caching, loading, or real-time patterns, benchmark against Eventbrite/Ticketmaster/Airbnb (see `project-flame-master.mdc` Section 3). Key conventions: single batch API call per screen (avoid staggered loading from multiple parallel queries), server-authoritative calculations (revenue from actual orders), unified loading states, real-time polling for availability. If mobile adopts a better pattern than the current web implementation, log it in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`.
+- **Apply Industry Standards to technical patterns, not just UI.** When porting data fetching, caching, loading, or real-time patterns, benchmark against Eventbrite/Ticketmaster/Airbnb (see `project-flame-master.mdc` Section 3). Key conventions: single batch API call per screen (avoid staggered loading from multiple parallel queries), server-authoritative calculations (revenue from actual orders), unified loading states, real-time polling for availability. If mobile adopts a better pattern than the current web implementation, log it in `docs/historico/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`.
 
 ### Step 8: Final Verification
 

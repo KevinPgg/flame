@@ -11,7 +11,7 @@ Which category does this PR belong to? (Check one)
 
 - [ ] **Bug fix / Production fix** — Fixes a verified bug or production issue
   - [ ] Root cause identified and documented in PR description.
-  - [ ] Fix logged in the active changelog (`docs/fixes/APRIL_2026_FIXES.md`).
+  - [ ] Fix logged in the active changelog (`docs/historico/fixes/APRIL_2026_FIXES.md`).
   - [ ] If fix touches auth/navigation flow: tested on both dev (Metro) and production (TestFlight/EAS) builds.
 
 - [ ] **PR review fix** — Addresses findings from automated or manual PR review
@@ -29,7 +29,7 @@ Which category does this PR belong to? (Check one)
 
 - [ ] **New feature** — New user-facing functionality
   - [ ] If this feature has a web equivalent: followed the Logic Porting Protocol and Web Parity Gate (Section 9.1 in `project-flame-master.mdc`).
-  - [ ] If mobile-only: added entry to `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`.
+  - [ ] If mobile-only: added entry to `docs/historico/todos/CRUCIAL_IOS_TO_WEB_TODOS.md`.
 
 - [ ] **Other** — Shared package (`packages/lib`), docs, CI, or general change.
 

@@ -5,7 +5,7 @@
  * gating config from the `app_config` table (single row keyed by `mobile`).
  *
  * Consumed by `apps/mobile/lib/version-check.ts` on launch + on AppState active.
- * See `docs/guides/EAS_OTA_UPDATES.md` "Version Gating" for the operator runbook.
+ * See `docs/guias/EAS_OTA_UPDATES.md` "Version Gating" for the operator runbook.
  *
  * Safety:
  *   1. Sanity guard: clamps `minimum_version` down to `latest_version` if a typo

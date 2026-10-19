@@ -176,7 +176,7 @@ export default function Layout() {
   // The whole point of the gate is to be non-bypassable during incidents.
   // VersionGate decides whether to render ForceUpdateScreen (status === "hard")
   // or its children — when it renders children, Clerk's normal gating kicks
-  // back in. See docs/guides/EAS_OTA_UPDATES.md "Version Gating".
+  // back in. See docs/guias/EAS_OTA_UPDATES.md "Version Gating".
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <OptionalStripeProvider>

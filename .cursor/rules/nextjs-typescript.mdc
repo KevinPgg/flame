@@ -169,7 +169,7 @@ pnpm test:integration                   # Database integration tests
 TEST_DATABASE_CONFIRMED=true pnpm test:run  # With preview branch (bypasses safety check)
 ```
 
-**Documentation:** See `docs/testing/` for detailed guides on test environments, specific test suites, and troubleshooting.
+**Documentation:** See `docs/historico/testing/` for detailed guides on test environments, specific test suites, and troubleshooting.
 
 ### Error Handling:
 

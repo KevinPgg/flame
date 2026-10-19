@@ -24,7 +24,7 @@ import {
 } from "../navigation/CustomTabBar";
 
 // NOTE: iOS-only today. When Android ships, swap "App Store" for a
-// platform-aware label — see docs/todos/VERSION_GATE_TODOS.md
+// platform-aware label — see docs/historico/todos/VERSION_GATE_TODOS.md
 // "Android store-name localization".
 
 interface UpdateAvailableBannerProps {

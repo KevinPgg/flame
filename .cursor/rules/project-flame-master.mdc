@@ -39,9 +39,9 @@ When reviewing PR comments, issues, or any list of changes, apply this decision 
 
 1. **Critical (breaks the app, data loss, security)?** → **Fix immediately**, regardless of category.
 2. **Standard Bugs & Code Quality (functional bugs, clear logic errors, anti-patterns)?** → **Fix in the current PR.** We must deliver working, clean code.
-3. **Edge cases or optimizations (uncommon scenarios, performance enhancements that don't break the core app)?** → **Defer.** Add to `docs/todos/EDGE_CASES_TODOS.MD` with context and reproduction steps.
-4. **Accessibility (non-critical)?** → **Defer.** Add to `docs/todos/ACCESSIBILITY_TODOS.md` (or `WEB_ACCESSIBILITY_TODOS.md` for Phase 9 Web Design PRs only) with component name, issue description, and suggested fix.
-5. **Nitpicks & Optional ("nice to have", opinionated refactors, minor styling)?** → **DO NOT FIX in the current PR.** Defer to backlog to prevent scope creep. Log it in a tracking file (e.g., `docs/todos/NITPICKS_TODOS.md`, or `WEB_NITPICKS_TODOS.md` for Phase 9 Web Design PRs only).
+3. **Edge cases or optimizations (uncommon scenarios, performance enhancements that don't break the core app)?** → **Defer.** Add to `docs/historico/todos/EDGE_CASES_TODOS.MD` with context and reproduction steps.
+4. **Accessibility (non-critical)?** → **Defer.** Add to `docs/historico/todos/ACCESSIBILITY_TODOS.md` (or `WEB_ACCESSIBILITY_TODOS.md` for Phase 9 Web Design PRs only) with component name, issue description, and suggested fix.
+5. **Nitpicks & Optional ("nice to have", opinionated refactors, minor styling)?** → **DO NOT FIX in the current PR.** Defer to backlog to prevent scope creep. Log it in a tracking file (e.g., `docs/historico/todos/NITPICKS_TODOS.md`, or `WEB_NITPICKS_TODOS.md` for Phase 9 Web Design PRs only).
 
 ### Phase 1: Context & Diagnosis (Pre-Code)
 
@@ -53,8 +53,8 @@ When reviewing PR comments, issues, or any list of changes, apply this decision 
 
 1. **Fix Code:** Apply changes following patterns in this guide.
 2. **Update Docs IMMEDIATELY:**
-   - Log **every** fix in the active changelog: `docs/fixes/<MONTH>_<YEAR>_FIXES.md` (or the current month's file).
-   - **Check for stale docs:** If a fix changes behavior documented in `docs/features/`, `docs/guides/`, `docs/project-migrations/`, or any other reference doc, **update that doc** so it reflects the new behavior. Do not leave outdated docs behind.
+   - Log **every** fix in the active changelog: `docs/historico/fixes/<MONTH>_<YEAR>_FIXES.md` (or the current month's file).
+   - **Check for stale docs:** If a fix changes behavior documented in `docs/historico/features/`, `docs/guias/`, `docs/historico/project-migrations/`, or any other reference doc, **update that doc** so it reflects the new behavior. Do not leave outdated docs behind.
    - Append deferred items to their respective todo files (`ACCESSIBILITY_TODOS.md`, `NITPICKS_TODOS.md`, `EDGE_CASES_TODOS.MD`; for Phase 9 Web Design: `WEB_ACCESSIBILITY_TODOS.md`, `WEB_NITPICKS_TODOS.md`).
    - **Prefer updating existing docs over creating new ones.** Do NOT create new MD files for feature summaries, polish lists, or reference materials — consolidate into existing docs (changelog, IOS_MIGRATION.md, or relevant feature/guide). Only create a new doc when there is no suitable existing file (e.g., a major new subsystem with no current documentation); new docs must be justified and approved.
 
@@ -112,7 +112,7 @@ When reviewing PR comments, issues, or any list of changes, apply this decision 
 - **If every major app does X, we do X.** UI examples: fee breakdown before payment, success screen with "View Tickets" CTA, pull-to-refresh on data screens, empty states instead of blank screens. Technical examples: single batch API call for dashboard data, server-authoritative revenue (from actual order amounts), real-time availability polling during checkout, unified loading state (no staggered partial content).
 - **If you're unsure how a flow or data pattern should work**, describe the uncertainty and reference how 2–3 benchmark apps handle it before proposing a solution.
 - **Document deviations.** If we intentionally diverge from an industry convention (e.g., simplified flow for our market, or a different caching strategy), note the reasoning in the PR description or a doc comment so it's a conscious choice, not an oversight.
-- **Mobile can lead.** If the mobile implementation adopts a better industry pattern than the current web implementation (e.g., consolidated data fetching), implement it on mobile and log the improvement in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` so web can adopt it later.
+- **Mobile can lead.** If the mobile implementation adopts a better industry pattern than the current web implementation (e.g., consolidated data fetching), implement it on mobile and log the improvement in `docs/historico/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` so web can adopt it later.
 
 ### Next.js (Web)
 
@@ -360,7 +360,7 @@ Setup: Clerk Dashboard → JWT Templates → name `supabase`, signing key = Supa
 
 **Phase 9 (Web Design Update — Mar 2026+):** Tailwind + Flame tokens, 800px max-width. Read `docs/prompts/prompts_phases_web_design.md`. Order: P9-1–P9-5 first (Foundation, Navbar, Home, Events, Event Detail+Checkout), then P9-6–P9-8 (Dashboard, Polish).
 
-**Note:** iOS-specific phases (Phase 6 iOS Polish complete Mar 2026, Phase 7 Production Readiness complete Mar 7 2026) are tracked in `docs/project-migrations/IOS_MIGRATION.md`. Phase 7 task prompts and PR review prompts are in `docs/prompts/prompts_phases.md`.
+**Note:** iOS-specific phases (Phase 6 iOS Polish complete Mar 2026, Phase 7 Production Readiness complete Mar 7 2026) are tracked in `docs/historico/project-migrations/IOS_MIGRATION.md`. Phase 7 task prompts and PR review prompts are in `docs/prompts/prompts_phases.md`.
 
 ---
 
@@ -372,7 +372,7 @@ This protocol is the **Phase 5 equivalent** of the Figma-to-Code Implementation 
 
 ### Step 1: Identify Web Source Files (MANDATORY)
 
-Before writing ANY mobile logic, consult the **Reference Mapping Table** in `docs/project-migrations/IOS_MIGRATION.md` Section 7 to identify the exact web files that implement this feature. Read **ALL** of them. If the mapping table doesn't cover a feature, search `apps/web/` for the equivalent before proceeding.
+Before writing ANY mobile logic, consult the **Reference Mapping Table** in `docs/historico/project-migrations/IOS_MIGRATION.md` Section 7 to identify the exact web files that implement this feature. Read **ALL** of them. If the mapping table doesn't cover a feature, search `apps/web/` for the equivalent before proceeding.
 
 ### Step 2: Document the Web Flow
 
@@ -408,7 +408,7 @@ Write the mobile hook/function by following the web implementation step-by-step:
 4. **Same state machine** — If web has states `idle → loading → success / error`, mobile has the same transitions.
 5. **Same edge cases** — If web handles "free after promo code" differently from "paid", mobile does too.
 6. **Same cents/dollars convention** — If web stores amounts in cents and displays via `formatCentsAsPrice()`, mobile does the exact same thing. NEVER convert or round manually.
-7. **Better industry pattern?** — If during porting you identify that the web's approach doesn't match industry conventions (e.g., web makes 3 separate API calls where Eventbrite/Ticketmaster use a single batch call, or web calculates revenue client-side where Stripe Dashboard uses server-authoritative amounts), adopt the industry-standard pattern on mobile and log the improvement in `docs/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` for web to adopt later. The web is the source of truth for *what* logic to port, but not necessarily for *how* to structure the data flow. See Section 3 — Industry Standards Benchmarking.
+7. **Better industry pattern?** — If during porting you identify that the web's approach doesn't match industry conventions (e.g., web makes 3 separate API calls where Eventbrite/Ticketmaster use a single batch call, or web calculates revenue client-side where Stripe Dashboard uses server-authoritative amounts), adopt the industry-standard pattern on mobile and log the improvement in `docs/historico/todos/CRUCIAL_IOS_TO_WEB_TODOS.md` for web to adopt later. The web is the source of truth for *what* logic to port, but not necessarily for *how* to structure the data flow. See Section 3 — Industry Standards Benchmarking.
 
 ### Step 5: Verify Query / API Parity
 
@@ -482,7 +482,7 @@ If any item above is missing, the PR is considered incomplete.
 
 ### 9.2 Web-to-Mobile Reference Mapping
 
-The full Reference Mapping Table (which web files to read before writing each mobile feature) lives in **`docs/project-migrations/IOS_MIGRATION.md` Section 7**. Consult it before porting logic from web. The table maps every mobile hook/component to the exact web source files and API endpoints.
+The full Reference Mapping Table (which web files to read before writing each mobile feature) lives in **`docs/historico/project-migrations/IOS_MIGRATION.md` Section 7**. Consult it before porting logic from web. The table maps every mobile hook/component to the exact web source files and API endpoints.
 
 ---
 

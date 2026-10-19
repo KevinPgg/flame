@@ -160,7 +160,7 @@ export function generateEventSchema(event: any) {
               // `addressCountry` is intentionally omitted until a `country`
               // column is added to the `events` table. Schema.org treats it as
               // optional; Google will infer country from `addressLocality`.
-              // See docs/todos/EDGE_CASES_TODOS.MD — add per-event country for
+              // See docs/historico/todos/EDGE_CASES_TODOS.MD — add per-event country for
               // geo-targeted event rich results.
               ...(event.country ? { addressCountry: event.country } : {}),
             },

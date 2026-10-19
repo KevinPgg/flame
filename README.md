@@ -93,7 +93,7 @@ pnpm start
 
 ### Mobile notes
 
-Mobile is an independent Supabase client that reuses `packages/lib`. It calls the web API only for operations needing server secrets (Stripe, email). See `docs/project-migrations/IOS_MIGRATION.md` for the full mobile architecture and setup.
+Mobile is an independent Supabase client that reuses `packages/lib`. It calls the web API only for operations needing server secrets (Stripe, email). See `docs/historico/project-migrations/IOS_MIGRATION.md` for the full mobile architecture and setup.
 
 ## Scripts (repo root)
 
@@ -102,7 +102,7 @@ Mobile is an independent Supabase client that reuses `packages/lib`. It calls th
 - `pnpm lint` — Lint all workspaces
 - `pnpm format` — Prettier format across the repo
 
-Web-specific test scripts (run inside `apps/web`): `pnpm test`, `pnpm test:run`, `pnpm test:ui`. See `docs/testing/` for the testing guide.
+Web-specific test scripts (run inside `apps/web`): `pnpm test`, `pnpm test:run`, `pnpm test:ui`. See `docs/historico/testing/` for the testing guide.
 
 ## Project Structure
 

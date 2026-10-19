@@ -1,67 +1,20 @@
-# Project Flame Documentation
+# Documentación de Flame
 
-Welcome to the Project Flame documentation! This directory contains all technical documentation, guides, and references for the project.
+Ordenada por relevancia: de arriba hacia abajo, de lo que se lee siempre a lo que solo se consulta.
 
-## 📂 Documentation Structure
+| Carpeta | Qué hay | Cuándo leerla |
+| --- | --- | --- |
+| [`actual/`](actual/) | `ESTADO_ACTUAL.md` (estado del proyecto; §0 = Flame 2.0), `ARQUITECTURA.md` (arquitectura de producción), `FLAME_2_0_VALORACION.md` (plan y decisiones del rediseño), `FLAME_PLATFORM_OVERVIEW.md` (resumen para stakeholders) | **Siempre**, para retomar el trabajo |
+| [`sesiones/`](sesiones/) | Registro de cada sesión de trabajo (`YYYY-MM-DD-tema.md`) e índice en su `README.md` | Para saber qué se hizo, por qué y qué quedó pendiente |
+| [`PruebasReales/`](PruebasReales/) | Listas de pruebas manuales por fase, para ejecutar en el PC con datos reales | Antes de cerrar una fase o de pasar cambios a producción |
+| [`guias/`](guias/) | Cómo hacer las cosas: entorno de desarrollo (`SETUP_ENTORNO_DEV.md`), DNS, email, Apple Sign In, OTA, rendimiento, SEO, modo mantenimiento | Al configurar o operar algo |
+| [`historico/`](historico/) | Lo heredado del equipo anterior: changelogs de fixes por mes, features, Datafast (legacy), seguridad, docs de testing, TODOs triados, migraciones del proyecto, versiones iOS, reportes | Solo para consultar el porqué de un comportamiento existente |
 
-### `/fixes` — Bug Fixes & Patches
-Monthly fix changelogs (`<MONTH>_<YEAR>_FIXES.md`) and one-off fix write-ups. These are cross-referenced from the Cursor rules and are the project's running history of behavior changes.
+## Reglas
 
-### `/features` — Feature Implementations
-Guides for major features including promoter tracking, pricing system, free tickets, and UI improvements.
+- Un documento de estado y uno de arquitectura (`actual/`): se actualizan, no se duplican.
+- Cada sesión deja su `.md` en `sesiones/` y actualiza el índice.
+- Cada entrega suma sus casos de prueba manual en `PruebasReales/` en el mismo commit.
+- Lo que deja de ser vigente pasa a `historico/`; no se borra.
 
-### `/security` — Security Documentation
-Security reviews, patches, and implementation guides covering QR code security, storage security, and RLS.
-
-### `/project-migrations` — Database & System Migrations
-Migration guides and verification docs, including the iOS/monorepo migration (`IOS_MIGRATION.md`).
-
-### `/testing` — Testing Documentation
-Test suites, testing guides, coverage reports, and testing environment setup.
-
-### `/guides` — General Guides
-How-to guides, setup instructions, performance optimization, SEO, and general development documentation.
-
-### `/datafast` — Datafast Integration (legacy)
-Datafast payment integration documentation (legacy payment gateway used before Stripe).
-
-### `/legacy` — Archived Documentation
-Older documentation kept for historical reference, including pre-Stripe fixes and the payment systems evolution.
-
-### `/ios-versions` — iOS Release Notes
-Per-version changelogs for the mobile app releases.
-
-### `/maintenance` — Maintenance
-Operational/maintenance runbooks and notes.
-
-### `/todos` — Deferred Work Trackers
-Triaged backlog: accessibility, nitpicks, edge cases, and iOS→web parity items (per the PR triage protocol).
-
-## 🚀 Quick Links
-
-- [Main README](../README.md) - Project overview & setup
-- [Platform overview (stakeholders)](./FLAME_PLATFORM_OVERVIEW.md) - Web + iOS capabilities summary
-- [iOS / Monorepo migration](./project-migrations/IOS_MIGRATION.md) - Mobile architecture
-- [Testing Guide](./testing/TESTING_GUIDE.md) - How to run tests
-- [Stripe Implementation](../apps/web/stripe-implementation/README.md) - Stripe Connect docs
-
-## 📝 Documentation Standards
-
-When adding new documentation:
-
-1. **Use clear, descriptive names** - `FEATURE_NAME_IMPLEMENTATION.md`
-2. **Include dates** for time-sensitive docs - `JAN_16_2026_FIX_NAME.md`
-3. **Put in the right folder** - See structure above
-4. **Update this README** if adding new major sections
-
-## 🔍 Finding Documentation
-
-- **Bug fixes**: Check `/fixes` folder
-- **New features**: Check `/features` folder
-- **How-to guides**: Check `/guides` folder
-- **Testing**: Check `/testing` folder
-- **Old docs**: Check `/legacy` folder
-
----
-
-**Last Updated**: July 3, 2026
+Otros docs fuera de esta carpeta: `apps/web/stripe-implementation/` (Stripe Connect), `Levantamiento/` (visor del levantamiento técnico, foto del 2026-07-08), `Flme_comp/` (baseline de producción, no se toca).

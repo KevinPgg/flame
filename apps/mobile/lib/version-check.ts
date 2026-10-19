@@ -17,7 +17,7 @@
  * cache is stale (older than CACHE_TTL_MS) AND the network fetch fails, we
  * return SAFE_DEFAULT (which never gates) rather than the stale value. This
  * prevents a rolled-back misconfig from indefinitely blocking offline users.
- * See `docs/guides/EAS_OTA_UPDATES.md` "Version Gating" for the operator
+ * See `docs/guias/EAS_OTA_UPDATES.md` "Version Gating" for the operator
  * runbook.
  */
 
@@ -74,7 +74,7 @@ const SAFE_DEFAULT_CONFIG: AppConfigResponse = {
 
 // __DEV__-only override so we can simulate older clients without rebuilding
 // the binary. Production bundles strip this branch (process.env.EXPO_PUBLIC_*
-// is dead-coded behind __DEV__). See docs/guides/EAS_OTA_UPDATES.md.
+// is dead-coded behind __DEV__). See docs/guias/EAS_OTA_UPDATES.md.
 const DEV_VERSION_OVERRIDE = __DEV__
   ? process.env.EXPO_PUBLIC_DEV_VERSION_OVERRIDE
   : undefined;

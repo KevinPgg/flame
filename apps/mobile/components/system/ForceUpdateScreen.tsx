@@ -32,7 +32,7 @@ import { FlameText, colors } from "@project-flame/ui";
 
 // NOTE: Flame is iOS-only at the moment, so all user-facing strings reference
 // "App Store" directly. When Android ships, swap these literals for a
-// platform-aware constant — see docs/todos/VERSION_GATE_TODOS.md
+// platform-aware constant — see docs/historico/todos/VERSION_GATE_TODOS.md
 // "Android store-name localization" for the planned fix and call sites.
 
 interface ForceUpdateScreenProps {

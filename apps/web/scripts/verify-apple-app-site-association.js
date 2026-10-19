@@ -31,6 +31,6 @@ if (content.includes("REPLACE_WITH_TEAM_ID")) {
   console.error(
     "Replace it with your 10-character Apple Developer Team ID before deployment."
   );
-  console.error("See docs/project-migrations/IOS_MIGRATION.md Section 8.");
+  console.error("See docs/historico/project-migrations/IOS_MIGRATION.md Section 8.");
   process.exit(1);
 }
