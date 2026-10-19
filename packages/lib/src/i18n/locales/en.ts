@@ -89,6 +89,7 @@ export const en = {
     deleteAccount: "Delete account",
   },
   organizer: {
+    breadcrumb: "Breadcrumb",
     menu: "Menu",
     closeMenu: "Close menu",
     upcoming: "Upcoming",
@@ -707,5 +708,7 @@ export const en = {
   errors: {
     generic: "Something went wrong. Please try again.",
     network: "No connection. Check your internet and try again.",
+    pageTitle: "Something went wrong",
+    pageBody: "This page couldn’t load. Try again, or go back to your organizers.",
   },
 } as const;

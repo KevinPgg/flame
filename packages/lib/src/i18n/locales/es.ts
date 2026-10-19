@@ -87,6 +87,7 @@ export const es: Messages = {
     deleteAccount: "Eliminar cuenta",
   },
   organizer: {
+    breadcrumb: "Ruta de navegación",
     menu: "Menú",
     closeMenu: "Cerrar menú",
     upcoming: "Próximos",
@@ -705,5 +706,7 @@ export const es: Messages = {
   errors: {
     generic: "Algo salió mal. Inténtalo de nuevo.",
     network: "Sin conexión. Revisa tu internet e inténtalo de nuevo.",
+    pageTitle: "Algo salió mal",
+    pageBody: "Esta página no se pudo cargar. Inténtalo de nuevo o vuelve a tus organizadores.",
   },
 };

@@ -233,7 +233,7 @@ export function OrganizerShell({
             )}
             <div className="min-w-0">
               {crumbs.length > 0 && (
-                <nav aria-label="Breadcrumb" className="mb-0.5 hidden items-center gap-1 overflow-hidden whitespace-nowrap text-[12.5px] text-v2-c50 sm:flex">
+                <nav aria-label={t("organizer.breadcrumb")} className="mb-0.5 hidden items-center gap-1 overflow-hidden whitespace-nowrap text-[12.5px] text-v2-c50 sm:flex">
                   {crumbs.map((c, i) => (
                     <span key={`${c.label}-${i}`} className="flex min-w-0 items-center gap-1">
                       {i > 0 && <Icon name="chev" size={12} className="shrink-0 opacity-50" />}
