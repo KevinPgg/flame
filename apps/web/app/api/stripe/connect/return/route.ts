@@ -232,8 +232,9 @@ export async function GET(req: NextRequest) {
       .single();
 
     const orgSlug = orgData?.slug;
-    const redirectUrl = orgSlug 
-      ? `${getBaseUrl()}/organizer?org=${orgSlug}&connect=success`
+    // Back to Payouts (v2 via the organizer redirect; v1 settings if ORGANIZER_V1=true).
+    const redirectUrl = orgSlug
+      ? `${getBaseUrl()}/organizer/settings?org=${encodeURIComponent(orgSlug)}&tab=payouts&connect=success`
       : `${getBaseUrl()}/organizer?connect=success`;
 
     return NextResponse.redirect(redirectUrl);

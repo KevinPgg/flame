@@ -6,12 +6,8 @@ import Stripe from "stripe";
 import {
   SUPPORTED_CURRENCIES,
   formatCentsAsPrice,
+  payoutMinimumCents,
 } from "@project-flame/lib";
-
-// Stripe payout minimums (varies by currency; $1 equivalent for major currencies)
-const PAYOUT_MINIMUM_CENTS: Record<string, number> = {
-  USD: 100, EUR: 100, GBP: 100, MXN: 2000, JPY: 100, DOP: 100, COP: 100,
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -299,7 +295,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check Stripe's minimum payout threshold per currency
-    const minCents = PAYOUT_MINIMUM_CENTS[payoutCurrency.toUpperCase()] ?? 100;
+    const minCents = payoutMinimumCents(payoutCurrency);
     if (available.amount < minCents) {
       const formattedMin = formatCentsAsPrice(minCents, payoutCurrency);
       return NextResponse.json(

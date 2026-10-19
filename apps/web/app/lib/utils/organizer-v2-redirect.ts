@@ -2,7 +2,7 @@
  * Organizer web → Flame 2.0 (decision 2026-10-16: v2 is the organizer panel from now on).
  *
  * Every link, e-mail and push that still points at a v1 organizer screen lands on its v2
- * screen. Screens without a v2 yet (payouts) and the public organizer page
+ * screen. The public organizer page
  * (/organizer/[slug]) are left alone. Escape hatch: ORGANIZER_V1=true turns this off.
  *
  * Returns the v2 path + query to redirect to, or null to let the request through.
@@ -28,10 +28,14 @@ export function organizerV2Redirect(pathname: string, search: URLSearchParams): 
 
   if (path === "/organizer/team") return `/v2/organizer/team${q()}`;
 
-  // Settings: Personal / Organization are v2; Payouts stays on v1 until its v2 screen exists.
+  // Settings: Personal / Organization → v2 settings; Payouts → its own v2 screen (keeps the
+  // ?connect=success flag Stripe onboarding comes back with).
   if (path === "/organizer/settings") {
     const tab = search.get("tab");
-    if (tab === "payouts") return null;
+    if (tab === "payouts") {
+      const connect = search.get("connect");
+      return `/v2/organizer/payouts${q(connect ? { connect } : undefined)}`;
+    }
     return `/v2/organizer/settings${q(tab === "personal" || tab === "organization" ? { tab } : undefined)}`;
   }
 

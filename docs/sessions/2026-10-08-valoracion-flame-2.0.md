@@ -357,3 +357,22 @@ Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
 **Tests:** `ScannersTab.test.tsx` (8), `Settings.test.tsx` (8), `settings-api.test.ts` (5: idioma, logo solo owner/admin), `scan-access.test.ts` +8 (código: generar, propio normalizado, ocupado sin escribir, inválido, quitar, organizer asignado 403, otros roles), redirección de ajustes, lib scanner (+2) y org-settings (6). lib 361/361; web v2 + API organizador + utils 395/395; suite web completa: solo los 3 archivos que ya fallaban (purchase-page.integration, create-payment-intent, payment-protection). tsc lib y web 0. Revisado visualmente (1300 y 390, en/es) con un arnés local: sin desborde horizontal.
 
 **Fase 1 — pendiente:** payouts (y decidir si se hace el hub "Manage" del prototipo junto con payouts). Pendiente aparte: rate limit de `validate-code`, auditoría RLS móvil, force-reduce con RSVPs aprobados (fase 3).
+
+## Fase 1 — Payouts v2 (2026-10-18) · fase 1 terminada
+`/v2/organizer/payouts?org=` (prototipo `ow:payouts`), solo owner/admin. Sin respuesta de Kevin sobre el hub "Manage" → no se hizo; "Payouts" es una entrada propia del menú (owner/admin), entre Equipo y Ajustes.
+
+**Hallazgo que define la pantalla:** las cuentas Connect se crean con **payouts manuales** (`createExpressAccount`, `schedule.interval = "manual"`) y existían `GET /api/organizer/payouts/balance` y `POST /api/organizer/payouts/create` (idempotencia, CSRF, chequeo de payout en curso, mínimo por moneda, `payout_logs`) **sin ninguna pantalla que las usara** ni en web ni en la app. [Probable] Hoy el organizador solo podía retirar desde el dashboard de Stripe. El "Request payout" del prototipo reutiliza `create`.
+
+**Pantalla:**
+- Sin Stripe: país de operación + "Conectar con Stripe" (misma API `connect/onboard`; el país solo se manda al crear la cuenta). Incompleto: checklist (aceptar pagos / recibir pagos) + "Terminar configuración".
+- Conectado: por moneda "Disponible para retirar" (botón Solicitar pago; deshabilitado bajo el mínimo con el motivo; saldo negativo explicado) y "Disponible pronto"; historial de los últimos 20 payouts de Stripe (estado, fecha de llegada, "Automático"); cuenta bancaria registrada (banco ••últimos 4) y "Gestionar en Stripe" (login link de Express).
+- Solicitar pago: confirmación con monto y banco; una clave de idempotencia por confirmación; 409 → "ya hay un pago en camino"; 400 → motivo del servidor (mínimo, sin fondos; en inglés, viene de la API).
+- API nueva `GET /api/organizer/payouts/summary?organizationId=` (owner/admin): saldo, payouts y banco leídos en vivo de Stripe (solo campos necesarios; no expone routing number); sin cuenta → `{connected:false}`; error de Stripe → 502.
+- Vuelta de Stripe: `connect/return` ahora redirige a `/organizer/settings?…&tab=payouts&connect=success` → la redirección del organizador lo manda a `/v2/organizer/payouts?…&connect=success` (aviso "Stripe está conectado"). Con `ORGANIZER_V1=true` cae en los ajustes v1 de payouts.
+- `routes.payouts` → v2 (el aviso "Termina la configuración de Stripe" del menú y del panel lleva aquí). Lib `organizer/payouts.ts` (`balanceRows`, `payoutTone`, `connectState`, `PAYOUT_MINIMUM_CENTS` movido desde la API de create). Icono `bank`. i18n `payouts.*`, `tabs.payouts`.
+
+**No hecho (decisión pendiente o fuera de alcance):** transferencias bancarias "cobradas directamente" del prototipo (no hay dato agregado por organización); hub "Manage"; Finance y Comunicaciones del prototipo.
+
+**Tests:** `__tests__/v2/Payouts.test.tsx` (10: saldo/historial/banco, solicitar con confirmación + idempotencia, 409 y 400, bajo mínimo, gestionar en Stripe, error de Stripe, conectar con país, incompleto en es + error, aviso de vuelta, guardia de rol), `api/organizer/payouts-summary.test.ts` (3), lib payouts (5), redirección y shell actualizados. lib 366/366; web v2 + API organizador + utils 408/408; suite web completa: solo los 3 archivos que ya fallaban; tsc 0. Revisado visualmente (1300 y 390, en/es; corregida la tarjeta del banco en teléfono).
+
+**Fase 1 completa.** Siguiente según el plan: fase 2 (asistente / app). Pendientes aparte: rate limit de `validate-code`, auditoría RLS móvil, force-reduce con RSVPs aprobados (fase 3), probar payouts con Stripe test real.

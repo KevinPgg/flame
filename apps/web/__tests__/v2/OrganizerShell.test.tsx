@@ -66,6 +66,7 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(within(side).getByRole("link", { name: /RSVPs/ })).toHaveTextContent("3");
     expect(within(side).getByRole("link", { name: "Team" })).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Settings" })).toBeInTheDocument();
+    expect(within(side).getByRole("link", { name: "Payouts" })).toHaveAttribute("href", "/v2/organizer/payouts?org=kora");
     expect(within(side).queryByRole("link", { name: "Scan" })).not.toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Create event" })).toHaveAttribute("href", "/v2/organizer/create?org=kora");
     expect(within(side).getByText("Upcoming")).toBeInTheDocument();
@@ -77,18 +78,19 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(await within(side).findByText("Stripe connected", {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it("viewer: no team, settings, create event or Stripe status", async () => {
+  it("viewer: no team, payouts, settings, create event or Stripe status", async () => {
     const { fetchMock } = setup({ role: "viewer" });
     const side = screen.getByRole("complementary", { name: "Menu" });
     expect(within(side).queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
     expect(within(side).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+    expect(within(side).queryByRole("link", { name: "Payouts" })).not.toBeInTheDocument();
     expect(within(side).queryByRole("link", { name: "Create event" })).not.toBeInTheDocument();
     expect(fetchMock.calls.some((c) => c.url.includes("/api/stripe/"))).toBe(false);
   });
 
   it("Stripe not finished → link to payouts", async () => {
     setup({}, { connected: true, chargesEnabled: false, payoutsEnabled: false });
-    expect(await screen.findByRole("link", { name: "Finish Stripe setup" }, { timeout: 5000 })).toHaveAttribute("href", "/organizer/settings?org=kora&tab=payouts");
+    expect(await screen.findByRole("link", { name: "Finish Stripe setup" }, { timeout: 5000 })).toHaveAttribute("href", "/v2/organizer/payouts?org=kora");
   });
 
   it("phone: the menu button opens the drawer; Escape and the scrim close it", async () => {

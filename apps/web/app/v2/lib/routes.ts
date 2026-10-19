@@ -18,11 +18,10 @@ export const routes = {
   tier: (eventId: string, slug: string, tierId: string) =>
     `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
   team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
+  payouts: (slug: string) => `/v2/organizer/payouts?${q(slug)}`,
   settings: (slug: string, tab?: "personal" | "organization") =>
     `/v2/organizer/settings?${q(slug)}${tab ? `&tab=${tab}` : ""}`,
-  // still v1
-  payouts: (slug: string) => `/organizer/settings?${q(slug)}&tab=payouts`,
-
+  // attendee side (v1 for now)
   attendeeHome: () => "/",
   discover: () => "/discover",
   myTickets: () => "/account",

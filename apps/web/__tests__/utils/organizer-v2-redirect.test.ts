@@ -23,7 +23,9 @@ describe("organizerV2Redirect — v1 organizer links land on v2", () => {
     expect(r("/organizer/team?org=kora")).toBe("/v2/organizer/team?org=kora");
   });
 
-  it("settings: personal / organization go to v2 (payouts stays on v1)", () => {
+  it("settings: personal / organization go to v2 settings, payouts to v2 payouts", () => {
+    expect(r("/organizer/settings?org=kora&tab=payouts")).toBe("/v2/organizer/payouts?org=kora");
+    expect(r("/organizer/settings?org=kora&tab=payouts&connect=success")).toBe("/v2/organizer/payouts?org=kora&connect=success");
     expect(r("/organizer/settings?org=kora")).toBe("/v2/organizer/settings?org=kora");
     expect(r("/organizer/settings?org=kora&tab=organization")).toBe("/v2/organizer/settings?org=kora&tab=organization");
     expect(r("/organizer/settings?org=kora&tab=personal")).toBe("/v2/organizer/settings?org=kora&tab=personal");
@@ -36,7 +38,6 @@ describe("organizerV2Redirect — v1 organizer links land on v2", () => {
   });
 
   it("screens without v2 and the public organizer page stay on v1", () => {
-    expect(r("/organizer/settings?org=kora&tab=payouts")).toBeNull();
     expect(r("/organizer/kora-experiences")).toBeNull();
     expect(r("/organizer-agreement")).toBeNull();
     expect(r("/v2/organizer?org=kora")).toBeNull();

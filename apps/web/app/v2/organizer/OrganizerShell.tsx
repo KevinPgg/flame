@@ -63,7 +63,7 @@ export function OrganizerShell({
   pastEvents?: OrganizerEvent[];
   activeEventId?: string;
   /** Highlighted entry of the menu. */
-  section?: "events" | "rsvps" | "team" | "settings";
+  section?: "events" | "rsvps" | "team" | "payouts" | "settings";
   /** Title of the sticky top bar. */
   title: string;
   crumbs?: Crumb[];
@@ -90,6 +90,9 @@ export function OrganizerShell({
     { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending, active: section === "rsvps" },
     ...(canManageMembers(role)
       ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug), active: section === "team" }]
+      : []),
+    ...(canManagePayouts(role)
+      ? [{ key: "payouts", icon: "bank" as IconName, label: t("tabs.payouts"), href: routes.payouts(organization.slug), active: section === "payouts" }]
       : []),
     ...(canAccessOrgSettings(role)
       ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug), active: section === "settings" }]
