@@ -142,11 +142,13 @@ escritura in-place fallida (posible artefacto de sync); verificar el contenido r
 5. **🟡 React duplicado en bundle mobile** (`useContext of null`): fix indicado
    (overrides `react`/`react-dom` 19.1.4) pendiente de confirmar.
 6. **🟡 `next build` local falla en el prerender de `/404`** (`useContext of null`, 2026-10-18):
-   el `package.json` raíz declara `next` sin `react`; pnpm le resuelve React 19.1.4 y con
-   `node-linker=hoisted` esa copia queda en `node_modules/next/node_modules/react` mientras la app
-   usa 19.1.0. Verificado: sin esa copia el build pasa completo. Propuesta (pendiente OK de Kevin):
-   `react`/`react-dom` 19.1.0 en devDependencies de la raíz + `pnpm install`. Probable misma
-   raíz que el punto 5. En producción (Vercel, sin hoisted) no aplica.
+   el `package.json` raíz declaraba `next` sin `react`; pnpm le resolvía React 19.1.4 y con
+   `node-linker=hoisted` esa copia quedaba en `node_modules/next/node_modules/react` mientras la app
+   usa 19.1.0. Verificado: sin esa copia el build pasa completo. **Fix aplicado 2026-10-19**:
+   `react`/`react-dom` `19.1.0` en devDependencies de la raíz. **Pendiente de verificar en local:**
+   `pnpm install` → que no exista `node_modules/next/node_modules/react(-dom)` → `pnpm --filter web build`
+   pasa → build Android sigue igual. Luego commit propio (ver sesión 2026-10-19) y pasar a 🟢.
+   En producción (Vercel, sin hoisted) no aplicaba. Probable misma raíz que el punto 5.
 
 ## 5. Recomendaciones vigentes (de prod, siguen aplicando)
 

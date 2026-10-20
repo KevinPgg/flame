@@ -10,6 +10,8 @@
   "devDependencies": {
     "next": "15.5.9",
     "prettier": "^3.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "sharp": "^0.34.5",
     "turbo": "2.8.0",
     "turbo-ignore": "^0.1.0"
