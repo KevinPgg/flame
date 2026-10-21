@@ -104,4 +104,5 @@ supabase/.temp/
 
 
 #Carpeta con archivo temporales
+_to_delete/
 apps/to_delete/

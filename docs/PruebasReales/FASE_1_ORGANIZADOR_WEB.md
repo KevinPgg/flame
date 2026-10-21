@@ -56,7 +56,7 @@ Teléfono (o ventana < 1024 px):
 
 ## 3. Panel (dashboard)
 - [x] KPIs (eventos, ingresos) solo owner/admin; organizer ve "Ves los eventos asignados a ti".
-- [] Pestañas actuales/pasados, búsqueda (sin tildes: "carnaval" encuentra "Carnával"). `//La busqueda no está estandarizada, una busqueda sin tilde no encuentra evento con tilde`
+- [x] Pestañas actuales/pasados, búsqueda (sin tildes: "carnaval" encuentra "Carnával").
 - [] Ingresos coinciden con v1 (`ORGANIZER_V1=true` para comparar) en una organización con muchas órdenes. `//lo dejaremos para despues`
 
 ## 4. Detalle de evento (pestañas)
@@ -83,7 +83,7 @@ Teléfono (o ventana < 1024 px):
 - [x] Fin de ventas después del fin del evento → error.
 - [x] Preguntas por tier (con RSVP): agregar, tipo, obligatoria, subir/bajar; en el Tier 2 aparecen chips "Usadas en tiers anteriores".
 - [x] Misma pregunta con distinto tipo en dos tiers → error de conflicto.
-- [] Apagar RSVP → las preguntas desaparecen y no se guardan. `//No se como validar eso` → **Cómo:** crea un evento con RSVP, agrega 1–2 preguntas en un tier, apaga RSVP y publica. Abre el evento → pestaña Tiers → Editar ese tier: no debe haber sección de preguntas. En la BD (`events`): `registration_form_config` = `null`; en `ticket_tiers`: `registration_form_fields` = `null`.
+- [x] Apagar RSVP → las preguntas desaparecen y no se guardan. `//No se como validar eso` → **Cómo:** crea un evento con RSVP, agrega 1–2 preguntas en un tier, apaga RSVP y publica. Abre el evento → pestaña Tiers → Editar ese tier: no debe haber sección de preguntas. En la BD (`events`): `registration_form_config` = `null`; en `ticket_tiers`: `registration_form_fields` = `null`.
 - [x] Ocultar el único tier → aviso amarillo (no bloquea).
 - [x] Publicar → abre el evento v2; verifica en la BD/v1 que tiers, etapas, preguntas y flyer quedaron bien.
 - [x] Organizer (no owner/admin) entrando por URL a crear → vuelve al panel. 
@@ -137,7 +137,7 @@ App (celular, build Android):
 - [ ] (Emergencia) `SCANNER_ACCESS_CODES=off` en `.env` y reinicio: el código deja de dar acceso (403). `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
 
 ## 7d. Ajustes (nuevo)
-- [ ] Menú "Ajustes" (owner/admin) abre la pestaña Organización y queda resaltado; el botón "Gestionar" del panel también. `//Corregir, separar ajustes de cuenta vs ajustes de orgnanizacion`
+- [x] Menú "Ajustes" (owner/admin) abre la pestaña Organización y queda resaltado; el botón "Gestionar" del panel también. `//Corregir, separar ajustes de cuenta vs ajustes de orgnanizacion`
 - [x] Organización: logo (subir JPG/PNG/WebP/GIF ≤ 4,5 MB; un SVG → mensaje; quitar → confirma), nombre solo lectura, Instagram con "@" (pegar `https://instagram.com/usuario/` lo deja en `usuario`; espacios o símbolos → mensaje), ciudad, descripción con contador /500.
 - [x] "Cambios sin guardar" al editar → "Guardar cambios" → "Todo guardado"; recargar y los datos siguen. La página pública `/organizer/<slug>` muestra lo nuevo.
 - [x] Organizer / viewer (entrando por URL `/v2/organizer/settings?org=…`): Organización en solo lectura, sin logo editable ni botón guardar.
@@ -146,15 +146,15 @@ App (celular, build Android):
 
 ## 7e. Payouts (nuevo) — Stripe en modo test
 - [x] Menú "Payouts" solo para owner/admin; organizer por URL `/v2/organizer/payouts?org=…` → vuelve al panel.
-- [ ] Organización sin Stripe: elegir país → "Conectar con Stripe" abre Stripe; al terminar vuelve a Payouts con "Stripe está conectado". **En tu cuenta de pruebas elige United States** (ver "Cosas conocidas": Ecuador solo está habilitado en la plataforma de producción). `//Stripe error details:
+- [x] Organización sin Stripe: elegir país → "Conectar con Stripe" abre Stripe; al terminar vuelve a Payouts con "Stripe está conectado". **En tu cuenta de pruebas elige United States** (ver "Cosas conocidas": Ecuador solo está habilitado en la plataforma de producción). `//Stripe error details:
   type: 'StripeInvalidRequestError',
   code: undefined,
   message: 'You are trying to create an account link for a connected account in a country that Connect Onboarding does not yet support.',
   statusCode: 400`
-- [ ] Organización con Stripe a medias: checklist + "Terminar configuración" abre Stripe.
-- [ ] Conectada: "Disponible para retirar" y "Disponible pronto" coinciden con el saldo de la cuenta conectada en el dashboard de Stripe (test). Historial y banco (••últimos 4) coinciden.
-- [ ] Con saldo disponible (en test: pagar con la tarjeta `4000 0000 0000 0077`, que deja el saldo disponible al instante): "Solicitar pago" → confirmación con monto y banco → aviso "Solicitaste…"; el payout aparece en el historial y en Stripe; el saldo baja.
-- [ ] Solicitar otra vez enseguida → "Ya hay un pago en camino".
+- [x] Organización con Stripe a medias: checklist + "Terminar configuración" abre Stripe.
+- [x] Conectada: "Disponible para retirar" y "Disponible pronto" coinciden con el saldo de la cuenta conectada en el dashboard de Stripe (test). Historial y banco (••últimos 4) coinciden.
+- [x] Con saldo disponible (en test: pagar con la tarjeta `4000 0000 0000 0077`, que deja el saldo disponible al instante): "Solicitar pago" → confirmación con monto y banco → aviso "Solicitaste…"; el payout aparece en el historial y en Stripe; el saldo baja.
+- [x] Solicitar otra vez enseguida → "Ya hay un pago en camino". `//El modal bloquea un reintento inmediato (está bien)`
 - [ ] Saldo menor a $1 → botón deshabilitado con "El pago mínimo es $1.00".
 - [ ] "Gestionar en Stripe" abre el dashboard Express.
 - [ ] Si pruebas por ngrok u otro dominio que no sea `localhost:3000`, "Solicitar pago" responde "CSRF validation failed" salvo que `NEXT_PUBLIC_APP_URL` sea ese dominio (protección de la API, no es un fallo).
