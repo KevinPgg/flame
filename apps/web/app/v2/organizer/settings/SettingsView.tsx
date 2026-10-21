@@ -1,12 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   ORG_DESCRIPTION_MAX,
   ORG_CITY_MAX,
-  SUPPORTED_LANGUAGES,
   canAccessOrgSettings,
   logoFileProblem,
   normalizeInstagram,
@@ -15,7 +13,6 @@ import {
   orgFormPayload,
   orgImageStoragePath,
   validateOrgForm,
-  type Language,
   type OrgForm,
   type OrgMemberRole,
   type OrgProfile,
@@ -25,10 +22,9 @@ import { Icon } from "../../components/Icon";
 import { OrgAvatar } from "../../components/OrgAvatar";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { routes } from "../../lib/routes";
+import { prepareLogo } from "../../lib/prepare-logo";
 import { OrganizerShell, type ShellUser } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
-
-export type SettingsTab = "personal" | "organization";
 
 const primary =
   "inline-flex h-10 items-center justify-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[14px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-50";
@@ -40,9 +36,10 @@ const label = "mb-1.5 block text-[12.5px] text-v2-c70";
 const card = "flex flex-col gap-5 rounded-v2-card bg-v2-ink2 p-4 sm:p-6";
 
 /**
- * Settings v2 (prototype "ow:settings"): Personal (account from Clerk, language, sign out) and
- * Organization (logo, name read-only, Instagram, city, description). Same APIs as v1:
- * PATCH /api/organizations/[id] and /api/upload-org-image; language → PUT /api/me/language.
+ * Organization settings v2 (prototype "ow:settings", Organization tab): logo, name read-only,
+ * Instagram, city, description. Same APIs as v1: PATCH /api/organizations/[id] and
+ * /api/upload-org-image. The person's own settings (language, sign out) live apart, in
+ * /v2/account (decision 2026-10-20: don't mix account and organization settings).
  */
 export default function SettingsView({
   organization,
@@ -50,33 +47,16 @@ export default function SettingsView({
   role,
   me = null,
   details,
-  initialTab,
 }: {
   organization: Org;
   organizations: Org[];
   role: OrgMemberRole | null;
   me?: ShellUser | null;
   details: OrgProfile & { name: string; logo_url: string | null };
-  initialTab: SettingsTab;
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
   const { model } = useOrganizerModel(organization, role);
-  const [tab, setTabState] = useState<SettingsTab>(initialTab);
-
-  const setTab = (next: SettingsTab) => {
-    setTabState(next);
-    const q = new URLSearchParams(params.toString());
-    q.set("tab", next);
-    router.replace(`${pathname}?${q.toString()}`, { scroll: false });
-  };
-
-  const tabs: Array<[SettingsTab, string, "user" | "settings"]> = [
-    ["personal", t("orgSettings.tabPersonal"), "user"],
-    ["organization", t("orgSettings.tabOrganization"), "settings"],
-  ];
 
   return (
     <OrganizerShell
@@ -87,140 +67,25 @@ export default function SettingsView({
       currentEvents={model?.current ?? []}
       pastEvents={model?.past ?? []}
       section="settings"
-      title={t("settings.title")}
+      title={t("orgSettings.title")}
       backHref={routes.dashboard(organization.slug)}
       crumbs={[
         { label: t("organizer.myOrganizers"), href: routes.organizers() },
         { label: organization.name, href: routes.dashboard(organization.slug) },
-        { label: t("settings.title") },
+        { label: t("orgSettings.title") },
       ]}
       me={me}
     >
       <section className="mx-auto max-w-[720px] px-4 pt-5 lg:px-10 lg:pt-8">
-        <div role="tablist" aria-label={t("settings.title")} className="mb-5 flex gap-1 rounded-v2-pill bg-v2-ink2 p-1">
-          {tabs.map(([key, text, icon]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={tab === key}
-              onClick={() => setTab(key)}
-              className={`inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-v2-pill text-[14px] font-v2-ui-semibold transition-colors ${
-                tab === key ? "bg-v2-ink4 text-v2-cream" : "text-v2-c70 hover:text-v2-cream"
-              }`}
-            >
-              <Icon name={icon} size={16} />
-              {text}
-            </button>
-          ))}
-        </div>
-
-        {tab === "personal" ? (
-          <PersonalTab me={me} />
-        ) : (
-          <OrganizationTab
-            organization={organization}
-            details={details}
-            canEdit={canAccessOrgSettings(role)}
-            onSaved={() => router.refresh()}
-          />
-        )}
+        <p className="mb-5 text-[13.5px] text-v2-c70">{t("orgSettings.lede", { org: organization.name })}</p>
+        <OrganizationTab
+          organization={organization}
+          details={details}
+          canEdit={canAccessOrgSettings(role)}
+          onSaved={() => router.refresh()}
+        />
       </section>
     </OrganizerShell>
-  );
-}
-
-function PersonalTab({ me }: { me: ShellUser | null }) {
-  const { t, language, setLanguage } = useI18n();
-  const { signOut } = useClerk();
-  const router = useRouter();
-  const [langError, setLangError] = useState(false);
-  const [savingLang, setSavingLang] = useState(false);
-
-  const changeLanguage = async (next: Language) => {
-    if (next === language) return;
-    const previous = language;
-    setLangError(false);
-    setLanguage(next); // switch right away; roll back if it can't be saved
-    setSavingLang(true);
-    try {
-      const res = await fetch("/api/me/language", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: next }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      router.refresh(); // server-rendered text (and the layout) follow the saved language
-    } catch {
-      setLanguage(previous);
-      setLangError(true);
-    } finally {
-      setSavingLang(false);
-    }
-  };
-
-  const doSignOut = async () => {
-    try {
-      await signOut();
-    } finally {
-      router.push("/");
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className={card}>
-        <div className="flex items-center gap-4">
-          <OrgAvatar name={me?.name || "?"} logoUrl={me?.imageUrl} size={56} round />
-          <p className="text-[13px] text-v2-c50">{t("orgSettings.accountHint")}</p>
-        </div>
-        <div>
-          <label htmlFor="st-name" className={label}>
-            {t("orgSettings.fullName")}
-          </label>
-          <input id="st-name" className={input} value={me?.name || t("orgSettings.empty")} readOnly />
-        </div>
-        <div>
-          <label htmlFor="st-email" className={label}>
-            {t("orgSettings.email")}
-          </label>
-          <input id="st-email" className={input} value={me?.email || t("orgSettings.empty")} readOnly />
-        </div>
-      </div>
-
-      <div className={card}>
-        <div>
-          <label htmlFor="st-lang" className={label}>
-            {t("settings.language")}
-          </label>
-          <select
-            id="st-lang"
-            className={input}
-            value={language}
-            disabled={savingLang}
-            onChange={(e) => void changeLanguage(e.target.value as Language)}
-          >
-            {SUPPORTED_LANGUAGES.map((l) => (
-              <option key={l} value={l}>
-                {t(`languages.${l}`)}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1.5 text-[12.5px] text-v2-c50">{t("orgSettings.languageHint")}</p>
-          {langError && (
-            <p role="alert" className="mt-1.5 text-[13px] text-v2-errorText">
-              {t("orgSettings.languageSaveError")}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <button type="button" onClick={() => void doSignOut()} className={ghost}>
-          {t("settings.signOut")}
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -397,21 +262,39 @@ function LogoEditor({
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     if (fileRef.current) fileRef.current.value = "";
-    if (!file) return;
-    const problem = logoFileProblem(file);
-    if (problem) return setError(problem === "type" ? t("orgSettings.logoType") : t("orgSettings.logoSize"));
+    if (!picked) return;
+    if (logoFileProblem({ type: picked.type, size: 0 }) === "type") return setError(t("orgSettings.logoType"));
     setError(null);
     setBusy(true);
     try {
+      // Real size check + clean re-encode in the browser (see prepareLogo).
+      const prepared = await prepareLogo(picked);
+      if (!prepared.ok) {
+        setError(
+          prepared.reason === "tooSmall"
+            ? t("orgSettings.logoTooSmall", { width: prepared.width ?? 0, height: prepared.height ?? 0 })
+            : t("orgSettings.logoUnreadable")
+        );
+        return;
+      }
+      if (logoFileProblem(prepared.file) === "size") return setError(t("orgSettings.logoSize"));
       const body = new FormData();
-      body.append("file", file);
+      body.append("file", prepared.file);
       body.append("organizationSlug", organization.slug);
       body.append("type", "logo");
       const res = await fetch("/api/upload-org-image", { method: "POST", body });
-      const json = (await res.json().catch(() => null)) as { url?: string } | null;
-      if (!res.ok || !json?.url) throw new Error(String(res.status));
+      const json = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!res.ok || !json?.url) {
+        // Say why: the API's reason for 4xx (permissions, type…), our generic text otherwise.
+        setError(
+          res.status >= 400 && res.status < 500 && json?.error
+            ? t("orgSettings.logoRejected", { reason: json.error })
+            : t("orgSettings.logoError")
+        );
+        return;
+      }
       setUrl(json.url);
       onChanged();
     } catch {

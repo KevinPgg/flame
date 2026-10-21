@@ -301,6 +301,7 @@ export default function EventAdmin({
           orgId={organization.id}
           eventId={event.id}
           eventName={event.name}
+          surfaceClassName="bg-v2-ink2 border border-v2-c16 shadow-[0_30px_80px_rgba(0,0,0,0.7)]"
         />
       )}
     </>

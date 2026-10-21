@@ -98,6 +98,21 @@ describe("Organizer dashboard v2", () => {
     expect(within(main()).getByText("No events match your search.")).toBeInTheDocument();
   });
 
+  it("search counts both tabs and points to the other one when the match is there", async () => {
+    const { user } = dashboard("owner");
+    await within(main()).findByText("Salsa Night");
+    await user.type(within(main()).getByPlaceholderText("Search events"), "old party");
+    expect(within(main()).getByRole("tab", { name: /Past events 1/ })).toBeInTheDocument();
+    expect(within(main()).getByRole("tab", { name: /Current & upcoming 0/ })).toBeInTheDocument();
+    expect(within(main()).getByText("1 match in Past events.")).toBeInTheDocument();
+    await user.click(within(main()).getByRole("button", { name: "Show" }));
+    expect(within(main()).getByText("Old Party")).toBeInTheDocument();
+    // and accents both ways
+    await user.clear(within(main()).getByPlaceholderText("Search events"));
+    await user.type(within(main()).getByPlaceholderText("Search events"), "CARNÁVAL");
+    expect(within(main()).getByText("1 match in Current & upcoming.")).toBeInTheDocument();
+  });
+
   it("organizer: only assigned events, no KPIs, no create button, notice", async () => {
     dashboard("organizer");
     expect(await within(main()).findByText("Carnával Fest")).toBeInTheDocument();

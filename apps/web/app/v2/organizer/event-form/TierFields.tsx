@@ -213,13 +213,18 @@ export function TierFields({
         >
           <input
             id={fieldId(`${p}.accessCode`)}
-            value={tier.accessCode}
+            value={tier.hidden ? tier.accessCode : ""}
             onChange={(e) => set({ accessCode: e.target.value.toUpperCase() })}
             aria-invalid={inv(`${p}.accessCode`)}
-            placeholder={t("eventForm.accessCodePlaceholder")}
+            aria-describedby={`${fieldId(`${p}.accessCode`)}-hint`}
+            placeholder={tier.hidden ? t("eventForm.accessCodePlaceholder") : ""}
+            disabled={!tier.hidden}
             autoCapitalize="characters"
-            className={`${fieldCls} uppercase`}
+            className={`${fieldCls} uppercase disabled:cursor-not-allowed disabled:opacity-50`}
           />
+          <small id={`${fieldId(`${p}.accessCode`)}-hint`} className="text-[12px] leading-snug text-v2-c50">
+            {tier.hidden ? t("eventForm.accessCodeHint") : t("eventForm.accessCodeNeedsHidden")}
+          </small>
         </Labeled>
       </div>
 
@@ -262,7 +267,13 @@ export function TierFields({
             onChange={(salesEnd) => set({ salesEnd })}
             invalid={inv(`${p}.salesEnd`)}
           />
-          <SwitchRow title={t("eventForm.hide")} hint={t("eventForm.hideHint")} checked={tier.hidden} onChange={(hidden) => set({ hidden })} />
+          <SwitchRow
+            title={t("eventForm.hide")}
+            hint={t("eventForm.hideHint")}
+            checked={tier.hidden}
+            // A code only reveals a hidden tier: showing the tier drops it (see tierSecretCode).
+            onChange={(hidden) => set(hidden ? { hidden } : { hidden, accessCode: "" })}
+          />
           {soldOut && (
             <SwitchRow
               title={t("eventForm.soldOutToggle")}

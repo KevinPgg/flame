@@ -291,8 +291,11 @@ describe("CreateEvent v2", () => {
     const { user, fetchMock } = setup();
     await fillBasics(user);
     const card = within(tierCard(1));
-    await user.type(card.getByLabelText(/Access code/), "vip");
+    // A code only reveals a hidden tier: the field is off until "Hide tier" is on.
+    expect(card.getByLabelText(/Access code/)).toBeDisabled();
+    expect(card.getByText(/Turn on “Hide tier” to use a code/)).toBeInTheDocument();
     await user.click(card.getByRole("switch", { name: /Hide tier/ }));
+    await user.type(card.getByLabelText(/Access code/), "vip");
     expect(card.getByLabelText("Sales start")).toHaveTextContent("Now");
     await user.click(card.getByLabelText("Sales start"));
     fireEvent.change(card.getByLabelText("Sales start"), { target: { value: "2030-06-01T10:00" } });
@@ -303,6 +306,20 @@ describe("CreateEvent v2", () => {
       is_hidden: true,
       sales_start: "2030-06-01T15:00:00.000Z",
     });
+  });
+
+  it("showing the tier again drops its access code (it would do nothing on a visible tier)", async () => {
+    const { user, fetchMock } = setup();
+    await fillBasics(user);
+    const card = within(tierCard(1));
+    await user.click(card.getByRole("switch", { name: /Hide tier/ }));
+    await user.type(card.getByLabelText(/Access code/), "vip");
+    await user.click(card.getByRole("switch", { name: /Hide tier/ }));
+    expect(card.getByLabelText(/Access code/)).toBeDisabled();
+    expect(card.getByLabelText(/Access code/)).toHaveValue("");
+    await user.click(publishBtn());
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(eventPost(fetchMock.calls)!.body.ticket_tiers[0]).toMatchObject({ secret_code: null, is_hidden: false });
   });
 
   it("warns (without blocking) when every tier is hidden", async () => {

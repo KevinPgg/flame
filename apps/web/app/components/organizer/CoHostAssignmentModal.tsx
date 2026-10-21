@@ -36,6 +36,8 @@ interface CoHostAssignmentModalProps {
   orgId: string;
   eventId: string;
   eventName: string;
+  /** Panel background/border. v1 keeps its translucent card; Flame 2.0 passes a solid surface. */
+  surfaceClassName?: string;
 }
 
 function useEventCohosts(orgId: string, eventId: string, enabled: boolean) {
@@ -136,6 +138,7 @@ export default function CoHostAssignmentModal({
   orgId,
   eventId,
   eventName,
+  surfaceClassName = "bg-card border border-white-20",
 }: CoHostAssignmentModalProps) {
   const queryClient = useQueryClient();
   const { data: cohosts, isLoading: cohostsLoading } = useEventCohosts(
@@ -226,7 +229,7 @@ export default function CoHostAssignmentModal({
       onClick={onClose}
     >
       <div
-        className="bg-card border border-white-20 rounded-card w-full max-w-[520px] max-h-[85vh] flex flex-col overflow-hidden"
+        className={`${surfaceClassName} rounded-card w-full max-w-[520px] max-h-[85vh] flex flex-col overflow-hidden`}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

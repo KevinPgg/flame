@@ -66,11 +66,13 @@ export function useOrganizerModel(organization: Org, role: OrgMemberRole | null)
       ownerCohostAssignments: data.owner_cohost_assignments ?? [],
       assignedEventIds: assigned,
     });
+    const split = splitEventsByTime(list.all);
     return {
       ...list,
-      ...splitEventsByTime(list.all),
+      ...split,
       revenue: revenueByCurrency(list.owned),
-      pending: totalPendingRsvps(list.all),
+      // Menu badge: only requests that can still be decided (events not over yet).
+      pending: totalPendingRsvps(split.current),
     };
   }, [dataQuery.data, assignmentsQuery.data, fullAccess]);
 

@@ -28,7 +28,16 @@ export function organizerV2Redirect(pathname: string, search: URLSearchParams): 
 
   if (path === "/organizer/team") return `/v2/organizer/team${q()}`;
 
-  // Settings: Personal / Organization → v2 settings; Payouts → its own v2 screen (keeps the
+  // Path-style shortcuts people type (/organizer/create?org=…). Only with ?org=, because without it
+  // /organizer/<word> is the public page of an organization whose slug could be that word.
+  if (org) {
+    if (path === "/organizer/create") return `/v2/organizer/create${q()}`;
+    if (path === "/organizer/rsvps") return `/v2/organizer/rsvps${q()}`;
+    if (path === "/organizer/payouts") return `/v2/organizer/payouts${q()}`;
+  }
+
+  // Settings: Organization → v2 organization settings; Personal → /v2/account (the person's own
+  // settings, not the organization's); Payouts → its own v2 screen (keeps the
   // ?connect=success flag Stripe onboarding comes back with).
   if (path === "/organizer/settings") {
     const tab = search.get("tab");
@@ -36,7 +45,8 @@ export function organizerV2Redirect(pathname: string, search: URLSearchParams): 
       const connect = search.get("connect");
       return `/v2/organizer/payouts${q(connect ? { connect } : undefined)}`;
     }
-    return `/v2/organizer/settings${q(tab === "personal" || tab === "organization" ? { tab } : undefined)}`;
+    if (tab === "personal") return "/v2/account";
+    return `/v2/organizer/settings${q()}`;
   }
 
   const event = /^\/organizer\/event\/([^/]+)$/.exec(path);

@@ -23,13 +23,21 @@ describe("organizerV2Redirect — v1 organizer links land on v2", () => {
     expect(r("/organizer/team?org=kora")).toBe("/v2/organizer/team?org=kora");
   });
 
-  it("settings: personal / organization go to v2 settings, payouts to v2 payouts", () => {
+  it("settings: organization → v2 organization settings, personal → v2 account, payouts → v2 payouts", () => {
     expect(r("/organizer/settings?org=kora&tab=payouts")).toBe("/v2/organizer/payouts?org=kora");
     expect(r("/organizer/settings?org=kora&tab=payouts&connect=success")).toBe("/v2/organizer/payouts?org=kora&connect=success");
     expect(r("/organizer/settings?org=kora")).toBe("/v2/organizer/settings?org=kora");
-    expect(r("/organizer/settings?org=kora&tab=organization")).toBe("/v2/organizer/settings?org=kora&tab=organization");
-    expect(r("/organizer/settings?org=kora&tab=personal")).toBe("/v2/organizer/settings?org=kora&tab=personal");
+    expect(r("/organizer/settings?org=kora&tab=organization")).toBe("/v2/organizer/settings?org=kora");
+    expect(r("/organizer/settings?org=kora&tab=personal")).toBe("/v2/account");
     expect(r("/organizer/settings?org=kora&tab=weird")).toBe("/v2/organizer/settings?org=kora");
+  });
+
+  it("path-style shortcuts with ?org= (create, rsvps, payouts); without org they stay public org pages", () => {
+    expect(r("/organizer/create?org=kora")).toBe("/v2/organizer/create?org=kora");
+    expect(r("/organizer/rsvps?org=kora")).toBe("/v2/organizer/rsvps?org=kora");
+    expect(r("/organizer/payouts?org=kora")).toBe("/v2/organizer/payouts?org=kora");
+    expect(r("/organizer/create")).toBeNull();
+    expect(r("/organizer/payouts")).toBeNull();
   });
 
   it("event and RSVP pages keep their id and org", () => {

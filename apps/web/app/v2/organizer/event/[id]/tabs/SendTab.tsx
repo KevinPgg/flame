@@ -241,6 +241,9 @@ export default function SendTab({
           </button>
         ))}
       </div>
+      <p className="-mt-1 max-w-[560px] text-[13px] leading-relaxed text-v2-c50">
+        {mode === "free" ? t("eventAdmin.send.freeHint") : t("eventAdmin.send.bankHint")}
+      </p>
 
       {notice && (
         <p role="status" className="flex items-center gap-2 rounded-v2-card bg-v2-good/15 px-4 py-3 text-[14px] text-v2-good">

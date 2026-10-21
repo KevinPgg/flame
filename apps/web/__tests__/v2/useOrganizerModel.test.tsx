@@ -42,7 +42,7 @@ describe("useOrganizerModel", () => {
   beforeEach(() => setSelectedOrgId.mockClear());
   afterEach(() => vi.unstubAllGlobals());
 
-  it("owner: all events, revenue from owned events only, pending RSVPs, current vs past", async () => {
+  it("owner: all events, revenue from owned events only, pending RSVPs of current events only, current vs past", async () => {
     const f = mockFetch([{ match: (u) => u.startsWith("/api/organizer/data"), body: data }]);
     const { result } = setup("owner");
     await waitFor(() => expect(result.current.model).not.toBeNull());
@@ -50,7 +50,7 @@ describe("useOrganizerModel", () => {
     expect(m.all.map((e) => e.id).sort()).toEqual(["a", "b", "c"]);
     expect(m.owned.map((e) => e.id).sort()).toEqual(["a", "b"]);
     expect(m.revenue).toEqual([{ currency: "USD", cents: 1500 }]);
-    expect(m.pending).toBe(6);
+    expect(m.pending).toBe(4); // a + c; the past event b has 2 pending that can't be decided anymore
     expect(m.current.map((e) => e.id).sort()).toEqual(["a", "c"]);
     expect(f.calls[0].url).toBe("/api/organizer/data?org=kora");
     expect(f.calls.some((c) => c.url.includes("event-assignments"))).toBe(false);

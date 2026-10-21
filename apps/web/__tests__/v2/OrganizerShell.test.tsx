@@ -74,6 +74,7 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(within(side).getByText("Past")).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: /Event old/ })).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Discover" })).toHaveAttribute("href", "/discover");
+    expect(within(side).getByRole("link", { name: "My account" })).toHaveAttribute("href", "/v2/account");
     expect(within(side).getByRole("link", { name: "My tickets" })).toHaveAttribute("href", "/account");
     expect(await within(side).findByText("Stripe connected", {}, { timeout: 5000 })).toBeInTheDocument();
   });

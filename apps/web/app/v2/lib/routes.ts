@@ -19,8 +19,9 @@ export const routes = {
     `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
   team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
   payouts: (slug: string) => `/v2/organizer/payouts?${q(slug)}`,
-  settings: (slug: string, tab?: "personal" | "organization") =>
-    `/v2/organizer/settings?${q(slug)}${tab ? `&tab=${tab}` : ""}`,
+  settings: (slug: string) => `/v2/organizer/settings?${q(slug)}`,
+  /** The person's own settings (language, sign out); not tied to an organization. */
+  account: () => "/v2/account",
   // attendee side (v1 for now)
   attendeeHome: () => "/",
   discover: () => "/discover",

@@ -38,8 +38,19 @@ export async function loadOrganizerContext(org: string | undefined): Promise<{
     slug: o.slug,
     logo_url: o.logo_url ?? null,
   });
+  const me = await loadMe();
+  return {
+    me,
+    organization: toOrg(organization),
+    organizations: allOrganizations.filter((o) => o.approved).map(toOrg),
+    role: (allOrganizations.find((o) => o.id === organization.id)?.role ?? null) as OrgMemberRole | null,
+  };
+}
+
+/** Who is signed in, for the shell and the account page (null if Clerk can't be read). */
+export async function loadMe(): Promise<ShellUser | null> {
   const user = await currentUser().catch(() => null);
-  const me: ShellUser | null = user
+  return user
     ? {
         name:
           [user.firstName, user.lastName].filter(Boolean).join(" ") ||
@@ -50,10 +61,4 @@ export async function loadOrganizerContext(org: string | undefined): Promise<{
         email: (user.primaryEmailAddress?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress ?? "").toLowerCase() || null,
       }
     : null;
-  return {
-    me,
-    organization: toOrg(organization),
-    organizations: allOrganizations.filter((o) => o.approved).map(toOrg),
-    role: (allOrganizations.find((o) => o.id === organization.id)?.role ?? null) as OrgMemberRole | null,
-  };
 }

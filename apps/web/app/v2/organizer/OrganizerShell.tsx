@@ -106,7 +106,11 @@ export function OrganizerShell({
       href={routes.event(e.id, organization.slug)}
       onClick={() => setDrawer(false)}
       aria-current={e.id === activeEventId ? "page" : undefined}
-      className={`flex items-center gap-2.5 rounded-v2-sm px-2 py-1.5 hover:bg-v2-c06 ${e.id === activeEventId ? "bg-v2-c06" : ""}`}
+      className={`relative flex items-center gap-2.5 rounded-v2-sm px-2 py-1.5 transition-colors ${
+        e.id === activeEventId
+          ? "bg-v2-c10 ring-1 ring-v2-c16 before:absolute before:inset-y-1.5 before:-left-1.5 before:w-[3px] before:rounded-full before:bg-v2-flame"
+          : "hover:bg-v2-c06"
+      }`}
     >
       <Flyer src={e.image_url} size={30} className="!rounded-v2-xs" />
       <span className="min-w-0 flex-1">
@@ -195,6 +199,10 @@ export function OrganizerShell({
             <Icon name="ticket" size={18} />
             {t("organizer.myTickets")}
           </Link>
+          <Link href={routes.account()} className="flex items-center gap-2.5 rounded-v2-sm px-2.5 py-[9px] text-[14px] font-v2-ui-medium text-v2-c70 hover:bg-v2-c06 hover:text-v2-cream">
+            <Icon name="user" size={18} />
+            {t("organizer.myAccount")}
+          </Link>
           {me && (
             <Link href={routes.profile()} className="mt-1.5 flex items-center gap-2.5 rounded-v2-md p-2 hover:bg-v2-c06">
               <UserAvatar me={me} size={30} />
@@ -254,7 +262,7 @@ export function OrganizerShell({
           <div className="flex shrink-0 items-center gap-2">
             {actions}
             {me && (
-              <Link href={routes.profile()} aria-label={me.name} className="hidden sm:block">
+              <Link href={routes.account()} aria-label={`${t("organizer.myAccount")} · ${me.name}`} className="hidden sm:block">
                 <UserAvatar me={me} size={36} />
               </Link>
             )}

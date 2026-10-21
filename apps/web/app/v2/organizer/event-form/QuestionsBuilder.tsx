@@ -125,7 +125,7 @@ export function QuestionsBuilder({
                   className="inline-flex items-center gap-2 text-[12.5px] text-v2-c70"
                 >
                   <span aria-hidden className={`relative h-5 w-8 rounded-v2-pill ${q.required ? "bg-v2-flame" : "bg-v2-ink4"}`}>
-                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${q.required ? "translate-x-[14px]" : "translate-x-0.5"}`} />
+                    <span className={`absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${q.required ? "translate-x-[14px]" : "translate-x-0.5"}`} />
                   </span>
                   {t("eventForm.required")}
                 </button>

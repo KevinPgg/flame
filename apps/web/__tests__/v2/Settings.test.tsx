@@ -17,7 +17,15 @@ vi.mock("next/navigation", () => ({
 const clerk = vi.hoisted(() => ({ signOut: vi.fn(async () => {}) }));
 vi.mock("@clerk/nextjs", () => ({ useClerk: () => clerk }));
 vi.mock("../../app/contexts/MemberRoleContext", () => ({ useMemberRoleContext: () => ({ setSelectedOrgId: vi.fn() }) }));
+// Canvas isn't available in jsdom: the browser-side resize/re-encode is replaced by a fake.
+const prep = vi.hoisted(() => ({ next: null as null | { ok: boolean; reason?: string; width?: number; height?: number } }));
+vi.mock("../../app/v2/lib/prepare-logo", () => ({
+  prepareLogo: vi.fn(async (file: File) =>
+    prep.next ?? { ok: true, file: new File(["webp"], "logo.webp", { type: "image/webp" }), width: 740, height: 740 }
+  ),
+}));
 import SettingsView from "../../app/v2/organizer/settings/SettingsView";
+import AccountView from "../../app/v2/account/AccountView";
 
 vi.setConfig({ testTimeout: 20_000 });
 beforeEach(() => {
@@ -25,6 +33,7 @@ beforeEach(() => {
   nav.refresh.mockReset();
   nav.push.mockReset();
   clerk.signOut.mockClear();
+  prep.next = null;
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -33,7 +42,7 @@ const LOGO = "https://x.supabase.co/storage/v1/object/public/organization-images
 const details = { name: "Kora Experiences", instagram_handle: "kora.gye", city: "Guayaquil", description: "Salsa nights", logo_url: LOGO };
 const me = { name: "Ana Pérez", imageUrl: null, email: "ana@x.com" };
 
-function setup(opts: { role?: string; tab?: "personal" | "organization"; routes?: Route[]; language?: "en" | "es"; logo?: string | null } = {}) {
+function setup(opts: { role?: string; account?: boolean; routes?: Route[]; language?: "en" | "es"; logo?: string | null } = {}) {
   const f = mockFetch([
     ...(opts.routes ?? []),
     { match: (u) => u.startsWith("/api/organizer/data"), body: { events: [], cohost_events: [], owner_cohost_assignments: [] } },
@@ -45,14 +54,17 @@ function setup(opts: { role?: string; tab?: "personal" | "organization"; routes?
   const user = userEvent.setup({ delay: null });
   renderV2(
     <QueryClientProvider client={qc}>
-      <SettingsView
-        organization={org}
-        organizations={[org]}
-        role={(opts.role ?? "owner") as never}
-        me={me}
-        details={{ ...details, logo_url: opts.logo === undefined ? LOGO : opts.logo }}
-        initialTab={opts.tab ?? "organization"}
-      />
+      {opts.account ? (
+        <AccountView me={me} />
+      ) : (
+        <SettingsView
+          organization={org}
+          organizations={[org]}
+          role={(opts.role ?? "owner") as never}
+          me={me}
+          details={{ ...details, logo_url: opts.logo === undefined ? LOGO : opts.logo }}
+        />
+      )}
     </QueryClientProvider>,
     opts.language ?? "en"
   );
@@ -122,6 +134,7 @@ describe("Settings v2 — organization", () => {
     const form = f.posts().find((p) => p.url === "/api/upload-org-image")!.body as FormData;
     expect(form.get("organizationSlug")).toBe("kora");
     expect(form.get("type")).toBe("logo");
+    expect((form.get("file") as File).type).toBe("image/webp"); // the re-encoded file, not the original
 
     await user.click(await screen.findByRole("button", { name: "Remove" }));
     expect(screen.getByText("Remove the organization logo?")).toBeInTheDocument();
@@ -134,6 +147,24 @@ describe("Settings v2 — organization", () => {
     );
   });
 
+  it("logo: says why it fails — too small (with its size), unreadable, or the server's reason", async () => {
+    const { f } = setup({
+      logo: null,
+      routes: [{ match: (u, i) => u === "/api/upload-org-image" && i?.method === "POST", status: 400, body: { error: "File content does not match declared type." } }],
+    });
+    const fileInput = screen.getByTestId("logo-input") as HTMLInputElement;
+    prep.next = { ok: false, reason: "tooSmall", width: 300, height: 300 };
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("This image is 300×300. Use one of at least 400×400.");
+    prep.next = { ok: false, reason: "decode" };
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "a.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("We couldn’t read this image"));
+    expect(f.posts()).toHaveLength(0);
+    prep.next = null;
+    fireEvent.change(fileInput, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("The logo wasn’t saved: File content does not match declared type."));
+  });
+
   it("organizers and viewers see the profile read-only, without logo or save controls", () => {
     setup({ role: "organizer", language: "es" });
     expect(screen.getByText("Solo dueños y admins pueden editar la organización.")).toBeInTheDocument();
@@ -143,29 +174,36 @@ describe("Settings v2 — organization", () => {
   });
 });
 
-describe("Settings v2 — personal", () => {
-  it("account from Clerk (read-only), tabs update the URL, sign out", async () => {
-    const { user } = setup({ tab: "personal" });
+describe("My account v2 (separate from organization settings)", () => {
+  it("organization settings has no personal section and no tabs", () => {
+    setup();
+    expect(screen.getByRole("heading", { name: "Organization settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Full name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Language")).not.toBeInTheDocument();
+  });
+
+  it("account from Clerk (read-only), link back to my organizers, sign out", async () => {
+    const { user } = setup({ account: true });
+    expect(screen.getByRole("heading", { name: "My account" })).toBeInTheDocument();
     expect(screen.getByLabelText("Full name")).toHaveValue("Ana Pérez");
     expect(screen.getByLabelText("Email")).toHaveValue("ana@x.com");
-    await user.click(screen.getByRole("tab", { name: "Organization" }));
-    expect(nav.replace).toHaveBeenCalledWith("/v2/organizer/settings?org=kora&tab=organization", { scroll: false });
-    await user.click(screen.getByRole("tab", { name: "Personal" }));
+    expect(screen.getByRole("link", { name: "My organizers" })).toHaveAttribute("href", "/v2/organizer");
     await user.click(screen.getByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(clerk.signOut).toHaveBeenCalled());
     expect(nav.push).toHaveBeenCalledWith("/");
   });
 
   it("language switches at once and is saved", async () => {
-    const { f, user } = setup({ tab: "personal" });
+    const { f, user } = setup({ account: true });
     await user.selectOptions(screen.getByLabelText("Language"), "es");
     expect(await screen.findByLabelText("Idioma")).toHaveValue("es");
     expect(f.posts().find((p) => p.url === "/api/me/language")!.body).toEqual({ language: "es" });
-    expect(screen.getByRole("tab", { name: "Organización" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mi cuenta" })).toBeInTheDocument();
   });
 
   it("language save failure → back to English with an error", async () => {
-    const { user } = setup({ tab: "personal", routes: [{ match: (u) => u === "/api/me/language", status: 500, body: {} }] });
+    const { user } = setup({ account: true, routes: [{ match: (u) => u === "/api/me/language", status: 500, body: {} }] });
     await user.selectOptions(screen.getByLabelText("Language"), "es");
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t save your language");
     expect(screen.getByLabelText("Language")).toHaveValue("en");

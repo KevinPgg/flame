@@ -42,7 +42,13 @@ export default function OrganizerDashboard({
   const { model, loading, failed, fullAccess, refetch } = useOrganizerModel(organization, role);
   const [tab, setTab] = useState<"current" | "past">("current");
   const [search, setSearch] = useState("");
-  const visible = model ? searchEventsByName(tab === "current" ? model.current : model.past, search) : [];
+  const matches = model
+    ? { current: searchEventsByName(model.current, search), past: searchEventsByName(model.past, search) }
+    : null;
+  const visible = matches ? matches[tab] : [];
+  const other = tab === "current" ? "past" : "current";
+  // Searching inside one tab can hide the event in the other one: say so and offer to switch.
+  const elsewhere = search.trim() && matches && visible.length === 0 ? matches[other].length : 0;
 
   return (
     <OrganizerShell
@@ -62,7 +68,7 @@ export default function OrganizerDashboard({
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2" role="tablist">
             {(["current", "past"] as const).map((k) => {
-              const count = model ? (k === "current" ? model.current.length : model.past.length) : null;
+              const count = matches ? matches[k].length : null;
               const on = tab === k;
               return (
                 <button
@@ -94,6 +100,15 @@ export default function OrganizerDashboard({
         </div>
 
         {!fullAccess && <p className="mb-3 text-[13px] text-v2-c50">{t("organizer.assignedOnly")}</p>}
+
+        {elsewhere > 0 && (
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-[13px] text-v2-c70">
+            {t(other === "past" ? "organizer.matchesInPast" : "organizer.matchesInCurrent", { count: elsewhere })}
+            <button type="button" onClick={() => setTab(other)} className="font-v2-ui-semibold text-v2-cream underline underline-offset-2">
+              {t("organizer.showThem")}
+            </button>
+          </p>
+        )}
 
         {failed ? (
           <ErrorBox onRetry={refetch} />
