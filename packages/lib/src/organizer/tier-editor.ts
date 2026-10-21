@@ -9,7 +9,6 @@
  * Server: POST/PATCH /api/ticket-tiers (+ PATCH /api/events for new questions).
  */
 import { utcToLocal } from "../utils/timezone";
-import { normalizeOptionalTicketTierSecretCode } from "../validators/ticket-tier-secret-code";
 import type { FormField } from "../types/registration-form";
 import {
   QUESTION_LABEL_MAX,
@@ -24,6 +23,7 @@ import {
   type EventFormErrors,
   type QuestionDraft,
   type TierDraft,
+  tierSecretCode,
 } from "./event-form";
 
 export interface EditorStage {
@@ -251,7 +251,7 @@ export function buildTierSave(
     per_user_limit: parseIntInput(t.perUserLimit) ?? 1,
     sales_start: t.salesStart ? toUtc(t.salesStart, tz) : null,
     sales_end: t.salesEnd ? toUtc(t.salesEnd, tz) : event.ends_at,
-    secret_code: normalizeOptionalTicketTierSecretCode(t.accessCode),
+    secret_code: tierSecretCode(t),
     description: description || null,
     is_hidden: t.hidden,
     is_manually_sold_out: state.soldOut,

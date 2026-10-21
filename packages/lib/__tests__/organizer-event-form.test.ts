@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  tierSecretCode,
   slugify,
   parsePriceInput,
   parseIntInput,
@@ -136,7 +137,7 @@ describe("validateEventForm", () => {
   });
 
   it("flags tier fields by tier key", () => {
-    const t = tier({ name: "", price: "abc", quantity: "0", perUserLimit: "51", accessCode: " ab ", description: "d".repeat(121) });
+    const t = tier({ name: "", price: "abc", quantity: "0", perUserLimit: "51", hidden: true, accessCode: " ab ", description: "d".repeat(121) });
     const e = validateEventForm(validForm({ tiers: [t] }), NOW);
     const p = `tiers.${t.key}.`;
     expect(e[p + "name"]).toBe("tierNameRequired");
@@ -145,6 +146,14 @@ describe("validateEventForm", () => {
     expect(e[p + "perUserLimit"]).toBe("perUserLimitInvalid");
     expect(e[p + "accessCode"]).toBe("accessCodeTooShort");
     expect(e[p + "description"]).toBe("tierDescriptionTooLong");
+  });
+
+  it("access code only counts on hidden tiers: not validated and not saved on visible ones", () => {
+    const visible = tier({ hidden: false, accessCode: "ab" });
+    expect(validateEventForm(validForm({ tiers: [visible] }), NOW)).toEqual({});
+    expect(tierSecretCode(visible)).toBeNull();
+    expect(tierSecretCode(tier({ hidden: true, accessCode: " vip " }))).toBe("VIP");
+    expect(tierSecretCode(tier({ hidden: true, accessCode: "  " }))).toBeNull();
   });
 
   it("free tiers are valid, $10k+ is a typo guard, blank access code is fine", () => {

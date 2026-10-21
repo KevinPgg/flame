@@ -84,3 +84,21 @@ export function logoFileProblem(file: { size: number; type: string }): "type" | 
   if (file.size > ORG_LOGO_MAX_BYTES) return "size";
   return null;
 }
+
+/** Logos: at least this many pixels per side (the hint promises 400×400). */
+export const LOGO_MIN_SIDE = 400;
+/** Bigger logos are scaled down before upload so the file stays small and the type is clean. */
+export const LOGO_MAX_SIDE = 1024;
+
+export function logoDimensionProblem(width: number, height: number): "tooSmall" | null {
+  return Math.min(width, height) < LOGO_MIN_SIDE ? "tooSmall" : null;
+}
+
+/**
+ * Size to re-encode the logo at: same aspect, longest side ≤ LOGO_MAX_SIDE but the short side kept
+ * ≥ LOGO_MIN_SIDE (very long images stay sharp where it matters), never upscaled.
+ */
+export function logoTargetSize(width: number, height: number, max = LOGO_MAX_SIDE): { width: number; height: number } {
+  const scale = Math.min(1, Math.max(max / Math.max(width, height), LOGO_MIN_SIDE / Math.min(width, height)));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}

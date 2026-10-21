@@ -242,6 +242,7 @@ export {
   buildOrganizerEventList,
   revenueByCurrency,
   searchEventsByName,
+  foldForSearch,
   splitEventsByTime,
   totalPendingRsvps,
   formatEventDateTime,
@@ -371,6 +372,7 @@ export {
   tiersSellingPastEnd,
   validateEditEventForm,
   buildUpdateEventPayload,
+  tierSecretCode,
 } from "./organizer/event-form";
 export {
   activeEventFields,
@@ -450,6 +452,10 @@ export {
   orgFormDirty,
   orgImageStoragePath,
   logoFileProblem,
+  LOGO_MIN_SIDE,
+  LOGO_MAX_SIDE,
+  logoDimensionProblem,
+  logoTargetSize,
 } from "./organizer/org-settings";
 export type { OrgProfile, OrgForm, OrgFormErrors } from "./organizer/org-settings";
 export {

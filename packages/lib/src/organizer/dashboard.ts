@@ -93,13 +93,16 @@ export function revenueByCurrency(events: DashboardEvent[]): CurrencyTotal[] {
   return Array.from(map, ([currency, cents]) => ({ currency, cents }));
 }
 
-/** Case- and accent-insensitive name search ("fiesta" finds "Fiésta"). Empty query → all. */
+/** Lower case without accents/diacritics ("Carnával" → "carnaval"), for search. */
+export function foldForSearch(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Case- and accent-insensitive name search ("fiesta" finds "Fiésta", and the other way). Empty query → all. */
 export function searchEventsByName<E extends { name: string }>(events: E[], query: string): E[] {
-  const normalize = (s: string) =>
-    s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const q = normalize(query.trim());
+  const q = foldForSearch(query.trim());
   if (!q) return events;
-  return events.filter((e) => normalize(e.name).includes(q));
+  return events.filter((e) => foldForSearch(e.name).includes(q));
 }
 
 /**

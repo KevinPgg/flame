@@ -146,6 +146,14 @@ describe("buildTierSave — PATCH sends only what changed", () => {
     expect(buildTierSave(s, EVENT, GENERAL).body).toEqual({ id: "t1", name: "General B", price_cents: 3000, is_manually_sold_out: true });
   });
 
+  it("access code: showing a hidden tier drops its code; a legacy visible tier with a code loses it on save", () => {
+    const unhide = edit(VIP, (x) => (x.draft.hidden = false));
+    expect(buildTierSave(unhide, EVENT, VIP).body).toMatchObject({ is_hidden: false, secret_code: null });
+    const legacy = { ...GENERAL, secret_code: "OLD" };
+    const renamed = edit(legacy, (x) => (x.draft.name = "General B"));
+    expect(buildTierSave(renamed, EVENT, legacy).body).toMatchObject({ name: "General B", secret_code: null });
+  });
+
   it("spots change sends quantity_total (the API checks it against sold + reserved)", () => {
     const s = edit(GENERAL, (x) => (x.draft.quantity = "60"));
     const plan = buildTierSave(s, EVENT, GENERAL);

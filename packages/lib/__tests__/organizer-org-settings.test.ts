@@ -7,6 +7,8 @@ import {
   orgFormDirty,
   orgImageStoragePath,
   logoFileProblem,
+  logoDimensionProblem,
+  logoTargetSize,
 } from "../src";
 
 describe("org settings form", () => {
@@ -47,5 +49,17 @@ describe("org settings form", () => {
     expect(logoFileProblem({ size: 1000, type: "image/png" })).toBeNull();
     expect(logoFileProblem({ size: 1000, type: "image/svg+xml" })).toBe("type");
     expect(logoFileProblem({ size: 5 * 1024 * 1024, type: "image/jpeg" })).toBe("size");
+  });
+});
+
+describe("logo dimensions", () => {
+  it("at least 400 px per side; bigger is fine (it gets scaled down), never upscaled", () => {
+    expect(logoDimensionProblem(399, 800)).toBe("tooSmall");
+    expect(logoDimensionProblem(400, 400)).toBeNull();
+    expect(logoDimensionProblem(740, 740)).toBeNull();
+    expect(logoTargetSize(740, 740)).toEqual({ width: 740, height: 740 });
+    expect(logoTargetSize(4000, 2000)).toEqual({ width: 1024, height: 512 });
+    expect(logoTargetSize(500, 3000)).toEqual({ width: 400, height: 2400 }); // short side wins over the max
+    expect(logoTargetSize(1000, 3000)).toEqual({ width: 400, height: 1200 });
   });
 });

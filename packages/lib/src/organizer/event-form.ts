@@ -13,6 +13,15 @@ import { normalizeOptionalTicketTierSecretCode } from "../validators/ticket-tier
 import { MAX_TICKET_TIERS_PER_EVENT, TIER_DESCRIPTION_MAX_LENGTH } from "../constants/event-limits";
 import type { FormField, FormFieldType } from "../types/registration-form";
 
+
+/**
+ * The code stored for a tier. A code only reveals a HIDDEN tier on the event page (holds/create
+ * and ticket-tiers/unlock ignore it on visible tiers), so a visible tier never keeps one.
+ */
+export function tierSecretCode(t: { hidden: boolean; accessCode: string }): string | null {
+  return t.hidden ? normalizeOptionalTicketTierSecretCode(t.accessCode) : null;
+}
+
 export const EVENT_NAME_MAX = 200;
 export const EVENT_SLUG_MAX = 100;
 export const EVENT_VENUE_MAX = 200;
@@ -372,10 +381,13 @@ export function validateTierFields(
   const limit = parseIntInput(t.perUserLimit);
   if (limit === null || limit < 1 || limit > PER_USER_LIMIT_MAX) e[p + "perUserLimit"] = "perUserLimitInvalid";
 
-  if (t.accessCode.length > TIER_ACCESS_CODE_MAX) e[p + "accessCode"] = "accessCodeTooLong";
-  else {
-    const code = normalizeOptionalTicketTierSecretCode(t.accessCode);
-    if (code !== null && code.length < TIER_ACCESS_CODE_MIN) e[p + "accessCode"] = "accessCodeTooShort";
+  // Access codes only unlock hidden tiers (holds/create, ticket-tiers/unlock): validate them only then.
+  if (t.hidden) {
+    if (t.accessCode.length > TIER_ACCESS_CODE_MAX) e[p + "accessCode"] = "accessCodeTooLong";
+    else {
+      const code = normalizeOptionalTicketTierSecretCode(t.accessCode);
+      if (code !== null && code.length < TIER_ACCESS_CODE_MIN) e[p + "accessCode"] = "accessCodeTooShort";
+    }
   }
 
   if (t.description.length > TIER_DESCRIPTION_MAX_LENGTH) e[p + "description"] = "tierDescriptionTooLong";
@@ -574,7 +586,7 @@ export function buildCreateEventPayload(
         per_user_limit: parseIntInput(t.perUserLimit) ?? 1,
         sales_start: t.salesStart ? toUtc(t.salesStart, form.timezone) : null,
         sales_end: t.salesEnd ? toUtc(t.salesEnd, form.timezone) : endsAt,
-        secret_code: normalizeOptionalTicketTierSecretCode(t.accessCode),
+        secret_code: tierSecretCode(t),
         useStages: t.useStages,
         ...(stages ? { stages } : {}),
         ...(fields.length > 0 ? { registration_form_fields: tierFieldIds.get(t.key) ?? [] } : {}),
