@@ -394,3 +394,20 @@ Pedido de Kevin: menú lateral + contenido con scroll propio, como `flame-2.0`.
 **Revisado sin cambios:** ninguna pantalla v2 enlaza a v1 del organizador; textos v2 sin cadenas fijas (salvo el `alt` del logo); inputs numéricos con `inputMode`; ESTADO_ACTUAL tenía 3 meses sin Flame 2.0 → nueva §0 con el estado por fases.
 
 **Tests:** lib 366/366; web v2 + API organizador + utils 417/417; tsc web 0.
+
+## Ronda 1 de PruebasReales y correcciones (2026-10-20)
+Kevin ejecutó `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md` (la mayoría pasa) y pidió correcciones. Hecho:
+- **Interruptores al revés:** la bolita de `Toggle` no tenía `left-0` y arrancaba del centro del botón (en "apagado" quedaba a la derecha). Arreglado en `Toggle`, `SwitchRow` y el de "Obligatoria" de preguntas. Test `Toggle.test.tsx`.
+- **Logo 740×740 fallaba sin motivo:** el API no limita dimensiones; [Probable] el archivo traía un contenido distinto a su extensión (el API compara bytes vs tipo) o similar. Solución: `app/v2/lib/prepare-logo.ts` lee la imagen, exige ≥ 400×400 y la re-codifica en el navegador (WebP, PNG de respaldo; lado largo ≤ 1024 sin bajar el corto de 400). Mensajes: tamaño real, ilegible, o el motivo que da el servidor. Lib `logoDimensionProblem`, `logoTargetSize`.
+- **Ajustes personales separados de los de organización** (decisión de Kevin): nueva página `/v2/account` (Mi cuenta: datos de Clerk, idioma, cerrar sesión), enlazada desde el menú (abajo) y el avatar. `/v2/organizer/settings` queda solo organización, sin pestañas; `?tab=personal` y `/organizer/settings?tab=personal` → `/v2/account`. `loadMe()` en `organizer-context`.
+- **Badge de RSVPs del menú:** solo pendientes de eventos actuales (`useOrganizerModel.pending`). Las pantallas de RSVPs no cambian.
+- **Modal de co-organizadores transparente:** el modal v1 usa `bg-card` (blanco al 6 %). Nueva prop `surfaceClassName`; v2 pasa fondo sólido. v1 sin cambios.
+- **Código de acceso solo con tier oculto** (decisión de Kevin, coincide con el servidor: `holds/create` y `ticket-tiers/unlock` solo usan el código en tiers ocultos desde jun-2026): campo deshabilitado si el tier es visible; al mostrar el tier se borra; lib `tierSecretCode` (crear y editor de tiers): un tier visible se guarda sin código y no se valida.
+- **Atajos de URL** `/organizer/create|rsvps|payouts?org=` → v2 (solo con `?org=` para no tapar páginas públicas con esos slugs).
+- **Búsqueda del panel:** la normalización de tildes funcionaba, pero solo buscaba en la pestaña activa ([Probable] causa del fallo reportado). Ahora cuenta coincidencias en las dos pestañas y ofrece "Ver" la otra; `foldForSearch` con rango `\u0300-\u036f` escapado.
+- **Evento activo en el menú** más visible; **Enviar tickets** explica cada modo (cortesía vs. registrar una transferencia ya cobrada).
+
+**Respuestas a Kevin:** "Transferencias" no cobra ni pide aceptación (registra un pago ya hecho fuera de Flame); un cobro con aceptación sería función nueva. Stripe EC en pruebas: limitación de la plataforma de test (prod tiene EC habilitado por Stripe), usar US. Cómo validar "apagar RSVP": en el archivo de pruebas.
+
+**Tests:** lib 368/368; web v2 + API organizador + utils 424/424; tsc 0. Revisado visualmente (interruptores, Mi cuenta en/es y teléfono, ajustes, modal co-host, menú).
+**Pendiente de la ronda:** Brevo (API key vencida), pruebas con la app (fase 1b), payouts con cuenta US.
