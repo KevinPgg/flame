@@ -5,6 +5,7 @@ Pruebas manuales que hay que hacer en el PC de Kevin con datos reales de desarro
 - Un archivo por fase o bloque de trabajo. Cada entrega agrega sus casos al archivo de su fase **en el mismo commit**.
 - Formato: `- [ ]` por caso, agrupados por pantalla; marca `[x]` cuando pase. Si algo falla, anota debajo: pantalla, qué hiciste, qué esperabas, qué pasó y el error de consola.
 - "Cosas conocidas" al final de cada archivo: lo que no es fallo de esa prueba.
+- **Dispositivo:** cada sección dice dónde se prueba: 📱 **Celular** (build Android local con Metro), 🌐 **Web** (`localhost:3000`), o 📱/🌐 si da igual. Desde la fase 1b (app nativa) el dispositivo principal es el celular.
 
 | Archivo | Alcance | Estado |
 | --- | --- | --- |
