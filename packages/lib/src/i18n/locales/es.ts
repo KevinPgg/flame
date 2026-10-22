@@ -151,6 +151,9 @@ export const es: Messages = {
     kpi: { capacity: "Tickets", requested: "Solicitados", sold: "Vendidos", revenue: "Ingresos" },
     readOnlyCohost: "Co-organizas este evento. Las herramientas de venta las maneja {organizer}.",
     noSalesData: "El detalle de ventas solo lo ve el organizador dueño del evento.",
+    /** App, fase 1b (temporal mientras la herramienta pasa a v2). */
+    previousVersion: "Esta herramienta sigue en la versión anterior de la app.",
+    openPrevious: "Abrir versión anterior",
     tiers: {
       soldOf: "{sold} / {total} vendidos",
       reserved: "{count} pendientes",

@@ -20,7 +20,8 @@ import {
   Pressable,
   Linking,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { Redirect, useRouter, useLocalSearchParams, type Href } from "expo-router";
+import { organizerV2Enabled } from "../lib/v2/flags";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SCANNING_SUPPORTED } from "../lib/scanner-platform";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -130,6 +131,13 @@ function mapOrgEventToCardData(
 }
 
 export default function OrganizerAdminScreen() {
+  // Flame 2.0 (fase 1b): the organizer dashboard is v2 unless EXPO_PUBLIC_ORGANIZER_V1=true.
+  // Covers every way in (profile, notification deep links) with one redirect.
+  const v2Params = useLocalSearchParams<{ orgId?: string | string[] }>();
+  if (organizerV2Enabled()) {
+    const id = Array.isArray(v2Params.orgId) ? v2Params.orgId[0] : v2Params.orgId;
+    return <Redirect href={(id ? `/v2/organizer?orgId=${encodeURIComponent(id)}` : "/profile") as Href} />;
+  }
   return (
     <RequireAuthGate>
       <OrganizerAdminContent />

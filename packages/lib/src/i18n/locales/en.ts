@@ -153,6 +153,9 @@ export const en = {
     kpi: { capacity: "Tickets", requested: "Requested", sold: "Sold", revenue: "Revenue" },
     readOnlyCohost: "You co-host this event. Sales tools are managed by {organizer}.",
     noSalesData: "Sales details are only visible to the organizer that owns the event.",
+    /** App, fase 1b (temporary while the tool moves to v2). */
+    previousVersion: "This tool is still in the previous version of the app.",
+    openPrevious: "Open previous version",
     tiers: {
       soldOf: "{sold} / {total} sold",
       reserved: "{count} pending",

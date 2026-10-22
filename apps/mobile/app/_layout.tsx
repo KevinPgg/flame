@@ -23,6 +23,10 @@ import {
   Poppins_600SemiBold,
   Poppins_700Bold,
 } from "@expo-google-fonts/poppins";
+// Flame 2.0 (v2 screens): names must match the v2-* fontFamily entries of packages/ui/tailwind.config.js.
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
+import { InterTight_600SemiBold, InterTight_700Bold, InterTight_800ExtraBold } from "@expo-google-fonts/inter-tight";
+import { LanguageProvider } from "../components/v2/LanguageProvider";
 import "../global.css";
 
 // ---------------------------------------------------------------------------
@@ -110,16 +114,18 @@ function AppShell({
   const notificationsState = useNotifications();
 
   return (
-    <AuthRedirectProvider>
-      <MemberRoleProvider>
-        <RoleResolutionGate
-          notificationsOpen={notificationsOpen}
-          onNotificationOpen={onNotificationOpen}
-          onNotificationClose={onNotificationClose}
-          notificationsState={notificationsState}
-        />
-      </MemberRoleProvider>
-    </AuthRedirectProvider>
+    <LanguageProvider>
+      <AuthRedirectProvider>
+        <MemberRoleProvider>
+          <RoleResolutionGate
+            notificationsOpen={notificationsOpen}
+            onNotificationOpen={onNotificationOpen}
+            onNotificationClose={onNotificationClose}
+            notificationsState={notificationsState}
+          />
+        </MemberRoleProvider>
+      </AuthRedirectProvider>
+    </LanguageProvider>
   );
 }
 
@@ -135,6 +141,13 @@ export default function Layout() {
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    InterTight_600SemiBold,
+    InterTight_700Bold,
+    InterTight_800ExtraBold,
   });
 
   if (fontsError) {

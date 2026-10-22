@@ -6,11 +6,11 @@
  *   const { t, language, setLanguage, locale } = useI18n();
  *   t("event.getTickets"); t("tickets.count", { count: 2 });
  *
- * Not mounted yet: the first Flame 2.0 screen (phase 1) mounts it at the root.
+ * Mounted at the root by components/v2/LanguageProvider (fase 1b), which loads and saves the language.
  * Persistence: `users.language` (migration 20261008170000). `onLanguageChange` is where the
  * caller saves it; this file does not talk to Supabase.
  */
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DEFAULT_LANGUAGE,
   LOCALE_BY_LANGUAGE,
@@ -41,6 +41,13 @@ export function I18nProvider({
   onLanguageChange?: (language: Language) => void;
 }) {
   const [language, setLanguageState] = useState<Language>(() => resolveLanguage(initialLanguage));
+
+  // The saved language arrives after start-up (GET /api/me/language) or changes on sign-in/out:
+  // follow it without remounting the tree (the root Stack must stay mounted, see RoleResolutionGate).
+  const resolvedInitial = resolveLanguage(initialLanguage);
+  useEffect(() => {
+    setLanguageState(resolvedInitial);
+  }, [resolvedInitial]);
 
   const setLanguage = useCallback(
     (next: Language) => {

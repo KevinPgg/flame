@@ -14,7 +14,7 @@
 
 import { View, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { useAuthRedirect } from "../../contexts/AuthRedirectContext";
 import { ScrollToTopProvider } from "../../contexts/ScrollToTopContext";
 import { Header } from "../home/Header";
@@ -46,6 +46,8 @@ export function RoleResolutionGate({
   notificationsState,
 }: RoleResolutionGateProps) {
   const { isAuthRedirecting } = useAuthRedirect();
+  // Flame 2.0 organizer screens (/v2/…) bring their own top bar and bottom bar (OrganizerShell).
+  const v2 = usePathname().startsWith("/v2");
 
   return (
     <ScrollToTopProvider>
@@ -60,10 +62,12 @@ export function RoleResolutionGate({
             <ActivityIndicator size="large" color="#FFFFFF" style={{ marginTop: 24 }} />
           </View>
         )}
-        <Header
-          onNotificationPress={onNotificationOpen}
-          unreadCount={notificationsState.unreadCount}
-        />
+        {!v2 && (
+          <Header
+            onNotificationPress={onNotificationOpen}
+            unreadCount={notificationsState.unreadCount}
+          />
+        )}
         <View style={{ flex: 1 }}>
           <Stack
             screenOptions={{
@@ -95,7 +99,7 @@ export function RoleResolutionGate({
               />
             ))}
           </Stack>
-          <CustomTabBar />
+          {!v2 && <CustomTabBar />}
         </View>
         <NotificationsOverlay
           visible={notificationsOpen}
