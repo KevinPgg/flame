@@ -44,6 +44,18 @@ beforeEach(() => {
 const put = (body: unknown) =>
   language.PUT(new NextRequest("http://localhost/api/me/language", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
 
+describe("GET /api/me/language", () => {
+  it("returns the saved language, English when unknown, 401 when anonymous", async () => {
+    state.db.tables.users[0].language = "es";
+    state.clerk = "c-owner";
+    expect(await (await language.GET()).json()).toEqual({ language: "es" });
+    state.clerk = "c-nobody";
+    expect(await (await language.GET()).json()).toEqual({ language: "en" });
+    state.clerk = null;
+    expect((await language.GET()).status).toBe(401);
+  });
+});
+
 describe("PUT /api/me/language", () => {
   it("saves a supported language for the signed-in person", async () => {
     state.clerk = "c-owner";

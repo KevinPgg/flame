@@ -2,6 +2,18 @@ import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { isLanguage } from "@project-flame/lib";
 import { supabaseAdmin } from "@/app/lib/supabase/server";
+import { getUserLanguage } from "@/app/v2/lib/user-language";
+
+/**
+ * GET /api/me/language → { language } — read by the app (fase 1b) at start-up, since it has no
+ * server render to read users.language from. Never fails for a signed-in person: missing user,
+ * DB error or unmigrated column → "en" (same rule as the web, `getUserLanguage`).
+ */
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return NextResponse.json({ language: await getUserLanguage(userId) });
+}
 
 /**
  * PUT /api/me/language { language: "en" | "es" } — the signed-in person's UI language
