@@ -7,9 +7,12 @@
  * @returns true if the error is fetch/network related
  */
 function isFetchRelatedError(err: any): boolean {
-  const message = (err?.message || "").toLowerCase();
-  const details = (err?.details || "").toLowerCase();
-  const causeMessage = (err?.cause?.message || "").toLowerCase();
+  // PostgREST puede mandar `details` como objeto o array (p. ej. PGRST201): nunca asumir string,
+  // o este chequeo tapa el error real con un TypeError.
+  const text = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : JSON.stringify(v)).toLowerCase();
+  const message = text(err?.message);
+  const details = text(err?.details);
+  const causeMessage = text(err?.cause?.message);
 
   return (
     message.includes("fetch failed") ||

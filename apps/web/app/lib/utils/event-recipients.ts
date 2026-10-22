@@ -21,7 +21,9 @@ export async function fetchCompletedOrderBuyers(db: any, eventId: string): Promi
   const rows = await selectAllPages<OrderRow>((from, to) =>
     db
       .from("orders")
-      .select("id, users!inner (id, email, first_name, last_name)")
+      // orders tiene 3 FK a users (user_id, promoter_user_id, original_purchaser_user_id): sin el
+      // nombre de la FK, PostgREST responde PGRST201 (relación ambigua) y no se lee nadie.
+      .select("id, users!orders_user_id_fkey!inner (id, email, first_name, last_name)")
       .eq("event_id", eventId)
       .eq("status", "completed")
       .order("id", { ascending: true })
