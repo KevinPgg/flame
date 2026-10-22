@@ -14,11 +14,11 @@ Correcciones de tu ronda 1. Marca cada una y, si pasa, marca también el caso or
 - [x] **Modal de co-organizadores:** fondo sólido, se lee bien sobre negro.
 - [x] **Código de acceso del tier:** deshabilitado mientras el tier no esté oculto (texto: "Activa 'Ocultar tier' para usar un código"). Al desactivar "Ocultar tier" el código se borra. Un tier visible que ya tenía código lo pierde al guardarlo (no hacía nada: el código solo muestra tiers ocultos).
 - [x] **Atajos de URL** (lo que escribiste): `/organizer/create?org=<slug>`, `/organizer/rsvps?org=<slug>`, `/organizer/payouts?org=<slug>` → su pantalla v2. Sin `?org=` no redirigen (son la página pública de una organización con ese slug). Las formas `/organizer?org=<slug>&tab=create-event` / `&tab=rsvps` y `/organizer/settings?org=<slug>&tab=payouts` también deben funcionar: si alguna no, anota la URL exacta.
-- [ ] **Búsqueda del panel:** busca en las dos pestañas; si lo que buscas está en la otra, aparece "1 coincidencia en Pasados · Ver". Tildes en los dos sentidos ("carnaval" ↔ "Carnával").
-- [ ] **Evento abierto en el menú:** resaltado más visible (fondo, borde y barra roja a la izquierda).
-- [ ] **Enviar tickets:** debajo de "Tickets gratis / Transferencias" ahora se explica qué hace cada modo.
+- [x] **Búsqueda del panel:** busca en las dos pestañas; si lo que buscas está en la otra, aparece "1 coincidencia en Pasados · Ver". Tildes en los dos sentidos ("carnaval" ↔ "Carnával").
+- [x] **Evento abierto en el menú:** resaltado más visible (fondo, borde y barra roja a la izquierda).
+- [x] **Enviar tickets:** debajo de "Tickets gratis / Transferencias" ahora se explica qué hace cada modo.
 
-**Resultado ronda 2 (Kevin, 2026-10-21):** interruptores, logo, badge RSVP, co-organizadores y código de tier OK; payout de prueba OK tras cambiar la cuenta bancaria de prueba a `110000000` / `000123456789` (la anterior simula `debit_not_authorized`). La búsqueda con tildes que fallaba era la de **Descubrir en la app** (Expo web), no la del panel.
+**Resultado ronda 2 (Kevin, 2026-10-21/22):** búsqueda del panel, resaltado del menú y explicación de Enviar tickets OK (10-22). interruptores, logo, badge RSVP, co-organizadores y código de tier OK; payout de prueba OK tras cambiar la cuenta bancaria de prueba a `110000000` / `000123456789` (la anterior simula `debit_not_authorized`). La búsqueda con tildes que fallaba era la de **Descubrir en la app** (Expo web), no la del panel.
 - [ ] **Descubrir (app, `localhost:8081`)**: buscar "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
 - [ ] **"Gestionar en Stripe" con error de país**: tras limpiar la organización que quedó con cuenta de Ecuador (ver "Cosas conocidas"), conectar de nuevo con United States funciona.
 
@@ -26,19 +26,19 @@ Correcciones de tu ronda 1. Marca cada una y, si pasa, marca también el caso or
 - [x] **Build de producción:** `pnpm --filter web build` termina sin errores. Si falla en "prerendering page /404" con `Cannot read properties of null (reading 'useContext')`, es React duplicado por la instalación local (ver "Cosas conocidas"); avísame.
 - [x] `npm run dev` en `apps/web`. La primera visita a cada pantalla tarda 20–25 s (compila); las siguientes no.
 - [x] Usa una organización de prueba con: al menos un evento futuro con RSVP, uno sin RSVP, uno pasado, y un evento con algún ticket vendido (si se puede, uno con etapas de precio).
-- [] Ten a mano 4 usuarios (o cambia el rol en la BD): **owner**, **admin**, **organizer asignado** a un evento, **organizer sin asignaciones**. El viewer no está en uso, se puede omitir.
-- [] Stripe en modo test para lo que cobra (RSVP aprobado, reducción forzada).
+- [x] Ten a mano 4 usuarios (o cambia el rol en la BD): 
+- [x] Stripe en modo test para lo que cobra (RSVP aprobado, reducción forzada).
 
 ## 1. Redirección v1 → v2 (nuevo)
 - [x] `/organizer` → abre `/v2/organizer` (Mis organizadores).
 - [x] `/organizer?org=<slug>` → panel v2 de esa organización.
-- [] `/organizer?org=<slug>&tab=create-event` → crear evento v2. `//Fallo, no redirecciona con /organizer/create?org=<slug>`
-- [] `/organizer?org=<slug>&tab=rsvps` → RSVPs v2. `//Fallo, no redirecciona con /organizer/resvps?org=<slug>`
+- [x] `/organizer?org=<slug>&tab=create-event` → crear evento v2. (Atajo `/organizer/create?org=` corregido y OK en ronda 2.)
+- [x] `/organizer?org=<slug>&tab=rsvps` → RSVPs v2. (Atajo `/organizer/rsvps?org=` corregido y OK en ronda 2.)
 - [x] `/organizer/event/<id>?org=<slug>` → evento v2.
 - [x] `/organizer/rsvps/<id>?org=<slug>` → RSVPs de ese evento v2.
 - [x] `/organizer/team?org=<slug>` → equipo v2.
 - [x] `/organizer/settings?org=<slug>` (y `&tab=organization` / `&tab=personal`) → ajustes v2.
-- [] `/organizer/settings?org=<slug>&tab=payouts` → payouts v2. `//fallo, no redirecciona /organizer/payouts?org=<slug>`
+- [x] `/organizer/settings?org=<slug>&tab=payouts` → payouts v2. (Atajo `/organizer/payouts?org=` corregido y OK en ronda 2.)
 - [x] Se queda en v1: `/organizer/<slug-publico>` (página pública).
 - [x] `/qr-scanner` y `/v2/scanner` → te mandan al inicio (la web ya no escanea).
 - ~~Desde ajustes v1, el "volver" al panel termina en v2.~~ Quitado: los ajustes v1 del organizador ya no se abren (redirigen a v2), así que no hay "volver" que probar. `account?tab=settings` es la cuenta del asistente (v1, fase 2).
@@ -98,7 +98,7 @@ Teléfono (o ventana < 1024 px):
 - [x] Cambiar solo el lugar → guarda sin pedir confirmación.
 - [x] Guardar sin cambios → "No hay cambios para guardar".
 - [x] Cambiar la fecha → confirmación "todos los que tienen ticket reciben email y notificación"; Cancelar no guarda; Confirmar guarda.
-- [ ] Revisa el email de cambio de fecha (Brevo): dice la zona horaria del evento ("All times are in the event’s local time zone: …"). `//Revisar levantamiente de brevo (apikey caducada)`
+- [ ] Revisa el email de cambio de fecha (Brevo): dice la zona horaria del evento ("All times are in the event’s local time zone: …"). `//Revisar levantamiente de brevo (apikey caducada)` → **10-22:** no era Brevo. Fallaba la lectura de compradores (`orders` tiene 3 FK a `users`, embed ambiguo PGRST201) y el reintento lo tapaba con `toLowerCase is not a function`. Corregido; **el correo ya llega (Kevin, 10-22)**. Falta confirmar en el correo el texto de la zona horaria y marcar.
 - [x] Fin antes del fin de ventas de un tier → bloqueado y nombra el tier.
 - [x] Evento que empieza en menos de 2 h (o ya empezó): fechas bloqueadas con aviso, pero lugar/descripción/flyer sí se guardan.
 - [x] Cambiar flyer / quitar flyer.
@@ -193,3 +193,10 @@ App (celular, build Android):
 - Payouts no muestra las transferencias bancarias cobradas directamente (sí están en el prototipo).
 - El hub "Manage" del prototipo no existe (Payouts y Ajustes son entradas del menú).
 - Fallo pendiente (fase 3): la reducción forzada también rechaza RSVPs **aprobados** (ya cobrados) sin reembolso. No lo pruebes con dinero real.
+
+## Cierre (2026-10-22): lo que queda abierto
+- **Correos:** Brevo renovado y el de cambio de fecha ya llega (10-22, tras corregir la consulta de compradores). Falta: texto de zona horaria (§6) y el correo de RSVP rechazado por reducción forzada (§7).
+- **Push:** en local nadie tiene `push_tokens` (ninguna app registrada en un celular), así que `[push] No registered devices…` es lo esperado y los push no se pueden verificar en la web. Pasan a la fase 1b.
+- **Diferido por Kevin:** ingresos v2 = v1 con muchas órdenes (§3). **v1 no se borra** mientras tanto (además está `Flme_comp/`).
+- **Pasa a fase 1b (app):** escaneo con código y con cuentas, `SCANNER_ACCESS_CODES=off` (§7c); búsqueda con tildes en Descubrir de la app.
+- **Sin probar, bajo riesgo (cubiertos por tests automáticos):** saldo < $1, "Gestionar en Stripe" tras limpiar la cuenta EC.

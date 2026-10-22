@@ -1,6 +1,6 @@
 # Flame — Estado Actual
 
-**Fecha:** 2026-07-15 (§0 y §4.6 actualizados 2026-10-18) · Consolida `ESTADO_ACTUAL_2026-07-07.md` (general) y
+**Fecha:** 2026-07-15 (§0 actualizado 2026-10-22) · Consolida `ESTADO_ACTUAL_2026-07-07.md` (general) y
 `ESTADO_ACTUAL_MOBILE_2026-07-08.md` (mobile).
 
 > **Convención del proyecto:** `Flme_comp/` es el **baseline intacto de producción** y manda
@@ -20,13 +20,13 @@ decisiones: `docs/actual/FLAME_2_0_VALORACION.md`. Detalle de cada entrega:
 | Fase | Estado |
 | --- | --- |
 | 0. Base (tokens, i18n en/es, tests de compra) | Hecha (10-08) |
-| 1. Organizador web | **Hecha (10-18)**, pendiente de pruebas reales: `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md` |
+| 1. Organizador web | **Hecha (10-18)** · pruebas reales ejecutadas (10-22): `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md`. Abiertos: correos sin verificar (Brevo), ingresos v1↔v2 |
 | 1b. Organizador app (Expo) | Siguiente |
 | 2. Asistente · 3. Checkout y códigos · 4. Funcionalidad nueva · 5. Ensayo y salida | Pendientes |
 
 - El organizador web vive en `/v2/organizer…`; las URLs v1 del organizador redirigen ahí (`ORGANIZER_V1=true` para volver).
 - Escaneo de tickets solo desde la app en el celular; la web solo configura quién escanea (cuentas + código de acceso por evento).
-- Abiertos de la fase 1: rate limit de `validate-code`; `force-reduce` rechaza RSVPs aprobados (fase 3); `approve` de RSVP no valida evento terminado (fase 3); auditoría RLS móvil; build local con React duplicado (§4.6).
+- Abiertos de la fase 1: rate limit de `validate-code`; `force-reduce` rechaza RSVPs aprobados (fase 3); `approve` de RSVP no valida evento terminado (fase 3); auditoría RLS móvil; correos sin verificar (Brevo); ingresos v1↔v2 pendientes (v1 se conserva). ~~React duplicado en build web~~ resuelto (c78d917).
 
 
 ## 1. Producción (= `Flme_comp/`)
@@ -55,7 +55,7 @@ roles, scanner QR, payouts Stripe Connect multi-país.
    `fetchEventPurchasesForEvents` + `rsvp-stats.ts`, y todas las lecturas de varios eventos
    paginadas (`lib/utils/supabase-pagination.ts`), porque PostgREST corta en 1000 filas sin error.
    El SSR de v1 (`app/organizer/page.tsx`) conserva su propio cálculo de compras (ya paginado);
-   se elimina con v1 al cerrar la fase 1.
+   se conserva: v1 no se borra hasta comparar ingresos v1↔v2 (decisión de Kevin, 10-22).
 2. **Logger y auth mobile: acoplamiento extremo sin red de seguridad** — `error`/`warn` del
    logger Supabase mobile tienen fan-in 301/90 y `getAuthenticatedClient`/`useOptionalAuth`
    26/69, con **cero tests en mobile**. Un cambio de firma o comportamiento en uno de esos
@@ -155,3 +155,8 @@ escritura in-place fallida (posible artefacto de sync); verificar el contenido r
 Alta: cerrar paridad organizador web (#16/#17/#18) · UI compartida real en `packages/ui` ·
 bajar baseline `tsc` mobile. Media: retirar Datafast · ~~batch `fetchEventPurchasesForEvents`~~ (hecho 2026-10-15) ·
 tests mobile + RLS en CI · unificar Zod. Higiene: regla lint `www.flme.co`.
+
+
+## Bug de producción: correos de cambio de fecha no se envían (encontrado 2026-10-22)
+[Probable] En producción (`Flme_comp/apps/web/app/api/events/route.ts`, PATCH) el aviso por email de cambio de fecha **no llega a nadie**: la consulta embebe `users!inner` desde `orders`, pero `orders` tiene 3 FK a `users` (`user_id`, `promoter_user_id`, `original_purchaser_user_id`) → PostgREST responde PGRST201 (relación ambigua) y el código ignora el error (`orders` = null → 0 correos, sin log). El push sí sale (otra consulta).
+En esta copia el error salía como `TypeError: … toLowerCase is not a function` porque `supabase-retry.ts` asumía `details` string (PGRST201 lo manda como array). Corregido aquí (`users!orders_user_id_fkey!inner` + reintento robusto, test `__tests__/utils/event-recipients.test.ts`). **Para producción:** aplicar el mismo cambio de FK al pasar Flame 2.0, o como hotfix aparte si se quiere antes.

@@ -417,3 +417,17 @@ Kevin ejecutó `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md` (la mayoría pasa)
 - Búsqueda con tildes que fallaba: era **Descubrir en la app** (Expo web, `useEventFilters`), no el panel web. Arreglado con `foldForSearch` en `apps/mobile/hooks/useEventFilters.ts`, y de paso en `organizer-admin.tsx` y `rsvp-management.tsx` (app actual). tsc mobile: sin errores nuevos (40 heredados).
 - "Gestionar en Stripe" → "country that Connect Onboarding does not yet support": [Probable] la organización conserva la cuenta conectada de Ecuador creada en el primer intento (`accounts.create` funcionó; falló el account link). Arreglo de datos en local (SQL en PruebasReales). No se cambia código: en producción Ecuador está habilitado.
 - Transferencias y Stripe (pregunta de Kevin): no hay conflicto. El ingreso total del panel y el saldo de Payouts **excluyen** las transferencias (`purchase-data.ts`: `neq payment_provider bank_transfer`); solo el Desglose las muestra aparte ("Transferencia bancaria · cobrado"). Los asistentes sí incluyen sus tickets (`quantity_sold`). Flame no cobra comisión sobre ellas.
+
+## Cierre de pruebas reales de la fase 1 (2026-10-22)
+- Kevin terminó la ronda 2: búsqueda del panel, resaltado del menú y explicación de Enviar tickets OK. Marcados también los casos originales de atajos de URL.
+- Abiertos de la fase 1: **correos sin verificar** (API key de Brevo vencida: cambio de fecha y RSVP rechazado por reducción forzada); ingresos v1↔v2 con muchas órdenes (diferido; hacer antes de borrar v1); saldo < $1 y "Gestionar en Stripe" sin probar (bajo riesgo, con tests).
+- Casos de app (escáner con código/cuentas, `SCANNER_ACCESS_CODES=off`, tildes en Descubrir) pasan a la fase 1b.
+- **Decisión de Kevin:** primero renovar Brevo y probar los 2 correos; después **fase 1b (organizador en la app)**, no la fase 2 (el plan pone 1b antes).
+- Control de fases: `docs/actual/ESTADO_ACTUAL.md` §0 (actualizado hoy).
+
+### Correos de cambio de fecha (2026-10-22)
+- Kevin renovó Brevo y el aviso de cambio de fecha seguía sin salir: `TypeError: ((intermediate value) || "").toLowerCase is not a function` en `supabase-retry.ts` desde `fetchCompletedOrderBuyers`.
+- Causa: `orders` tiene 3 FK a `users`; el embed `users!inner` es ambiguo (PGRST201, cuyo `details` es un array → el chequeo de reintento reventaba y tapaba el error real). **También en producción** (`Flme_comp`), donde el error se ignora y no se envía ningún correo de cambio de fecha. Ver ESTADO_ACTUAL (bug de producción).
+- Fix: `users!orders_user_id_fkey!inner` en `event-recipients.ts`; `isFetchRelatedError` acepta `message/details` no string. Test nuevo `__tests__/utils/event-recipients.test.ts` (3; fallan con el código anterior con el mismo TypeError). Era el único embed de `users` sin FK desde `orders` en web/mobile.
+- El test existente de cambio de fecha no lo detectó porque su mock ignora el `select`.
+- Ingresos v1↔v2: pendiente; **v1 no se borra** (decisión de Kevin).
