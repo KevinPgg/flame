@@ -411,3 +411,9 @@ Kevin ejecutó `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md` (la mayoría pasa)
 
 **Tests:** lib 368/368; web v2 + API organizador + utils 424/424; tsc 0. Revisado visualmente (interruptores, Mi cuenta en/es y teléfono, ajustes, modal co-host, menú).
 **Pendiente de la ronda:** Brevo (API key vencida), pruebas con la app (fase 1b), payouts con cuenta US.
+
+### Ronda 2 de pruebas (2026-10-21)
+- OK: interruptores, logo, badge RSVP, co-host, código de tier, apagar RSVP (era durante la creación), payout de prueba (cuenta bancaria `000123456789`; la anterior simulaba `debit_not_authorized`).
+- Búsqueda con tildes que fallaba: era **Descubrir en la app** (Expo web, `useEventFilters`), no el panel web. Arreglado con `foldForSearch` en `apps/mobile/hooks/useEventFilters.ts`, y de paso en `organizer-admin.tsx` y `rsvp-management.tsx` (app actual). tsc mobile: sin errores nuevos (40 heredados).
+- "Gestionar en Stripe" → "country that Connect Onboarding does not yet support": [Probable] la organización conserva la cuenta conectada de Ecuador creada en el primer intento (`accounts.create` funcionó; falló el account link). Arreglo de datos en local (SQL en PruebasReales). No se cambia código: en producción Ecuador está habilitado.
+- Transferencias y Stripe (pregunta de Kevin): no hay conflicto. El ingreso total del panel y el saldo de Payouts **excluyen** las transferencias (`purchase-data.ts`: `neq payment_provider bank_transfer`); solo el Desglose las muestra aparte ("Transferencia bancaria · cobrado"). Los asistentes sí incluyen sus tickets (`quantity_sold`). Flame no cobra comisión sobre ellas.
