@@ -21,7 +21,7 @@ decisiones: `docs/actual/FLAME_2_0_VALORACION.md`. Detalle de cada entrega:
 | --- | --- |
 | 0. Base (tokens, i18n en/es, tests de compra) | Hecha (10-08) |
 | 1. Organizador web | **Hecha (10-18)** · pruebas reales ejecutadas (10-22): `docs/PruebasReales/FASE_1_ORGANIZADOR_WEB.md`. Abiertos: correos sin verificar (Brevo), ingresos v1↔v2 |
-| 1b. Organizador app (Expo) | Siguiente |
+| 1b. Organizador app (Expo) | **En curso (desde 10-22).** Plan y decisiones: `docs/sesiones/2026-10-22-fase-1b-organizador-app.md` |
 | 2. Asistente · 3. Checkout y códigos · 4. Funcionalidad nueva · 5. Ensayo y salida | Pendientes |
 
 - El organizador web vive en `/v2/organizer…`; las URLs v1 del organizador redirigen ahí (`ORGANIZER_V1=true` para volver).

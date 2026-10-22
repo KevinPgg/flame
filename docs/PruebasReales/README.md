@@ -8,4 +8,5 @@ Pruebas manuales que hay que hacer en el PC de Kevin con datos reales de desarro
 
 | Archivo | Alcance | Estado |
 | --- | --- | --- |
-| [FASE_1_ORGANIZADOR_WEB.md](FASE_1_ORGANIZADOR_WEB.md) | Organizador web v2: redirecciones, menú, panel, evento, crear/editar, tiers, equipo, escáner (configuración), ajustes, payouts, RSVPs, permisos, idioma, errores | Ejecutado (rondas 1–2, 10-20 a 10-22). Abiertos: correos (Brevo), ingresos v1↔v2, casos de app → 1b |
+| [FASE_1_ORGANIZADOR_WEB.md](FASE_1_ORGANIZADOR_WEB.md) | Organizador web v2: redirecciones, menú, panel, evento, crear/editar, tiers, equipo, escáner (configuración), ajustes, payouts, RSVPs, permisos, idioma, errores | Cerrada (10-22). Abierto: ingresos v1↔v2 (v1 se conserva). Casos de app → FASE_1B |
+| [FASE_1B_ORGANIZADOR_APP.md](FASE_1B_ORGANIZADOR_APP.md) | Organizador en la app (Expo): se llena con cada entrega de la 1b; ya incluye los casos de app heredados de la fase 1 | En curso |

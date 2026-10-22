@@ -98,7 +98,7 @@ Teléfono (o ventana < 1024 px):
 - [x] Cambiar solo el lugar → guarda sin pedir confirmación.
 - [x] Guardar sin cambios → "No hay cambios para guardar".
 - [x] Cambiar la fecha → confirmación "todos los que tienen ticket reciben email y notificación"; Cancelar no guarda; Confirmar guarda.
-- [ ] Revisa el email de cambio de fecha (Brevo): dice la zona horaria del evento ("All times are in the event’s local time zone: …"). `//Revisar levantamiente de brevo (apikey caducada)` → **10-22:** no era Brevo. Fallaba la lectura de compradores (`orders` tiene 3 FK a `users`, embed ambiguo PGRST201) y el reintento lo tapaba con `toLowerCase is not a function`. Corregido; **el correo ya llega (Kevin, 10-22)**. Falta confirmar en el correo el texto de la zona horaria y marcar.
+- [x] Revisa el email de cambio de fecha (Brevo): dice la zona horaria del evento ("All times are in the event’s local time zone: …"). `//Revisar levantamiente de brevo (apikey caducada)` → **10-22:** no era Brevo. Fallaba la lectura de compradores (`orders` tiene 3 FK a `users`, embed ambiguo PGRST201) y el reintento lo tapaba con `toLowerCase is not a function`. Corregido; **el correo ya llega (Kevin, 10-22)**. Falta confirmar en el correo el texto de la zona horaria y marcar.
 - [x] Fin antes del fin de ventas de un tier → bloqueado y nombra el tier.
 - [x] Evento que empieza en menos de 2 h (o ya empezó): fechas bloqueadas con aviso, pero lugar/descripción/flyer sí se guardan.
 - [x] Cambiar flyer / quitar flyer.
@@ -112,7 +112,7 @@ Teléfono (o ventana < 1024 px):
 - [x] "Marcar como agotado" funciona.
 - [x] Preguntas: las guardadas son de solo lectura; los chips "Preguntas de este evento" las agregan; una pregunta nueva se agrega y los demás tiers NO la heredan (verifica en el registro de un tier distinto).
 - [x] Eliminar: deshabilitado si tiene ventas o es el único tier; si no, pide confirmación y borra.
-- [x] **Reducción forzada (con cuidado, Stripe test):** tier simple con un RSVP pendiente; bajar cupos por debajo de vendidos+reservados → aparece la confirmación con el detalle. Cancelar → nada cambia. Confirmar → el RSVP queda rechazado, la persona recibe email, se libera la retención de la tarjeta en Stripe, y los otros cambios (p. ej. nombre) también se guardan. `//esperar para confirmar con brevo (actualmente no levantado)`
+- [x] **Reducción forzada (con cuidado, Stripe test):** tier simple con un RSVP pendiente; bajar cupos por debajo de vendidos+reservados → aparece la confirmación con el detalle. Cancelar → nada cambia. Confirmar → el RSVP queda rechazado, la persona recibe email, se libera la retención de la tarjeta en Stripe, y los otros cambios (p. ej. nombre) también se guardan. 
 - [x] Lo mismo en un tier con etapas → NO ofrece reducción forzada, pide revisar RSVPs.
 - [x] Ocultar el último tier visible → aviso amarillo.
 
@@ -195,7 +195,7 @@ App (celular, build Android):
 - Fallo pendiente (fase 3): la reducción forzada también rechaza RSVPs **aprobados** (ya cobrados) sin reembolso. No lo pruebes con dinero real.
 
 ## Cierre (2026-10-22): lo que queda abierto
-- **Correos:** Brevo renovado y el de cambio de fecha ya llega (10-22, tras corregir la consulta de compradores). Falta: texto de zona horaria (§6) y el correo de RSVP rechazado por reducción forzada (§7).
+- **Correos:** Brevo renovado y el de cambio de fecha ya llega (10-22, tras corregir la consulta de compradores). Zona horaria (§6) y RSVP rechazado por reducción forzada (§7): OK (Kevin, 10-22). **Correos de la fase 1 cerrados.**
 - **Push:** en local nadie tiene `push_tokens` (ninguna app registrada en un celular), así que `[push] No registered devices…` es lo esperado y los push no se pueden verificar en la web. Pasan a la fase 1b.
 - **Diferido por Kevin:** ingresos v2 = v1 con muchas órdenes (§3). **v1 no se borra** mientras tanto (además está `Flme_comp/`).
 - **Pasa a fase 1b (app):** escaneo con código y con cuentas, `SCANNER_ACCESS_CODES=off` (§7c); búsqueda con tildes en Descubrir de la app.
