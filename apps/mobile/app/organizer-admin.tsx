@@ -65,6 +65,7 @@ import {
   canManageAssignedEvents,
   canCreateEvents,
   formatCentsAsPrice,
+  foldForSearch,
 } from "@project-flame/lib";
 import { useEventAssignments } from "../hooks/useEventAssignments";
 import { useCohostEvents } from "../hooks/useCohostEvents";
@@ -435,14 +436,14 @@ function OrganizerAdminContent() {
 
   const filteredCurrentData = useMemo(() => {
     if (!searchQuery.trim()) return currentCardData;
-    const q = searchQuery.trim().toLowerCase();
-    return currentCardData.filter((c) => c.eventName.toLowerCase().includes(q));
+    const q = foldForSearch(searchQuery.trim());
+    return currentCardData.filter((c) => foldForSearch(c.eventName).includes(q));
   }, [currentCardData, searchQuery]);
 
   const filteredPastData = useMemo(() => {
     if (!searchQuery.trim()) return pastCardData;
-    const q = searchQuery.trim().toLowerCase();
-    return pastCardData.filter((c) => c.eventName.toLowerCase().includes(q));
+    const q = foldForSearch(searchQuery.trim());
+    return pastCardData.filter((c) => foldForSearch(c.eventName).includes(q));
   }, [pastCardData, searchQuery]);
 
   const stats: OrgStatsSectionProps = useMemo(() => {

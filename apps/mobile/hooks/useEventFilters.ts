@@ -5,6 +5,7 @@ import {
   filterEventsByCity,
   filterEventsByOrganizer,
   DEFAULT_CATALOG_CITY,
+  foldForSearch,
 } from "@project-flame/lib";
 import type { EventCardData } from "@project-flame/ui";
 import type { OrgFilterableEvent } from "@project-flame/lib";
@@ -68,16 +69,15 @@ export function useEventFilters(allEvents: EventCardData[] | undefined) {
       selectedOrganizer,
     );
 
-    const query = searchQuery.toLowerCase().trim();
+    // Accent-insensitive ("carnaval" finds "Carnával" and the other way), like the organizer v2.
+    const query = foldForSearch(searchQuery.trim());
     if (!query) return result as EventCardData[];
 
     return result.filter(
       (e) =>
-        (e as EventCardData).title.toLowerCase().includes(query) ||
-        (e as EventCardData).location.toLowerCase().includes(query) ||
-        ((e as EventCardData).description ?? "")
-          .toLowerCase()
-          .includes(query),
+        foldForSearch((e as EventCardData).title).includes(query) ||
+        foldForSearch((e as EventCardData).location).includes(query) ||
+        foldForSearch((e as EventCardData).description ?? "").includes(query),
     ) as EventCardData[];
   }, [allEvents, searchQuery, selectedCity, selectedOrganizer]);
 

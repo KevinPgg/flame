@@ -18,7 +18,7 @@ import { useOrgData } from "../hooks/useOrgData";
 import { useOptionalAuth } from "../hooks/useOptionalAuth";
 import { useMemberRoleContext } from "../contexts/MemberRoleContext";
 import { useAssignedEvents } from "../hooks/useAssignedEvents";
-import { canViewAllEvents } from "@project-flame/lib";
+import { canViewAllEvents, foldForSearch } from "@project-flame/lib";
 import { RequireAuthGate } from "../hooks/useRequireAuth";
 import { PastItemsAccordion } from "../components/shared/PastItemsAccordion";
 
@@ -85,17 +85,15 @@ function RsvpManagementContent() {
   const filteredCurrent = useMemo(() => {
     if (!data?.currentEvents) return [];
     if (!search.trim()) return data.currentEvents;
-    const q = search.toLowerCase();
-    return data.currentEvents.filter((e) =>
-      e.eventName.toLowerCase().includes(q),
-    );
+    const q = foldForSearch(search.trim());
+    return data.currentEvents.filter((e) => foldForSearch(e.eventName).includes(q));
   }, [data?.currentEvents, search]);
 
   const filteredPast = useMemo(() => {
     if (!data?.pastEvents) return [];
     if (!search.trim()) return data.pastEvents;
-    const q = search.toLowerCase();
-    return data.pastEvents.filter((e) => e.eventName.toLowerCase().includes(q));
+    const q = foldForSearch(search.trim());
+    return data.pastEvents.filter((e) => foldForSearch(e.eventName).includes(q));
   }, [data?.pastEvents, search]);
 
   const onRefresh = useCallback(() => {
