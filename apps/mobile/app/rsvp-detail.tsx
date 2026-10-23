@@ -8,7 +8,8 @@ import {
   Alert,
   Modal,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams, type Href } from "expo-router";
+import { organizerV2Enabled } from "../lib/v2/flags";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, CustomRefreshControl } from "@project-flame/ui";
@@ -161,6 +162,13 @@ function RegistrationModal({
 // ---------------------------------------------------------------------------
 
 export default function RsvpDetailScreen() {
+  // Fase 1b.3: v2 unless the emergency switch is on (notification links carry eventId + orgId).
+  const v2Params = useLocalSearchParams<{ eventId?: string | string[]; orgId?: string | string[] }>();
+  if (organizerV2Enabled()) {
+    const id = Array.isArray(v2Params.orgId) ? v2Params.orgId[0] : v2Params.orgId;
+    const ev = Array.isArray(v2Params.eventId) ? v2Params.eventId[0] : v2Params.eventId;
+    if (id && ev) return <Redirect href={`/v2/organizer/rsvps/${encodeURIComponent(ev)}?orgId=${encodeURIComponent(id)}` as Href} />;
+  }
   return (
     <RequireAuthGate>
       <RsvpDetailContent />

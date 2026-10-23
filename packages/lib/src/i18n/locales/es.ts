@@ -349,6 +349,7 @@ export const es: Messages = {
     bulkSkipped: { one: "{count} ya estaba gestionada", other: "{count} ya estaban gestionadas" },
     bulkFailed: "No se pudo aprobar: {names}",
     alreadyProcessed: "Otra persona ya gestionó esta solicitud. La lista está actualizada.",
+    unsure: "No pudimos confirmar la respuesta a tiempo. Puede que sí se haya hecho: la lista se actualizó, revísala antes de volver a intentarlo.",
     ended: "Este evento terminó: ya no se pueden aprobar ni rechazar solicitudes.",
     noAccess: "No tienes acceso a las solicitudes de este evento.",
     export: "Exportar pendientes",

@@ -72,7 +72,7 @@ it("header, KPIs and tiers for the owner", async () => {
   expect(screen.getByText("Edit event")).toBeTruthy();
   expect(screen.getByText("Co-hosts")).toBeTruthy();
   await fireEvent.press(screen.getByText("Manage RSVPs"));
-  expect(mockPush).toHaveBeenCalledWith("/rsvp-detail?eventId=ev-1&orgId=org-1");
+  expect(mockPush).toHaveBeenCalledWith("/v2/organizer/rsvps/ev-1?org=kora");
 });
 
 it("tier switches PATCH /api/ticket-tiers and refresh; a 4xx shows the server's message", async () => {

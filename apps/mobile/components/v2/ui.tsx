@@ -38,6 +38,7 @@ const ICONS = {
   send: "paper-plane-outline",
   refresh: "refresh",
   scan: "scan-outline",
+  eye: "eye-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 

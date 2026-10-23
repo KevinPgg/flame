@@ -351,6 +351,7 @@ export const en = {
     bulkSkipped: { one: "{count} was already handled", other: "{count} were already handled" },
     bulkFailed: "Couldn’t approve: {names}",
     alreadyProcessed: "Someone else already handled this request. The list is up to date.",
+    unsure: "We couldn’t confirm the answer in time. It may have gone through: the list has been refreshed, check it before trying again.",
     ended: "This event has ended: requests can no longer be approved or rejected.",
     noAccess: "You don’t have access to this event’s requests.",
     export: "Export pending",

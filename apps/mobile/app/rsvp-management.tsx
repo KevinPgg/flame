@@ -7,7 +7,8 @@ import {
   Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { Redirect, useRouter, useLocalSearchParams, type Href } from "expo-router";
+import { organizerV2Enabled } from "../lib/v2/flags";
 import { CustomRefreshControl } from "@project-flame/ui";
 import { getTabBarPaddingBottom } from "../components/navigation/CustomTabBar";
 import { DashboardBar } from "../components/dashboard/DashboardBar";
@@ -23,6 +24,12 @@ import { RequireAuthGate } from "../hooks/useRequireAuth";
 import { PastItemsAccordion } from "../components/shared/PastItemsAccordion";
 
 export default function RsvpManagementScreen() {
+  // Fase 1b.3: v2 unless the emergency switch is on (profile and notification links land here).
+  const v2Params = useLocalSearchParams<{ orgId?: string | string[] }>();
+  if (organizerV2Enabled()) {
+    const id = Array.isArray(v2Params.orgId) ? v2Params.orgId[0] : v2Params.orgId;
+    if (id) return <Redirect href={`/v2/organizer/rsvps?orgId=${encodeURIComponent(id)}` as Href} />;
+  }
   return (
     <RequireAuthGate>
       <RsvpManagementContent />
