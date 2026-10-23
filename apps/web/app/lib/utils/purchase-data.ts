@@ -21,6 +21,8 @@ export interface Purchase {
   totalPrice: number; // Full price including service fee
   basePrice: number; // Base price only (what organizer receives) - excludes service fee
   scanned: boolean;
+  /** Tickets of this order already scanned at the door (Purchases tab: "2 / 3"). */
+  scannedCount: number;
   rsvpStatus: string;
   createdAt: string;
   /**
@@ -346,7 +348,8 @@ function toPurchase(
     stageName = stageLookupMap.get(`${order.ticket_tiers.id}:${order.unit_price_cents}`) || null;
   }
 
-  const hasScannedTicket = order.tickets?.some((ticket) => !!ticket.checked_in_at);
+  const scannedCount = (order.tickets ?? []).filter((ticket) => !!ticket.checked_in_at).length;
+  const hasScannedTicket = scannedCount > 0;
 
   // Concatenate first and last name, fall back to email
   const fullName =
@@ -392,6 +395,7 @@ function toPurchase(
     totalPrice: totalCents,
     basePrice: actualBasePrice, // Base price after discount (what organizer actually receives)
     scanned: hasScannedTicket,
+    scannedCount,
     rsvpStatus: "purchased",
     createdAt: order.created_at,
     registrationData,

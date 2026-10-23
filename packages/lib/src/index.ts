@@ -466,3 +466,5 @@ export {
   connectState,
 } from "./organizer/payouts";
 export type { StripeMoney, BalanceRow, PayoutStatus, PayoutTone, ConnectState } from "./organizer/payouts";
+export { attendance } from "./organizer/attendance";
+export type { AttendanceOrigin, AttendanceRow, AttendanceSale, AttendanceTransfer, AttendanceComp } from "./organizer/attendance";

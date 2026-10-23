@@ -8,12 +8,12 @@ import { fakeSupabase } from "./fake-supabase";
 import { orders, ticketStages, rsvps, EV_A, EV_B, TIER_A } from "./purchases-fixture";
 import { fetchEventPurchases, fetchEventPurchasesForEvents } from "@/app/lib/utils/purchase-data";
 
-const base = { scanned: false, rsvpStatus: "purchased", createdAt: "2026-05-01T10:00:00Z", registrationData: null };
+const base = { scanned: false, scannedCount: 0, rsvpStatus: "purchased", createdAt: "2026-05-01T10:00:00Z", registrationData: null };
 const EXPECTED_A = [
   { ...base, id: "o-01", userName: "Ana1 Loor", email: "buyer1@x.com", tierName: "General", stageName: null, quantity: 2, pricePerTicket: 2000, totalPrice: 4598, basePrice: 4000 },
   // Legacy order: base price extracted from the historical total, then the discount applied.
   { ...base, id: "o-02", userName: "Luis", email: "buyer2@x.com", tierName: "General", stageName: null, quantity: 1, pricePerTicket: 2000, totalPrice: 2050, basePrice: 1840, createdAt: "2025-10-01T00:00:00Z" },
-  { ...base, id: "o-03", userName: "buyer3@x.com", email: "buyer3@x.com", tierName: "VIP", stageName: "Early bird", quantity: 1, pricePerTicket: 4000, totalPrice: 4599, basePrice: 4000, scanned: true, registrationData: { instagram: "@ana" } },
+  { ...base, id: "o-03", userName: "buyer3@x.com", email: "buyer3@x.com", tierName: "VIP", stageName: "Early bird", quantity: 1, pricePerTicket: 4000, totalPrice: 4599, basePrice: 4000, scanned: true, scannedCount: 1, registrationData: { instagram: "@ana" } },
   { ...base, id: "o-04", userName: "Ana1 Loor", email: "buyer1@x.com", tierName: "VIP", stageName: "Regular", quantity: 1, pricePerTicket: 5500, totalPrice: 6324, basePrice: 5500, registrationData: { instagram: "@old" } },
 ];
 const EXPECTED_B = [

@@ -44,6 +44,8 @@ interface BankTransferOrder {
 
 interface TransformedBankTransferTicket {
   id: string;
+  /** Tickets of the order already scanned. */
+  checked_in_count: number;
   email: string;
   customer_name: string;
   status: string;
@@ -127,6 +129,8 @@ export function transformBankTransferOrders(
           status: order.status,
           created_at: order.created_at,
           checked_in_at: firstTicket?.checked_in_at || null,
+          // Every ticket of the order, not only the first (Purchases tab: "1 / 2 scanned").
+          checked_in_count: (order.tickets ?? []).filter((t) => !!t?.checked_in_at).length,
           qr_token: firstTicket?.qr_token || null,
           metadata: firstTicket?.metadata || null,
           ticket_tiers: ticketTier || {

@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import {
+  attendance,
   buildPurchaseExportAoa,
   formatCentsAsPrice,
   formatEventDateTime,
   normalizeRegistrationExportColumns,
   purchaseExportColumnWidths,
   registrationValuesForExportColumns,
+  type AttendanceComp,
+  type AttendanceTransfer,
 } from "@project-flame/lib";
 import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrganizerData";
 import type { Purchase } from "../../../../../lib/utils/purchase-data";
@@ -16,9 +19,9 @@ import { useI18n } from "../../../../../lib/i18n";
 import { Icon } from "../../../../components/Icon";
 
 /**
- * Purchases as a real table (buyer, tier, qty, scanned, amount, date) + Export XLSX.
- * Same list as v1 (card purchases; bank transfers live in Breakdown / Send tickets) and the
- * same XLSX builder from @project-flame/lib, fed with fresh data like v1.
+ * Everyone holding tickets (Kevin, 2026-10-23): card sales, bank transfers and free tickets in
+ * one table with their origin and "scanned / quantity", and the event total at the bottom.
+ * Export XLSX stays as v1 (card purchases, same builder from @project-flame/lib, fresh data).
  */
 export default function PurchasesTab({
   event,
@@ -35,14 +38,20 @@ export default function PurchasesTab({
   const [error, setError] = useState<string | null>(null);
   const currency = event.currency ?? "USD";
 
+  const all = useMemo(
+    () =>
+      attendance({
+        sales: purchases,
+        transfers: (event.bank_transfer_orders ?? []) as unknown as AttendanceTransfer[],
+        comps: (event.promotional_tickets ?? []) as unknown as AttendanceComp[],
+      }),
+    [purchases, event.bank_transfer_orders, event.promotional_tickets]
+  );
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const sorted = [...purchases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    if (!needle) return sorted;
-    return sorted.filter((p) =>
-      [p.userName, p.email, p.tierName, p.stageName ?? ""].some((v) => v.toLowerCase().includes(needle))
-    );
-  }, [purchases, q]);
+    if (!needle) return all.rows;
+    return all.rows.filter((p) => [p.name, p.email, p.tierName, p.stageName ?? ""].some((v) => v.toLowerCase().includes(needle)));
+  }, [all, q]);
 
   async function exportXlsx() {
     setExporting(true);
@@ -98,8 +107,7 @@ export default function PurchasesTab({
     }
   }
 
-  const cols = "md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_56px_120px_110px_120px]";
-
+  const cols = "md:grid-cols-[minmax(0,1.6fr)_110px_minmax(0,1fr)_96px_110px_110px]";
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -128,9 +136,9 @@ export default function PurchasesTab({
       <div className="overflow-hidden rounded-v2-card bg-v2-ink2">
         <div className={`hidden gap-4 border-b border-v2-c10 px-4 py-3 text-[12px] uppercase tracking-[0.04em] text-v2-c50 md:grid ${cols}`}>
           <span>{t("eventAdmin.purchases.colBuyer")}</span>
+          <span>{t("eventAdmin.purchases.colOrigin")}</span>
           <span>{t("eventAdmin.purchases.colTier")}</span>
-          <span className="text-right">{t("eventAdmin.purchases.colQty")}</span>
-          <span>{t("eventAdmin.purchases.colStatus")}</span>
+          <span className="text-right">{t("eventAdmin.purchases.colScanned")}</span>
           <span className="text-right">{t("eventAdmin.purchases.colAmount")}</span>
           <span className="text-right">{t("eventAdmin.purchases.colDate")}</span>
         </div>
@@ -140,38 +148,43 @@ export default function PurchasesTab({
           <ul>
             {rows.map((p) => {
               const when = formatEventDateTime(p.createdAt, event.timezone, locale);
-              const status = (
+              const done = p.scanned >= p.quantity;
+              const scanned = (
                 <span
-                  className={`inline-flex rounded-v2-pill px-2 py-0.5 text-[12px] font-v2-ui-medium ${
-                    p.scanned ? "bg-v2-good/15 text-v2-good" : "bg-v2-ink4 text-v2-c50"
+                  className={`inline-flex rounded-v2-pill px-2 py-0.5 text-[12px] font-v2-ui-semibold tabular-nums ${
+                    done ? "bg-v2-good/15 text-v2-good" : p.scanned > 0 ? "bg-v2-warn/15 text-v2-warn" : "bg-v2-ink4 text-v2-c50"
                   }`}
+                  title={t("eventAdmin.purchases.colScanned")}
                 >
-                  {p.scanned ? t("eventAdmin.purchases.scanned") : t("eventAdmin.purchases.notScanned")}
+                  {t("eventAdmin.purchases.scannedOf", { scanned: p.scanned, total: p.quantity })}
                 </span>
               );
+              const origin = (
+                <span className="text-[12.5px] text-v2-c70">{t(`eventAdmin.purchases.origin.${p.origin}`)}</span>
+              );
+              const amount = p.amountCents === null ? t("eventAdmin.send.complimentary") : formatCentsAsPrice(p.amountCents, currency);
               return (
                 <li
-                  key={p.id}
+                  key={`${p.origin}-${p.id}`}
                   className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-b border-v2-c06 px-4 py-3 last:border-0 md:gap-4 ${cols}`}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate font-v2-ui-semibold text-[14px]">{p.userName}</span>
+                    <span className="block truncate font-v2-ui-semibold text-[14px]">{p.name}</span>
                     <span className="block truncate text-[12px] text-v2-c50">{p.email}</span>
                   </span>
-                  <span className="text-right font-v2-ui-semibold text-[14px] tabular-nums md:hidden">
-                    {formatCentsAsPrice(p.basePrice, currency)}
+                  <span className="text-right font-v2-ui-semibold text-[14px] tabular-nums md:hidden">{amount}</span>
+                  <span className="truncate text-[13px] text-v2-c70 md:hidden">
+                    {t(`eventAdmin.purchases.origin.${p.origin}`)} · {p.tierName}
+                    {p.stageName ? ` · ${p.stageName}` : ""}
                   </span>
-                  <span className="truncate text-[13px] text-v2-c70">
+                  <span className="text-right md:hidden">{scanned}</span>
+                  <span className="hidden md:block">{origin}</span>
+                  <span className="hidden truncate text-[13px] text-v2-c70 md:block">
                     {p.tierName}
                     {p.stageName ? ` · ${p.stageName}` : ""}
-                    <span className="md:hidden"> · {p.quantity}×</span>
                   </span>
-                  <span className="text-right md:hidden">{status}</span>
-                  <span className="hidden text-right text-[14px] tabular-nums md:block">{p.quantity}</span>
-                  <span className="hidden md:block">{status}</span>
-                  <span className="hidden text-right font-v2-ui-semibold text-[14px] tabular-nums md:block">
-                    {formatCentsAsPrice(p.basePrice, currency)}
-                  </span>
+                  <span className="hidden text-right md:block">{scanned}</span>
+                  <span className="hidden text-right font-v2-ui-semibold text-[14px] tabular-nums md:block">{amount}</span>
                   <span className="hidden text-right text-[12px] text-v2-c50 md:block">
                     {when.date}
                     <br />
@@ -181,6 +194,11 @@ export default function PurchasesTab({
               );
             })}
           </ul>
+        )}
+        {all.rows.length > 0 && (
+          <p className="border-t border-v2-c10 px-4 py-3 text-right text-[13px] font-v2-ui-semibold text-v2-c90 tabular-nums">
+            {t("eventAdmin.purchases.totalScanned", { scanned: all.totals.scanned, total: all.totals.tickets })}
+          </p>
         )}
       </div>
     </div>
