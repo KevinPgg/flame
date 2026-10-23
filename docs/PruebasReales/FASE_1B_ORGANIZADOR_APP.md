@@ -101,6 +101,21 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 - [x] Editar un tier con fin de venta propio → "×" para volver a "Cuando termina el evento" → Guardar → sin error.
 - [x] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
 
+## 1b.3 · RSVPs · 📱 Celular (+ 🌐 web para comparar y para pedir solicitudes)
+Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a un evento RSVP tuyo, una gratis y otra de pago (Stripe test `4242 4242 4242 4242`). Reinicia Metro con `-c`.
+- [ ] Barra inferior → **RSVPs**: lista de tus eventos RSVP (no los normales) con flyer, fecha, lugar y el número de pendientes (rojo si hay). Actuales/Pasados con su número; la búsqueda encuentra "carnaval" ↔ "Carnával". Organizer asignado: solo sus eventos.
+- [ ] Tocar un evento → sus solicitudes: abre en **Pendientes** si hay; pestañas Todas / Pendientes / Aprobadas / Rechazadas con números iguales a la web (🌐 `/v2/organizer/rsvps/<id>?org=<slug>`). La barra de pestañas queda pegada arriba al hacer scroll.
+- [ ] Cada solicitud: nombre, cédula (o "Sin cédula") · fecha, estado de color, "N tickets · tier", monto (lo que recibes).
+- [ ] **Aprobar la de pago:** pide confirmación diciendo que se cobra la tarjeta y cuánto recibes → "… aprobada"; en la web pasa a Aprobadas/Pagada, la persona recibe el ticket y en Stripe test el pago aparece capturado.
+- [ ] **Rechazar:** confirmación "se libera la retención…" → pasa a Rechazadas; la persona recibe el correo.
+- [ ] **Aprobar todas** (con 2+ pendientes): la confirmación dice cuántas son de pago y el total; muestra "Aprobando 1 de N…" con **Detener**; al final "N solicitudes aprobadas".
+- [ ] Dos dispositivos: aprueba en la web una que en el celular sigue pendiente y luego apruébala en el celular → "Otra persona ya gestionó esta solicitud…".
+- [ ] Ícono 👁 → hoja "Datos de registro": email, cédula, ticket, monto, fecha, nacimiento (si hay) y las respuestas del formulario (obligatorias con *, sin respuesta → "Sin respuesta").
+- [ ] **Exportar pendientes** (solo si hay): menú de compartir con el `.xlsx`; mismas columnas que el exportado desde la web.
+- [ ] Evento ya terminado (en Pasados): aviso "Este evento terminó…" y sin botones de aprobar/rechazar.
+- [ ] Evento → "Gestionar RSVPs" abre esta misma pantalla v2. Notificación de nueva solicitud (campana) → abre la v2 de ese evento.
+- [ ] Deslizar hacia abajo recarga; sin tocar nada, una solicitud nueva aparece sola en ≤15 s.
+
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
 - [x] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event".
@@ -108,7 +123,7 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 - [x] Descubrir (`localhost:8081`): "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
 
 ## Cosas conocidas
-- Mientras dura la 1b, las pantallas que aún no son v2 (herramientas del evento de la 1b.2b, RSVPs, crear/editar, equipo, ajustes, payouts, escáner) abren su versión v1; al volver, regresas al panel v2.
+- Mientras dura la 1b, las pantallas que aún no son v2 (crear/editar, equipo, ajustes, payouts) abren su versión v1; al volver, regresas al panel v2.
 - "Mis organizadores" en la app sigue siendo la sección del Perfil (el rediseño del perfil es de la fase 2).
 - Errores del XLSX ("Export failed", "Sharing unavailable") salen en inglés: vienen del exportador v1 que se reutiliza.
 - `WARN [notifications] Permission not granted for push notifications` al levantar: el permiso de notificaciones del celular está denegado. Inofensivo; sin Firebase tampoco habría push en Android.
