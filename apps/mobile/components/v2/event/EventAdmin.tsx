@@ -1,15 +1,17 @@
 /**
  * Flame 2.0 · event management in the app (phone view of apps/web/app/v2/organizer/event/[id]).
- * Same data as the dashboard (organizer-data); one tool per tab. 1b.2a: Tiers, Purchases,
- * Breakdown; the other tabs open the v1 screen until 1b.2b.
+ * Same data as the dashboard (organizer-data); one tool per tab: Tiers, Purchases, Breakdown,
+ * Promoter links, Discount codes, Send tickets, Scanners; Co-hosts in a bottom sheet.
  */
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  canAccessOrgSettings,
+  canManageAccessCodes,
   canManageAssignedEvents,
   flameV2Colors as c,
   formatCentsAsPrice,
@@ -26,11 +28,14 @@ import { ErrorBox, Icon, Kpi, Skeleton } from "../ui";
 import { TiersTab } from "./TiersTab";
 import { PurchasesTab } from "./PurchasesTab";
 import { BreakdownTab } from "./BreakdownTab";
+import { PromotersTab } from "./PromotersTab";
+import { PromotionsTab } from "./PromotionsTab";
+import { SendTab } from "./SendTab";
+import { ScannersTab } from "./ScannersTab";
+import { CohostsSheet, useEventCohosts } from "./CohostsSheet";
 
 export const EVENT_TABS = ["tiers", "purchases", "breakdown", "promoters", "promotions", "send", "scanners"] as const;
 export type EventTab = (typeof EVENT_TABS)[number];
-/** Tabs already rebuilt in v2 (1b.2a); the rest open the v1 screen. */
-const V2_TABS: readonly EventTab[] = ["tiers", "purchases", "breakdown"];
 
 export function EventAdmin({ eventId, organization }: { eventId: string; organization: MyOrganization }) {
   const { t, locale } = useI18n();
@@ -55,6 +60,10 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
   const event: OrgEventV2 | null = found?.event ?? null;
   const isOwnerOrg = Boolean(event && event.organization_id === organization.id);
   const canEdit = isOwnerOrg && canManageAssignedEvents(organization.role);
+  // Co-hosts: owner/admin of the owning organization (the API allows nothing else).
+  const canCohost = isOwnerOrg && canAccessOrgSettings(organization.role);
+  const [cohostOpen, setCohostOpen] = useState(false);
+  const cohosts = useEventCohosts(organization.id, eventId, canCohost);
   const purchases = (event?.purchases ?? []) as PurchaseRow[];
   const stats = event ? summarizeEventSales({ tiers: event.ticket_tiers ?? [], purchases, pendingRsvps: event.pending_rsvps }) : null;
   const ended = event ? new Date(event.ends_at).getTime() < Date.now() : false;
@@ -145,8 +154,8 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
 
           {event && (
             <View className="flex-row flex-wrap gap-2">
-              {isOwnerOrg && (
-                <ActionPill icon="users" label={t("eventAdmin.cohosts")} onPress={() => router.push(routes.eventV1(event.id, organization) as Href)} />
+              {canCohost && (
+                <ActionPill icon="users" label={t("eventAdmin.cohosts")} count={cohosts.data?.length || undefined} onPress={() => setCohostOpen(true)} />
               )}
               {event.requires_rsvp && (
                 <ActionPill
@@ -216,18 +225,41 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
         )}
         {!event ? (
           <Skeleton width="100%" height={160} radius={18} />
-        ) : !V2_TABS.includes(tab) ? (
-          <PreviousVersion onOpen={() => router.push(routes.eventV1(event.id, organization) as Href)} />
         ) : tab === "tiers" ? (
           <TiersTab event={event} purchases={purchases} canEdit={canEdit} organization={organization} onChanged={invalidate} />
+        ) : tab === "scanners" ? (
+          <ScannersTab
+            event={event}
+            organization={organization}
+            organizationName={found?.ownerName ?? organization.name}
+            canEdit={canEdit}
+            canManageCode={isOwnerOrg && canManageAccessCodes(organization.role)}
+            onCodeChanged={invalidate}
+          />
         ) : !isOwnerOrg ? (
           <NoSales />
         ) : tab === "purchases" ? (
           <PurchasesTab event={event} organization={organization} />
-        ) : (
+        ) : tab === "breakdown" ? (
           <BreakdownTab event={event} />
+        ) : tab === "promoters" ? (
+          <PromotersTab event={event} canEdit={canEdit} onChanged={invalidate} />
+        ) : tab === "promotions" ? (
+          <PromotionsTab event={event} canEdit={canEdit} onChanged={invalidate} />
+        ) : (
+          <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
         )}
       </View>
+      {canCohost && event && (
+        <CohostsSheet
+          open={cohostOpen}
+          onClose={() => setCohostOpen(false)}
+          orgId={organization.id}
+          eventId={event.id}
+          eventName={event.name}
+          onChanged={invalidate}
+        />
+      )}
     </ScrollView>,
   );
 }
@@ -263,16 +295,4 @@ function ActionPill({ icon, label, count, onPress }: { icon: "users" | "rsvp"; l
 function NoSales() {
   const { t } = useI18n();
   return <Text className="rounded-v2-card bg-v2-ink2 p-5 font-v2-ui text-[14px] text-v2-c50">{t("eventAdmin.noSalesData")}</Text>;
-}
-
-function PreviousVersion({ onOpen }: { onOpen: () => void }) {
-  const { t } = useI18n();
-  return (
-    <View className="items-start gap-3 rounded-v2-card bg-v2-ink2 p-5">
-      <Text className="font-v2-ui text-[14px] text-v2-c70">{t("eventAdmin.previousVersion")}</Text>
-      <Pressable onPress={onOpen} accessibilityRole="button" className="h-10 justify-center rounded-v2-pill bg-v2-ink3 px-4 active:bg-v2-ink4">
-        <Text className="font-v2-ui-semibold text-[13px] text-v2-c90">{t("eventAdmin.openPrevious")}</Text>
-      </Pressable>
-    </View>
-  );
 }

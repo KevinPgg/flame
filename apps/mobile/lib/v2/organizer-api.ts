@@ -33,6 +33,8 @@ export type OrgEventTierV2 = EnrichedOrgEvent["ticket_tiers"][number] & {
 };
 export type OrgEventV2 = Omit<EnrichedOrgEvent, "ticket_tiers"> & {
   organization_id?: string;
+  /** Access code for scanning without an account (owner/admin see it). */
+  qr_scanner_code?: string | null;
   ticket_tiers: OrgEventTierV2[];
 };
 
@@ -52,3 +54,6 @@ export function apiErrorText(error: unknown, generic: string): string {
   }
   return generic;
 }
+
+/** Public site, for links people open in a browser (promoter links). */
+export const PUBLIC_SITE_URL = (process.env.EXPO_PUBLIC_APP_URL || "https://www.flme.co").replace(/\/+$/, "");

@@ -1,10 +1,18 @@
 /**
- * Purchases tab (same as the web v2): card purchases with buyer, tier, quantity, scanned and
- * amount; search; Export XLSX (fresh data, same builder as v1 → share sheet).
+ * Purchases tab (same as the web v2): everyone holding tickets — card sales, bank transfers and
+ * free tickets — with origin and "scanned / quantity", the event total; search; Export XLSX
+ * (card purchases, fresh data, same builder as v1 → share sheet).
  */
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { flameV2Colors as c, formatCentsAsPrice, formatEventDateTime } from "@project-flame/lib";
+import {
+  attendance,
+  flameV2Colors as c,
+  formatCentsAsPrice,
+  formatEventDateTime,
+  type AttendanceComp,
+  type AttendanceTransfer,
+} from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { apiGet } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
@@ -21,12 +29,20 @@ export function PurchasesTab({ event, organization }: { event: OrgEventV2; organ
   const currency = event.currency ?? "USD";
   const purchases = event.purchases ?? [];
 
+  const all = useMemo(
+    () =>
+      attendance({
+        sales: purchases as Array<(typeof purchases)[number] & { scannedCount?: number }>,
+        transfers: (event.bank_transfer_orders ?? []) as unknown as AttendanceTransfer[],
+        comps: (event.promotional_tickets ?? []) as unknown as AttendanceComp[],
+      }),
+    [purchases, event.bank_transfer_orders, event.promotional_tickets],
+  );
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const sorted = [...purchases].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    if (!needle) return sorted;
-    return sorted.filter((p) => [p.userName, p.email, p.tierName, p.stageName ?? ""].some((v) => v.toLowerCase().includes(needle)));
-  }, [purchases, q]);
+    if (!needle) return all.rows;
+    return all.rows.filter((p) => [p.name, p.email, p.tierName, p.stageName ?? ""].some((v) => v.toLowerCase().includes(needle)));
+  }, [all, q]);
 
   async function exportXlsx() {
     setExporting(true);
@@ -85,29 +101,42 @@ export function PurchasesTab({ event, organization }: { event: OrgEventV2; organ
         ) : (
           rows.map((p, i) => {
             const when = formatEventDateTime(p.createdAt, event.timezone, locale);
+            const done = p.scanned >= p.quantity;
             return (
-              <View key={p.id} className={`gap-1 px-4 py-3 ${i > 0 ? "border-t border-v2-c06" : ""}`}>
+              <View key={`${p.origin}-${p.id}`} className={`gap-1 px-4 py-3 ${i > 0 ? "border-t border-v2-c06" : ""}`}>
                 <View className="flex-row items-start justify-between gap-3">
                   <View className="min-w-0 flex-1">
-                    <Text numberOfLines={1} className="font-v2-ui-semibold text-[14px] text-v2-cream">{p.userName}</Text>
+                    <Text numberOfLines={1} className="font-v2-ui-semibold text-[14px] text-v2-cream">{p.name}</Text>
                     <Text numberOfLines={1} className="font-v2-ui text-[12px] text-v2-c50">{p.email}</Text>
                   </View>
-                  <Text className="font-v2-ui-semibold text-[14px] text-v2-cream">{formatCentsAsPrice(p.basePrice, currency)}</Text>
+                  <Text className="font-v2-ui-semibold text-[14px] text-v2-cream">
+                    {p.amountCents === null ? t("eventAdmin.send.complimentary") : formatCentsAsPrice(p.amountCents, currency)}
+                  </Text>
                 </View>
                 <View className="flex-row items-center justify-between gap-3">
                   <Text numberOfLines={1} className="min-w-0 flex-1 font-v2-ui text-[13px] text-v2-c70">
-                    {p.tierName}
-                    {p.stageName ? ` · ${p.stageName}` : ""} · {p.quantity}× · {when.date}
+                    {t(`eventAdmin.purchases.origin.${p.origin}`)} · {p.tierName}
+                    {p.stageName ? ` · ${p.stageName}` : ""} · {when.date}
                   </Text>
-                  <View className={`rounded-v2-pill px-2 py-0.5 ${p.scanned ? "bg-[rgba(76,215,135,0.15)]" : "bg-v2-ink4"}`}>
-                    <Text className={`font-v2-ui-medium text-[12px] ${p.scanned ? "text-v2-good" : "text-v2-c50"}`}>
-                      {p.scanned ? t("eventAdmin.purchases.scanned") : t("eventAdmin.purchases.notScanned")}
+                  <View
+                    accessibilityLabel={`${t("eventAdmin.purchases.colScanned")} ${p.scanned}/${p.quantity}`}
+                    className={`rounded-v2-pill px-2 py-0.5 ${
+                      done ? "bg-[rgba(76,215,135,0.15)]" : p.scanned > 0 ? "bg-[rgba(255,180,67,0.15)]" : "bg-v2-ink4"
+                    }`}
+                  >
+                    <Text className={`font-v2-ui-semibold text-[12px] ${done ? "text-v2-good" : p.scanned > 0 ? "text-v2-warn" : "text-v2-c50"}`}>
+                      {t("eventAdmin.purchases.scannedOf", { scanned: p.scanned, total: p.quantity })}
                     </Text>
                   </View>
                 </View>
               </View>
             );
           })
+        )}
+        {all.rows.length > 0 && (
+          <Text className="border-t border-v2-c10 px-4 py-3 text-right font-v2-ui-semibold text-[13px] text-v2-c90">
+            {t("eventAdmin.purchases.totalScanned", { scanned: all.totals.scanned, total: all.totals.tickets })}
+          </Text>
         )}
       </View>
     </View>

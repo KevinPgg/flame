@@ -42,7 +42,7 @@ it("owner/admin: Events, RSVPs (badge), Scan, Manage — no side menu", async ()
   await fireEvent.press(screen.getByLabelText("Manage"));
   expect(mockPush).toHaveBeenCalledWith("/v2/organizer/manage?org=kora");
   await fireEvent.press(screen.getByLabelText("Scan"));
-  expect(mockPush).toHaveBeenCalledWith("/scanner?orgId=org-1");
+  expect(mockPush).toHaveBeenCalledWith("/v2/scanner?org=kora");
 });
 
 it("organizer: Events, RSVPs, Scan", async () => {
@@ -50,9 +50,9 @@ it("organizer: Events, RSVPs, Scan", async () => {
   expect(tabs()).toEqual(["Events", "RSVPs", "Scan"]);
 });
 
-it("viewer: Events, RSVPs", async () => {
+it("viewer: Events, RSVPs, Scan (any member can scan)", async () => {
   await shell("viewer");
-  expect(tabs()).toEqual(["Events", "RSVPs"]);
+  expect(tabs()).toEqual(["Events", "RSVPs", "Scan"]);
 });
 
 it("title switches organization (approved ones) and the avatar goes back to you", async () => {

@@ -2,8 +2,8 @@
  * Flame 2.0 building blocks for the app (same look as apps/web/app/v2/components): icons, avatars,
  * flyers, skeletons, badges, KPI, error box. v2 tokens only (bg-v2-*, font-v2-*); don't mix with v1.
  */
-import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import type { ComponentProps, ReactNode } from "react";
+import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { flameV2Colors as c } from "@project-flame/lib";
@@ -33,6 +33,11 @@ const ICONS = {
   chart: "bar-chart-outline",
   mail: "mail-outline",
   pin: "location-outline",
+  copy: "copy-outline",
+  trash: "trash-outline",
+  send: "paper-plane-outline",
+  refresh: "refresh",
+  scan: "scan-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 
@@ -134,5 +139,110 @@ export function Spinner() {
     <View className="flex-1 items-center justify-center bg-v2-ink">
       <ActivityIndicator color={c.cream} />
     </View>
+  );
+}
+
+type ButtonVariant = "primary" | "ghost" | "soft" | "danger";
+
+/** Pill button (prototype "btn"): primary = white pill, soft = ink-3, ghost = text, danger = red text. */
+export function Button({
+  label,
+  onPress,
+  variant = "soft",
+  icon,
+  disabled,
+  small,
+  accessibilityLabel,
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: ButtonVariant;
+  icon?: IconName;
+  disabled?: boolean;
+  small?: boolean;
+  accessibilityLabel?: string;
+}) {
+  const bg = { primary: "bg-v2-cream active:bg-v2-paper", soft: "bg-v2-ink3 active:bg-v2-ink4", ghost: "active:bg-v2-ink3", danger: "active:bg-v2-ink3" }[variant];
+  const fg = { primary: c.ink, soft: c.c90, ghost: c.c70, danger: c.errorText }[variant];
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!disabled }}
+      className={`${small ? "h-9 px-3.5" : "h-11 px-5"} flex-row items-center justify-center gap-2 rounded-v2-pill ${bg} ${disabled ? "opacity-50" : ""}`}
+    >
+      {icon && <Icon name={icon} size={small ? 15 : 17} color={fg} />}
+      {label ? (
+        <Text style={{ color: fg }} className={`font-v2-ui-semibold ${small ? "text-[13px]" : "text-[14px]"}`}>
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/** Text field on ink-3 (prototype "input"). */
+export function Field(props: ComponentProps<typeof TextInput>) {
+  return (
+    <TextInput
+      placeholderTextColor={c.c50}
+      autoCorrect={false}
+      {...props}
+      className={`h-11 rounded-v2-md bg-v2-ink3 px-4 font-v2-ui text-[14px] text-v2-cream ${props.className ?? ""}`}
+    />
+  );
+}
+
+export function ErrorText({ children }: { children: ReactNode }) {
+  return (
+    <Text accessibilityRole="alert" className="font-v2-ui text-[13px] text-v2-errorText">
+      {children}
+    </Text>
+  );
+}
+
+export function SuccessNote({ children }: { children: ReactNode }) {
+  return (
+    <View accessibilityRole="alert" className="flex-row items-center gap-2 rounded-v2-card bg-[rgba(76,215,135,0.15)] px-4 py-3">
+      <Icon name="check" size={16} color={c.good} />
+      <Text className="flex-1 font-v2-ui text-[14px] text-v2-good">{children}</Text>
+    </View>
+  );
+}
+
+/** Confirmation before destructive actions (same contract as the web ConfirmDialog). */
+export function ConfirmDialog({
+  open,
+  message,
+  detail,
+  confirmLabel,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  message: string;
+  detail?: string;
+  confirmLabel?: string;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
+      <View className="flex-1 items-center justify-center bg-black/70 px-6">
+        <View accessibilityViewIsModal className="w-full max-w-[400px] gap-2 rounded-v2-card border border-v2-c16 bg-v2-ink2 p-5">
+          <Text className="font-v2-ui-semibold text-[16px] text-v2-cream">{message}</Text>
+          {detail ? <Text className="font-v2-ui text-[13.5px] leading-[19px] text-v2-c70">{detail}</Text> : null}
+          <View className="mt-3 flex-row justify-end gap-2">
+            <Button label={t("common.cancel")} variant="ghost" onPress={onCancel} disabled={busy} />
+            <Button label={confirmLabel ?? t("common.delete")} variant="primary" onPress={onConfirm} disabled={busy} />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }

@@ -69,6 +69,17 @@ const SCANNER_ITEM: SettingsMenuItem = {
   description: "For event staff with an access code — no sign in required.",
 };
 
+/**
+ * Signed in (Flame 2.0, fase 1b.6): the v2 scanner lists the events this account can scan —
+ * its organizations', co-hosted ones and the ones it was added to — with no code; it links to
+ * the access-code scanner for the rest (Kevin, 2026-10-23).
+ */
+const SCANNER_ITEM_ACCOUNT: SettingsMenuItem = {
+  ...SCANNER_ITEM,
+  target: "/v2/scanner",
+  description: "With your account, or with an event access code.",
+};
+
 const LEGAL_ITEMS: SettingsMenuItem[] = [
   {
     id: "privacy",
@@ -205,8 +216,8 @@ export default function SettingsScreen() {
         {SCANNING_SUPPORTED && (
           <View className="mt-4 mx-4 rounded-card bg-white-5 overflow-hidden">
             <MenuRow
-              item={SCANNER_ITEM}
-              onPress={() => handlePress(SCANNER_ITEM)}
+              item={isSignedIn ? SCANNER_ITEM_ACCOUNT : SCANNER_ITEM}
+              onPress={() => handlePress(isSignedIn ? SCANNER_ITEM_ACCOUNT : SCANNER_ITEM)}
               isLast
             />
           </View>

@@ -6,17 +6,18 @@
  * bar (`hideTabbar`) and bring their own action bar.
  */
 import { useState, type ReactNode } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import { canAccessOrgSettings, canManageAssignedEvents, flameV2Colors as c } from "@project-flame/lib";
+import { canAccessOrgSettings, flameV2Colors as c } from "@project-flame/lib";
 import { useI18n } from "../../lib/i18n";
 import { routes } from "../../lib/v2/routes";
 import type { MyOrganization } from "../../lib/v2/organizer-api";
 import { SCANNING_SUPPORTED } from "../../lib/scanner-platform";
 import { useMyOrganizations } from "../../hooks/v2/useOrganizerModel";
 import { useMe } from "../../hooks/v2/useMe";
+import { useKeyboardVisible } from "../../hooks/v2/useKeyboardVisible";
 import { useStripeConnect } from "../../hooks/useStripeConnect";
 import { canManagePayouts } from "@project-flame/lib";
 import { Badge, Icon, OrgAvatar, type IconName } from "./ui";
@@ -34,9 +35,8 @@ export function useTabItems(organization: MyOrganization, pending: number): TabI
   return [
     { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization) },
     { key: "rsvps", icon: "ticket", label: t("tabs.rsvps"), href: routes.rsvps(organization), badge: pending },
-    ...(SCANNING_SUPPORTED && canManageAssignedEvents(role)
-      ? [{ key: "scan" as const, icon: "qr" as const, label: t("tabs.scan"), href: routes.scan(organization) }]
-      : []),
+    // Any member of the organization can scan its events (api/lib/utils/scan-access.ts); phones only.
+    ...(SCANNING_SUPPORTED ? [{ key: "scan" as const, icon: "qr" as const, label: t("tabs.scan"), href: routes.scan(organization) }] : []),
     ...(canAccessOrgSettings(role)
       ? [{ key: "manage" as const, icon: "grid" as const, label: t("tabs.manage"), href: routes.manage(organization) }]
       : []),
@@ -70,6 +70,7 @@ export function OrganizerShell({
   const router = useRouter();
   const [switching, setSwitching] = useState(false);
   const tabs = useTabItems(organization, pending);
+  const typing = useKeyboardVisible();
 
   return (
     <View className="flex-1 bg-v2-ink">
@@ -110,9 +111,12 @@ export function OrganizerShell({
         </View>
       </View>
 
-      <View className="flex-1">{children}</View>
+      {/* iOS doesn't resize the window for the keyboard; Android does (adjustResize). */}
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {children}
+      </KeyboardAvoidingView>
 
-      {!hideTabbar && (
+      {!hideTabbar && !typing && (
         <View
           style={{ bottom: Math.max(insets.bottom, 12) }}
           className="absolute left-4 right-4 h-16 flex-row items-center justify-evenly rounded-v2-pill border border-white/10 bg-[rgba(18,18,18,0.94)]"

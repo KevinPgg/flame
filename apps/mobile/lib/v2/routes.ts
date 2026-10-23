@@ -17,11 +17,10 @@ export const routes = {
     `/v2/organizer/event/${encodeURIComponent(eventId)}?org=${encodeURIComponent(org.slug)}${tab ? `&tab=${tab}` : ""}`,
   /** Organization hub (prototype "Manage organization"): team, payouts, settings… */
   manage: (org: OrgRef) => `/v2/organizer/manage?org=${encodeURIComponent(org.slug)}`,
-  // v1 until their entrega (1b.2b–1b.6)
-  /** Scanning with an account (owner/admin/organizer); v1 scanner until 1b.6. */
-  scan: (org: OrgRef) => v1("/scanner", org),
-  /** Event tools not moved yet (1b.2b): promoters, codes, send tickets, scanners, co-hosts. */
-  eventV1: (eventId: string, org: OrgRef) => v1("/org-event-detail", org, { id: eventId }),
+  /** Door scanner by account (members, co-hosts, people added to an event); `eventId` opens it directly. */
+  scan: (org: OrgRef, eventId?: string) =>
+    `/v2/scanner?org=${encodeURIComponent(org.slug)}${eventId ? `&event=${encodeURIComponent(eventId)}` : ""}`,
+  // v1 until their entrega (1b.3–1b.5)
   editEvent: (eventId: string, org: OrgRef) => v1("/edit-event", org, { id: eventId }),
   /** Tier editor; v1 edits tiers inside "Edit event". */
   tier: (eventId: string, org: OrgRef, _tierId: string) => v1("/edit-event", org, { id: eventId }),

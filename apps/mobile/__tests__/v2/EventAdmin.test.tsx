@@ -56,6 +56,7 @@ beforeEach(() => {
   mockApiGet.mockReset().mockImplementation(async (url: string) => {
     if (url.startsWith("/api/organizer/data")) return DATA;
     if (url.includes("event-assignments")) return { assignments: [{ event_id: "ev-1" }] };
+    if (url.includes("cohost-assignments")) return { assignments: [] };
     throw new Error(url);
   });
 });
@@ -69,6 +70,7 @@ it("header, KPIs and tiers for the owner", async () => {
   expect(screen.getByText("3 / 100 sold")).toBeTruthy();
   expect(screen.getByText("2 pending")).toBeTruthy();
   expect(screen.getByText("Edit event")).toBeTruthy();
+  expect(screen.getByText("Co-hosts")).toBeTruthy();
   await fireEvent.press(screen.getByText("Manage RSVPs"));
   expect(mockPush).toHaveBeenCalledWith("/rsvp-detail?eventId=ev-1&orgId=org-1");
 });
@@ -102,7 +104,7 @@ it("purchases: search and export with fresh data", async () => {
   mockRoute.tab = "purchases";
   await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
   expect(await screen.findByText("Ana Ruiz")).toBeTruthy();
-  expect(screen.getByText("Scanned")).toBeTruthy();
+  expect(screen.getByLabelText("Scanned 1/2")).toBeTruthy(); // old API response: boolean only → at most 1
   await fireEvent.changeText(screen.getByLabelText("Search buyers"), "luis");
   expect(screen.queryByText("Ana Ruiz")).toBeNull();
   expect(screen.getByText("Luis Paz")).toBeTruthy();
@@ -126,18 +128,11 @@ it("co-hosted event: read-only note, no sales data, no edit", async () => {
   expect(screen.queryByText("Edit event")).toBeNull();
 });
 
-it("tabs not moved yet open the previous version", async () => {
+it("tab bar switches tabs through the URL", async () => {
   await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
   await screen.findByText("3 / 100 sold");
   await fireEvent.press(screen.getByRole("tab", { name: "Promoter links" }));
   expect(mockRoute.tab).toBe("promoters");
-});
-
-it("previous-version card links to the v1 screen", async () => {
-  mockRoute.tab = "send";
-  await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
-  await fireEvent.press(await screen.findByText("Open previous version"));
-  expect(mockPush).toHaveBeenCalledWith("/org-event-detail?id=ev-1&orgId=org-1");
 });
 
 it("unknown event → not available", async () => {

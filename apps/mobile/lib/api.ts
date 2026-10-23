@@ -112,9 +112,11 @@ export async function apiClient<T>(
   options: Omit<RequestInit, "headers"> & {
     getToken: GetTokenFn;
     headers?: Record<string, string>;
+    /** Calls that do slow work before answering (e.g. sending tickets by e-mail). Default 15 s. */
+    timeoutMs?: number;
   },
 ): Promise<T> {
-  const { getToken, headers: customHeaders, ...fetchOptions } = options;
+  const { getToken, headers: customHeaders, timeoutMs = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options;
 
   let token: string | null;
   try {
@@ -138,7 +140,7 @@ export async function apiClient<T>(
     fetchOptions,
     customHeaders,
     endpoint,
-    DEFAULT_TIMEOUT_MS,
+    timeoutMs,
   );
 
   if (response.status === 401) {
@@ -161,7 +163,7 @@ export async function apiClient<T>(
         fetchOptions,
         customHeaders,
         endpoint,
-        DEFAULT_TIMEOUT_MS,
+        timeoutMs,
       ));
     }
     if (response.status === 401) {
