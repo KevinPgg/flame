@@ -510,6 +510,10 @@ export const en = {
     notFound: "This event isn’t available.",
     backToEvent: "Back to event",
     goToEvent: "Go to event",
+    pickDate: "Pick date and time",
+    flyerPermission: "Allow access to your photos to add a flyer.",
+    flyerHintApp: "Vertical 4:5 · fitted to 1080×1350",
+    notAllowedCreate: "Only owners and admins can create events.",
     errors: {
       datesLocked: "The event starts in less than 2 hours (or already started): its dates can’t change anymore.",
       tierSalesAfterEnd: "Some tiers keep selling after this end time. Change their sales end in the Tiers tab first.",

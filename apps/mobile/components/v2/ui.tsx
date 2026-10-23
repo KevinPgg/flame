@@ -39,6 +39,7 @@ const ICONS = {
   refresh: "refresh",
   scan: "scan-outline",
   eye: "eye-outline",
+  up: "chevron-up",
 } as const;
 export type IconName = keyof typeof ICONS;
 

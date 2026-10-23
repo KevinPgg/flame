@@ -24,12 +24,15 @@ export const routes = {
   rsvps: (org: OrgRef) => `/v2/organizer/rsvps?org=${encodeURIComponent(org.slug)}`,
   rsvpEvent: (eventId: string, org: OrgRef) =>
     `/v2/organizer/rsvps/${encodeURIComponent(eventId)}?org=${encodeURIComponent(org.slug)}`,
-  // v1 until their entrega (1b.4–1b.5)
-  editEvent: (eventId: string, org: OrgRef) => v1("/edit-event", org, { id: eventId }),
-  /** Tier editor; v1 edits tiers inside "Edit event". */
-  tier: (eventId: string, org: OrgRef, _tierId: string) => v1("/edit-event", org, { id: eventId }),
+  /** Edit event (fase 1b.4). */
+  editEvent: (eventId: string, org: OrgRef) =>
+    `/v2/organizer/event/${encodeURIComponent(eventId)}/edit?org=${encodeURIComponent(org.slug)}`,
+  /** Tier editor; `tierId` "new" creates one (fase 1b.4). */
+  tier: (eventId: string, org: OrgRef, tierId: string) =>
+    `/v2/organizer/event/${encodeURIComponent(eventId)}/tiers/${encodeURIComponent(tierId)}?org=${encodeURIComponent(org.slug)}`,
+  createEvent: (org: OrgRef) => `/v2/organizer/create?org=${encodeURIComponent(org.slug)}`,
+  // v1 until their entrega (1b.5)
   team: (org: OrgRef) => v1("/org-members", org),
-  createEvent: (org: OrgRef) => v1("/create-event", org),
   payouts: (org: OrgRef) => v1("/account", org, { tab: "payouts" }),
   settings: (org: OrgRef) => v1("/account", org, { tab: "organization" }),
   // outside the organizer

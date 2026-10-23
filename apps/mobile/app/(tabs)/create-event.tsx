@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { colors } from "@project-flame/ui";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams, type Href } from "expo-router";
+import { organizerV2Enabled } from "../../lib/v2/flags";
 import { getTabBarPaddingBottom } from "../../components/navigation/CustomTabBar";
 import { DashboardBar } from "../../components/dashboard/DashboardBar";
 import {
@@ -92,7 +93,7 @@ function makeDefaultTier(): CreateEventTierInput {
   };
 }
 
-export default function CreateEventScreen() {
+function CreateEventV1Screen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<CreateEventTab>("event-details");
   const routeParams = useLocalSearchParams<{ orgId?: string | string[] }>();
@@ -570,4 +571,12 @@ export default function CreateEventScreen() {
       </View>
     </RequireAuthGate>
   );
+}
+
+/** Fase 1b.4: the v2 create form when the link carries the organization; v1 otherwise (or with the switch). */
+export default function CreateEventScreen() {
+  const params = useLocalSearchParams<{ orgId?: string | string[] }>();
+  const org = Array.isArray(params.orgId) ? params.orgId[0] : params.orgId;
+  if (organizerV2Enabled() && org) return <Redirect href={`/v2/organizer/create?orgId=${encodeURIComponent(org)}` as Href} />;
+  return <CreateEventV1Screen />;
 }

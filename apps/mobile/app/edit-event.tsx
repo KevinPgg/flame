@@ -7,7 +7,8 @@
 
 import { useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, Keyboard } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { organizerV2Enabled } from "../lib/v2/flags";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@project-flame/ui";
@@ -25,6 +26,13 @@ import { useMemberRoleContext } from "../contexts/MemberRoleContext";
 import { RequireAuthGate } from "../hooks/useRequireAuth";
 
 export default function EditEventScreen() {
+  // Fase 1b.4: v2 when the link carries the organization (v2 links do; the v1 detail screen doesn't).
+  const v2Params = useLocalSearchParams<{ id?: string | string[]; orgId?: string | string[] }>();
+  if (organizerV2Enabled()) {
+    const ev = Array.isArray(v2Params.id) ? v2Params.id[0] : v2Params.id;
+    const org = Array.isArray(v2Params.orgId) ? v2Params.orgId[0] : v2Params.orgId;
+    if (ev && org) return <Redirect href={`/v2/organizer/event/${encodeURIComponent(ev)}/edit?orgId=${encodeURIComponent(org)}` as Href} />;
+  }
   return (
     <RequireAuthGate>
       <EditEventContent />

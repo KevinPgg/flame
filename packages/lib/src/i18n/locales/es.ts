@@ -508,6 +508,10 @@ export const es: Messages = {
     notFound: "Este evento no está disponible.",
     backToEvent: "Volver al evento",
     goToEvent: "Ir al evento",
+    pickDate: "Elegir fecha y hora",
+    flyerPermission: "Permite el acceso a tus fotos para agregar un flyer.",
+    flyerHintApp: "Vertical 4:5 · se ajusta a 1080×1350",
+    notAllowedCreate: "Solo dueños y admins pueden crear eventos.",
     errors: {
       datesLocked: "El evento empieza en menos de 2 horas (o ya empezó): sus fechas ya no se pueden cambiar.",
       tierSalesAfterEnd: "Algunos tiers siguen vendiendo después de este fin. Cambia primero su fin de ventas en la pestaña Tiers.",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform } from "react-native";
 
 /**
@@ -36,4 +36,24 @@ export function useKeyboardHeight(): number {
     };
   }, []);
   return height;
+}
+
+/**
+ * How much a full-screen view must lift its bottom (Android) so it isn't under the keyboard:
+ * the keyboard height minus whatever the window already shrank (some devices still resize it).
+ * Put `onLayout` on the view's root; apply `lift` as bottom padding/margin. iOS → 0 (use
+ * KeyboardAvoidingView there).
+ */
+export function useKeyboardLift(): { lift: number; onLayout: (e: { nativeEvent: { layout: { height: number } } }) => void } {
+  const keyboard = useKeyboardHeight();
+  const fullHeight = useRef(0);
+  const [height, setHeight] = useState(0);
+  const shrunk = fullHeight.current > 0 && height > 0 ? Math.max(0, fullHeight.current - height) : 0;
+  const lift = Platform.OS === "android" ? Math.max(0, keyboard - shrunk) : 0;
+  const onLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    const h = e.nativeEvent.layout.height;
+    fullHeight.current = Math.max(fullHeight.current, h);
+    setHeight(h);
+  }, []);
+  return { lift, onLayout };
 }
