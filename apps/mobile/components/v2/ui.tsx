@@ -27,6 +27,12 @@ const ICONS = {
   compass: "compass-outline",
   alert: "alert-circle-outline",
   download: "download-outline",
+  qr: "qr-code-outline",
+  grid: "grid-outline",
+  check: "checkmark",
+  chart: "bar-chart-outline",
+  mail: "mail-outline",
+  pin: "location-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 

@@ -1,7 +1,8 @@
 /**
- * Flame 2.0 · organizer dashboard in the app (phone view of the web v2 dashboard): hero with logo
- * glow, role, Stripe state, KPIs (owner/admin), create event; current/past tabs, search without
- * accents across both tabs, event list. Same data and rules as the web (useOrganizerModel + lib).
+ * Flame 2.0 · organizer dashboard in the app — the prototype's phone design (OW_SCREENS.dash on a
+ * phone): title with organization switcher, "+" create event, hero card with logo glow, Stripe and
+ * totals; Current/Past toggle only when both have events, search past 4 events. Same data and rules
+ * as the web (useOrganizerModel + @project-flame/lib).
  */
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
@@ -11,7 +12,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   canCreateEvents,
-  canManagePayouts,
   flameV2Colors as c,
   formatCentsAsPrice,
   formatEventDateTime,
@@ -23,75 +23,103 @@ import type { MyOrganization } from "../../lib/v2/organizer-api";
 import type { EnrichedOrgEvent } from "../../hooks/useOrgEventEnriched";
 import { useOrganizerModel } from "../../hooks/v2/useOrganizerModel";
 import { OrganizerShell, TABBAR_SPACE, useStripeReady } from "./OrganizerShell";
-import { ErrorBox, Flyer, Icon, Kpi, OrgAvatar, Pill, Skeleton } from "./ui";
+import { ErrorBox, Flyer, Icon, OrgAvatar, Pill, Skeleton } from "./ui";
 
 export function OrganizerDashboard({ organization }: { organization: MyOrganization }) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { model, loading, failed, fullAccess, refetch, refreshing } = useOrganizerModel(organization);
-  const [tab, setTab] = useState<"current" | "past">("current");
+  const [chosenTab, setTab] = useState<"current" | "past">("current");
   const [search, setSearch] = useState("");
 
+  // Prototype: the Current/Past toggle only when both sides have events, search only past 4 events.
+  const hasBoth = !!model && model.current.length > 0 && model.past.length > 0;
+  const tab: "current" | "past" = hasBoth ? chosenTab : model && model.current.length === 0 && model.past.length > 0 ? "past" : "current";
+  const showSearch = !!model && model.all.length > 4;
+  const query = showSearch ? search : "";
   const matches = model
-    ? { current: searchEventsByName(model.current, search), past: searchEventsByName(model.past, search) }
+    ? { current: searchEventsByName(model.current, query), past: searchEventsByName(model.past, query) }
     : null;
   const visible = matches ? matches[tab] : [];
   const other = tab === "current" ? "past" : "current";
   // Searching inside one tab can hide the event in the other one: say so and offer to switch.
-  const elsewhere = search.trim() && matches && visible.length === 0 ? matches[other].length : 0;
+  const elsewhere = query.trim() && hasBoth && matches && visible.length === 0 ? matches[other].length : 0;
+  const exit = () => (router.canGoBack() ? router.back() : router.replace(routes.myOrganizers() as Href));
 
   return (
     <OrganizerShell
       organization={organization}
       pending={model?.pending ?? 0}
-      currentEvents={model?.current ?? []}
-      pastEvents={model?.past ?? []}
       title={organization.name}
-      onBack={router.canGoBack() ? () => router.back() : undefined}
+      switcher
+      onBack={exit}
+      actions={
+        canCreateEvents(organization.role) ? (
+          <Pressable
+            onPress={() => router.push(routes.createEvent(organization) as Href)}
+            accessibilityRole="button"
+            accessibilityLabel={t("organizer.createEvent")}
+            className="h-9 w-9 items-center justify-center rounded-full bg-v2-cream active:bg-v2-paper"
+          >
+            <Icon name="plus" size={20} color={c.ink} />
+          </Pressable>
+        ) : null
+      }
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: TABBAR_SPACE + insets.bottom }}
+        contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: TABBAR_SPACE + insets.bottom }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refetch} tintColor={c.cream} />}
       >
         <Hero organization={organization} model={model} loading={loading} fullAccess={fullAccess} />
 
-        <View className="gap-3 px-4">
-          <View className="flex-row gap-2" accessibilityRole="tablist">
-            {(["current", "past"] as const).map((k) => {
-              const on = tab === k;
-              const count = matches ? matches[k].length : null;
-              return (
-                <Pressable
-                  key={k}
-                  onPress={() => setTab(k)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  className={`h-9 flex-row items-center gap-2 rounded-v2-pill px-4 ${on ? "bg-v2-cream" : "bg-v2-ink3"}`}
-                >
-                  <Text className={`font-v2-ui-semibold text-[13px] ${on ? "text-v2-ink" : "text-v2-c70"}`}>
-                    {k === "current" ? t("organizer.currentUpcoming") : t("organizer.pastEvents")}
-                  </Text>
-                  {count !== null && <Text className={`font-v2-ui text-[13px] ${on ? "text-black/50" : "text-v2-c50"}`}>{count}</Text>}
-                </Pressable>
-              );
-            })}
-          </View>
+        <View className="mt-3 gap-3">
+          {hasBoth ? (
+            <View className="flex-row gap-2" accessibilityRole="tablist">
+              {(["current", "past"] as const).map((k) => {
+                const on = tab === k;
+                const count = matches ? matches[k].length : null;
+                return (
+                  <Pressable
+                    key={k}
+                    onPress={() => setTab(k)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: on }}
+                    className={`h-9 flex-row items-center gap-2 rounded-v2-pill px-4 ${on ? "bg-v2-cream" : "bg-v2-ink3"}`}
+                  >
+                    <Text className={`font-v2-ui-semibold text-[13px] ${on ? "text-v2-ink" : "text-v2-c70"}`}>
+                      {k === "current" ? t("organizer.currentUpcoming") : t("organizer.pastEvents")}
+                    </Text>
+                    {count !== null && <Text className={`font-v2-ui text-[13px] ${on ? "text-black/50" : "text-v2-c50"}`}>{count}</Text>}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            model && (
+              <Text accessibilityRole="header" className="font-v2-ui-semibold text-[16px] text-v2-cream">
+                {tab === "past" ? t("organizer.pastEvents") : t("organizer.currentUpcoming")}{" "}
+                <Text className="font-v2-ui-medium text-v2-c50">{visible.length}</Text>
+              </Text>
+            )
+          )}
 
-          <View className="h-10 flex-row items-center gap-2 rounded-v2-pill bg-v2-ink2 px-4">
-            <Icon name="search" size={16} color={c.c50} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t("organizer.searchEvents")}
-              placeholderTextColor={c.c50}
-              returnKeyType="search"
-              autoCorrect={false}
-              accessibilityLabel={t("organizer.searchEvents")}
-              className="flex-1 font-v2-ui text-[14px] text-v2-cream"
-            />
-          </View>
+          {showSearch && (
+            <View className="h-10 flex-row items-center gap-2 rounded-v2-pill bg-v2-ink2 px-4">
+              <Icon name="search" size={16} color={c.c50} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t("organizer.searchEvents")}
+                placeholderTextColor={c.c50}
+                returnKeyType="search"
+                autoCorrect={false}
+                accessibilityLabel={t("organizer.searchEvents")}
+                className="flex-1 font-v2-ui text-[14px] text-v2-cream"
+              />
+            </View>
+          )}
 
           {!fullAccess && <Text className="font-v2-ui text-[13px] text-v2-c50">{t("organizer.assignedOnly")}</Text>}
 
@@ -114,7 +142,7 @@ export function OrganizerDashboard({ organization }: { organization: MyOrganizat
               events={visible}
               organization={organization}
               partners={model?.cohostPartners ?? {}}
-              empty={search.trim() ? t("organizer.noMatch") : t("organizer.noEvents")}
+              empty={query.trim() ? t("organizer.noMatch") : t("organizer.noEvents")}
             />
           )}
         </View>
@@ -123,6 +151,7 @@ export function OrganizerDashboard({ organization }: { organization: MyOrganizat
   );
 }
 
+/** Prototype "ow-hero": logo on its own color glow, Stripe state, organization totals. */
 function Hero({
   organization,
   model,
@@ -140,71 +169,73 @@ function Hero({
   const stripeReady = useStripeReady(organization);
 
   return (
-    <View className="mb-5 overflow-hidden">
-      {/* Color glow from the organizer's logo (prototype: "logo on a color glow") */}
+    <View className="overflow-hidden rounded-v2-card border border-v2-c10 bg-v2-ink2">
       <View pointerEvents="none" className="absolute inset-0">
         {organization.logo_url ? (
-          <Image source={{ uri: organization.logo_url }} style={{ width: "100%", height: "100%", opacity: 0.4 }} blurRadius={60} contentFit="cover" />
+          <Image source={{ uri: organization.logo_url }} style={{ width: "100%", height: "100%", opacity: 0.45 }} blurRadius={60} contentFit="cover" />
         ) : (
-          <LinearGradient colors={["rgba(136,5,23,0.55)", "transparent"]} start={{ x: 0.2, y: 0 }} end={{ x: 0.6, y: 1 }} style={{ flex: 1 }} />
+          <LinearGradient colors={["rgba(136,5,23,0.55)", "transparent"]} start={{ x: 0.1, y: 0 }} end={{ x: 0.7, y: 1 }} style={{ flex: 1 }} />
         )}
-        <LinearGradient colors={["transparent", c.ink]} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+        <LinearGradient colors={["transparent", "rgba(10,10,10,0.75)"]} locations={[0.2, 1]} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
       </View>
 
-      <View className="gap-5 px-4 pb-4 pt-6">
+      <View className="gap-5 px-[18px] py-5">
         <View className="flex-row items-center gap-4">
-          <OrgAvatar name={organization.name} logoUrl={organization.logo_url} size={72} />
-          <View className="min-w-0 flex-1 gap-2">
-            <Text numberOfLines={2} className="font-v2-display-bold text-[26px] leading-[30px] tracking-[-0.8px] text-v2-cream">
+          <OrgAvatar name={organization.name} logoUrl={organization.logo_url} size={64} />
+          <View className="min-w-0 flex-1 gap-1.5">
+            <Text numberOfLines={2} className="font-v2-ui-semibold text-[20px] leading-[23px] tracking-[-0.4px] text-v2-cream">
               {organization.name}
             </Text>
-            <View className="flex-row flex-wrap items-center gap-2">
-              {role !== "owner" && <Pill>{t(`organizer.roles.${role}`)}</Pill>}
-              {stripeReady === true && <Pill tone="good">{t("organizer.stripeConnected")}</Pill>}
-              {stripeReady === false && (
-                <Pressable onPress={() => router.push(routes.payouts(organization) as Href)} accessibilityRole="link">
-                  <Pill tone="warn">{t("organizer.stripeIncomplete")}</Pill>
-                </Pressable>
-              )}
-              {canManagePayouts(role) && (
-                <Pressable onPress={() => router.push(routes.settings(organization) as Href)} accessibilityRole="link">
-                  <Pill>{t("organizer.manage")}</Pill>
-                </Pressable>
-              )}
-            </View>
+            {role !== "owner" && (
+              <View className="self-start">
+                <Pill>{t(`organizer.roles.${role}`)}</Pill>
+              </View>
+            )}
+            {stripeReady === true && (
+              <View className="flex-row items-center gap-1">
+                <Icon name="check" size={13} color={c.good} />
+                <Text className="font-v2-ui-medium text-[12.5px] text-v2-good">{t("organizer.stripeConnected")}</Text>
+              </View>
+            )}
+            {stripeReady === false && (
+              <Pressable onPress={() => router.push(routes.payouts(organization) as Href)} accessibilityRole="link" className="flex-row items-center gap-1">
+                <Icon name="alert" size={13} color={c.warn} />
+                <Text className="font-v2-ui-medium text-[12.5px] text-v2-warn">{t("organizer.stripeIncomplete")}</Text>
+              </Pressable>
+            )}
           </View>
         </View>
 
         {fullAccess && (
-          <View className="flex-row gap-8">
-            <Kpi label={t("organizer.totalEvents")} loading={loading || !model}>
-              <Text className="font-v2-display-bold text-[26px] text-v2-cream">{model?.all.length ?? 0}</Text>
-            </Kpi>
-            <Kpi label={t("organizer.totalRevenue")} loading={loading || !model}>
-              {model && model.revenue.length === 0 ? (
-                <Text className="font-v2-display-bold text-[26px] text-v2-cream">—</Text>
-              ) : (
-                model?.revenue.map((r) => (
-                  <Text key={r.currency} className="font-v2-display-bold text-[26px] text-v2-cream">
-                    {formatCentsAsPrice(r.cents, r.currency)}
-                  </Text>
-                ))
-              )}
-            </Kpi>
+          <View className="flex-row gap-[22px]">
+            <HeroKpi label={t("organizer.totalRevenue")} loading={loading || !model}>
+              {model && model.revenue.length === 0
+                ? ["—"]
+                : (model?.revenue ?? []).map((r) => formatCentsAsPrice(r.cents, r.currency))}
+            </HeroKpi>
+            <HeroKpi label={t("organizer.totalEvents")} loading={loading || !model}>
+              {[String(model?.all.length ?? 0)]}
+            </HeroKpi>
           </View>
         )}
-
-        {canCreateEvents(role) && (
-          <Pressable
-            onPress={() => router.push(routes.createEvent(organization) as Href)}
-            accessibilityRole="button"
-            className="h-11 flex-row items-center justify-center gap-2 rounded-v2-pill bg-v2-cream active:bg-v2-paper"
-          >
-            <Icon name="plus" size={18} color={c.ink} />
-            <Text className="font-v2-ui-semibold text-[14px] text-v2-ink">{t("organizer.createEvent")}</Text>
-          </Pressable>
-        )}
       </View>
+    </View>
+  );
+}
+
+function HeroKpi({ label, loading, children }: { label: string; loading: boolean; children: string[] }) {
+  return (
+    <View>
+      {loading ? (
+        <Skeleton width={80} height={26} />
+      ) : (
+        children.map((v) => (
+          <Text key={v} className="font-v2-ui-semibold text-[22px] tracking-[-0.4px] text-v2-cream">
+            {v}
+          </Text>
+        ))
+      )}
+      <Text className="font-v2-ui text-[13px] text-v2-c70">{label}</Text>
     </View>
   );
 }

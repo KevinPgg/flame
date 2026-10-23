@@ -39,6 +39,7 @@ export const en = {
     team: "Team",
     payouts: "Payouts",
     settings: "Settings",
+    manage: "Manage",
   },
   home: {
     emptyTitle: "Nothing in {city} yet",
@@ -134,6 +135,17 @@ export const en = {
       organizer: "Organizer",
       viewer: "Viewer",
     },
+  },
+  manage: {
+    title: "Manage organization",
+    lede: "Everything about running {org} — not a specific event — lives here.",
+    team: "Team",
+    members: { one: "{count} member", other: "{count} members" },
+    payouts: "Payouts",
+    available: "{amount} available",
+    connectStripe: "Connect Stripe to get paid",
+    settings: "Settings",
+    settingsSub: "Organization profile, logo",
   },
   eventAdmin: {
     back: "Events",

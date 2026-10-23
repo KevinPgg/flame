@@ -37,6 +37,7 @@ export const es: Messages = {
     team: "Equipo",
     payouts: "Pagos",
     settings: "Ajustes",
+    manage: "Gestionar",
   },
   home: {
     emptyTitle: "Aún no hay nada en {city}",
@@ -132,6 +133,17 @@ export const es: Messages = {
       organizer: "Organizador",
       viewer: "Lector",
     },
+  },
+  manage: {
+    title: "Gestionar organización",
+    lede: "Todo lo que es de {org} y no de un evento concreto está aquí.",
+    team: "Equipo",
+    members: { one: "{count} miembro", other: "{count} miembros" },
+    payouts: "Pagos",
+    available: "{amount} disponibles",
+    connectStripe: "Conecta Stripe para cobrar",
+    settings: "Ajustes",
+    settingsSub: "Perfil de la organización, logo",
   },
   eventAdmin: {
     back: "Eventos",

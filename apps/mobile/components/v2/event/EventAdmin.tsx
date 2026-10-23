@@ -75,9 +75,6 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
     <OrganizerShell
       organization={organization}
       pending={model?.pending ?? 0}
-      currentEvents={model?.current ?? []}
-      pastEvents={model?.past ?? []}
-      activeEventId={eventId}
       title={event?.name ?? ""}
       onBack={back}
     >
