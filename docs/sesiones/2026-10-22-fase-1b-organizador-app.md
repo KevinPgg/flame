@@ -138,3 +138,26 @@ La 1b.2 se parte en dos: **1b.2a** (esta) y **1b.2b** (Enlaces de promotor, Cód
 
 **Verificado:** jest app 43/43 (Scanner 5, EventTools 11 incl. compras y envío sin respuesta, marco 5, evento 9, panel 6, Manage 3, base 4); vitest lib 372 (+3 attendance), API organizador 236, web v2 `EventAdminTabs` 16 + `PurchasesTab` 1 nuevo, `bank-transfer-data` 1 nuevo; tsc app 40, web 0. **No verificado:** cámara y flash reales (Kevin, 📱).
 **Orden que queda:** 1b.3 RSVPs → 1b.4 crear/editar evento + tiers (con lo pedido arriba) → 1b.5 Manage → 1b.7 cierre.
+
+## Ronda 3 de Kevin (2026-10-23): teclado de co-organizadores, fecha de tiers y mejoras anotadas
+**Reportó**
+- Co-organizadores: el teclado sigue tapando la hoja (no sube).
+- Web, nuevo tier en un evento existente: dejar inicio/fin de venta en su valor por defecto ("Ahora" / "Cuando termina el evento") y guardar → error "invalid ISO …".
+
+**Diagnóstico**
+- Hoja: [Probable] con edge-to-edge de Expo SDK 54 la ventana del `Modal` no se redimensiona en Android y `KeyboardAvoidingView` (`behavior="height"`) no la mueve.
+- Tier: [Seguro, por código] `buildTierSave` mandaba `event.ends_at` tal cual lo devuelve la BD (`…+00:00`) cuando el fin de venta queda por defecto; la API valida con zod `.datetime()`, que solo acepta `…Z` → 400 "Invalid input". Los tests usaban fechas con `Z` y no lo veían. Afecta también a editar un tier y volver el fin al valor por defecto. El formulario de crear evento no tiene el fallo (calcula el fin con `toUtc`).
+
+**Hecho**
+- `hooks/v2/useKeyboardVisible.ts` → `useKeyboardHeight()`; `CohostsSheet` en Android se levanta por la altura del teclado (si el equipo sí redimensiona la ventana, resta lo que ya encogió para no subir doble). iOS sigue con `KeyboardAvoidingView`.
+- `packages/lib/src/organizer/tier-editor.ts`: el fin del evento se normaliza a ISO con `Z` (`utcIso`) antes de enviarlo (POST y PATCH). +2 tests con el formato real de la BD.
+- Web `TierEditor`: si la API rechaza `sales_start`/`sales_end`, muestra `eventForm.errors.salesDatesRejected` ("Revisa las fechas de venta…") en vez de "Invalid input".
+
+**Verificado:** vitest lib `organizer-tier-editor` 21/21 (los 2 nuevos fallan sin el arreglo); web v2 `TierEditor` + `EditEvent` 37/37; jest app 43/43 (una primera corrida en frío dio 2 fallos por tiempo y la repetición pasó entera); tsc app 40, web 0. La copia Linux de la VM se recreó (`~/linux/Flme`; `pnpm install` en tramos de <3 min porque la VM mata procesos en segundo plano). **No verificado:** la hoja con teclado en el celular (📱 Kevin, PruebasReales Ronda 3).
+
+### Mejoras anotadas (Kevin, 10-23) — sin implementar
+1. **Búsqueda de personas unificada** (enviar tickets, cuentas de escáner, equipo y cualquier campo que busque usuarios): hoy `GET /api/organizer/search-users` y `POST …/scanners` exigen el **email exacto**. Kevin pide sugerencias mientras se escribe: sin "@" → por nombre/usuario; con "@" → por email completo. Refactor a un solo componente (web y app) + un endpoint.
+   - **Riesgo (Claude):** una búsqueda parcial sobre *todos* los usuarios permite que cualquier owner/admin/organizer de cualquier organización (basta una membresía) liste nombres y emails de toda la base de Flame. El email exacto era intencional. **Propuesta:** sugerencias parciales solo entre personas ya relacionadas con la organización (compradores/RSVPs de sus eventos, miembros, escáneres y destinatarios anteriores); fuera de ese círculo, solo coincidencia exacta de email. Mínimo 2–3 caracteres, límite de resultados y rate limit. **Pendiente de decisión de Kevin.**
+   - Cuándo: propuesta antes de la 1b.5 (Equipo lo reutiliza).
+2. **Tiers — fechas por defecto:** corregido arriba en web. En la app, el editor de tiers v2 es parte de la **1b.4**: debe usar los mismos valores por defecto ("Ahora" / "Cuando termina el evento") y la misma `buildTierSave` (ya corregida).
+3. **Asistente — Mis tickets (fase 2):** hoy cambiar de ticket recarga desde cero. Cargar de una vez todos los tickets de la compra/evento (p. ej. 4) y pasar entre ellos deslizando (swipe), sin recarga.

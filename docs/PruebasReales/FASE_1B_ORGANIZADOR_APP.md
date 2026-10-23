@@ -63,33 +63,43 @@ Compara cada número con el **mismo evento en la web v2** (🌐 `localhost:3000/
 
 ## 1b.2b · Detalle de evento: Promotores, Códigos, Enviar tickets, Escáner, Co-organizadores · 📱 Celular
 Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web del mismo evento.
-- [ ] **Enlaces de promotor:** crear con código (en mayúsculas; 1 letra → error) y nombre opcional; aparece en la lista ordenada por ventas. "Copiar" → pégalo en el navegador del celular: abre `…/events/<evento>?promoter=<CÓDIGO>` en **www.flme.co** (o lo que diga `EXPO_PUBLIC_APP_URL`). Borrar pide confirmación. Viewer: solo lista.
-- [ ] **Códigos:** agregar con % (chips 5–100) y límite de uso (0 → "El límite de uso debe ser al menos 1"); tarjeta con barra de uso y Activo / Agotado; borrar con confirmación.
-- [ ] **Enviar tickets — gratis:** buscar email exacto → elegir persona → tier y cantidad (− / +; aviso si supera lo que queda) → confirmar → "N tickets enviados a …"; aparece en "Enviados" y la persona recibe el ticket/correo. `//Ronda 2 (10-23): se envió pero salió "Algo salió mal" y quedó en Confirmar (1 de 2) → corregido, ver 1b.6/correcciones.`
-- [ ] **Enviar tickets — transferencias:** email sin cuenta → "Crear orden sin cuenta de Flame"; "Poner un precio propio" (acepta "12,50"); confirmar → orden registrada; en Desglose aparece en Transferencia.
-- [ ] **Escáner:** "Escanear tickets ahora" (abre el escáner de la app actual). Cuentas: agregar por email (sin cuenta → "debe registrarse"; miembro → "ya puede escanear"; repetido → aviso); quitar con confirmación. Código (owner/admin): crear, copiar, nuevo código y quitar con confirmación, "Elegir el mío" (`door-12` → `DOOR12`; uno de otro evento → "Otro evento ya usa este código"). Organizer: gestiona cuentas, en Código ve "Solo dueños y admins…".
-- [ ] **Co-organizadores** (botón arriba, owner/admin): hoja desde abajo con los actuales; buscar organización por nombre (solo aprobadas, sin la tuya ni las que ya están); "Agregar"; "Quitar" pide confirmación. En la web el evento muestra los mismos co-organizadores.
-- [ ] Teclado: al escribir en cualquier campo de estas pestañas, el botón de la acción sigue visible (si el teclado lo tapa, anótalo con la pestaña). `//Ronda 2: sí se tapan → corregido (la barra inferior se oculta al escribir).`
+- [x] **Enlaces de promotor:** crear con código (en mayúsculas; 1 letra → error) y nombre opcional; aparece en la lista ordenada por ventas. "Copiar" → pégalo en el navegador del celular: abre `…/events/<evento>?promoter=<CÓDIGO>` en **www.flme.co** (o lo que diga `EXPO_PUBLIC_APP_URL`). Borrar pide confirmación. Viewer: solo lista.
+- [x] **Códigos:** agregar con % (chips 5–100) y límite de uso (0 → "El límite de uso debe ser al menos 1"); tarjeta con barra de uso y Activo / Agotado; borrar con confirmación.
+- [x] **Enviar tickets — gratis:** buscar email exacto → elegir persona → tier y cantidad (− / +; aviso si supera lo que queda) → confirmar → "N tickets enviados a …"; aparece en "Enviados" y la persona recibe el ticket/correo. `//Ronda 2 (10-23): se envió pero salió "Algo salió mal" y quedó en Confirmar (1 de 2) → corregido, ver 1b.6/correcciones.`
+- [x] **Enviar tickets — transferencias:** email sin cuenta → "Crear orden sin cuenta de Flame"; "Poner un precio propio" (acepta "12,50"); confirmar → orden registrada; en Desglose aparece en Transferencia.
+- [x] **Escáner:** "Escanear tickets ahora" (abre el escáner de la app actual). Cuentas: agregar por email (sin cuenta → "debe registrarse"; miembro → "ya puede escanear"; repetido → aviso); quitar con confirmación. Código (owner/admin): crear, copiar, nuevo código y quitar con confirmación, "Elegir el mío" (`door-12` → `DOOR12`; uno de otro evento → "Otro evento ya usa este código"). Organizer: gestiona cuentas, en Código ve "Solo dueños y admins…".
+- [x] **Co-organizadores** (botón arriba, owner/admin): hoja desde abajo con los actuales; buscar organización por nombre (solo aprobadas, sin la tuya ni las que ya están); "Agregar"; "Quitar" pide confirmación. En la web el evento muestra los mismos co-organizadores.
+- [x] Teclado: al escribir en cualquier campo de estas pestañas, el botón de la acción sigue visible (si el teclado lo tapa, anótalo con la pestaña). `//Ronda 2: sí se tapan → corregido (la barra inferior se oculta al escribir).`
 
 ## 1b.6 adelantada + correcciones de la ronda 2 (2026-10-23) · 📱 Celular
 **Escáner por cuenta (sin código):**
-- [ ] Organizador → pestaña **Escanear**: lista "Elige un evento" con los eventos que tu cuenta puede escanear (tus organizaciones, co-organizados y a los que te agregaron), con "Ahora" en el que está en curso; si hay solo uno en curso, se abre directo. **No pide código.**
-- [ ] Evento → Escáner → "Escanear tickets ahora" → abre el escáner ya en ese evento.
-- [ ] Escanear un ticket del evento → "Ticket válido" (nombre, tier, "Ticket 2 de 3") → "Registrar entrada" → "Entrada registrada"; aparece en "Escaneos recientes". Volver a escanear el mismo → "Ya registrado" con la hora. Ticket de otro evento → "Este ticket es de otro evento".
-- [ ] **Flash:** encender y **apagar** varias veces (al apagar, la cámara se reinicia un instante: es a propósito). "Detener cámara" también lo apaga.
-- [ ] **Persona agregada (no miembro):** en 🌐 web (o en la app) agrega en Escáner → Cuentas una cuenta Flame que **no** sea de tu organización. Entra con esa cuenta en el celular → Ajustes → **Scan Tickets** → ve ese evento en la lista y escanea sin código. Un ticket de otro evento tuyo → "No puedes escanear tickets de este evento".
-- [ ] Ajustes → Scan Tickets **sin sesión** → escáner con código de acceso (como antes). **Con sesión**, abajo de la lista: "¿Tienes un código de acceso? Escanear con el código" → ese mismo escáner con código.
-- [ ] Cuenta sin eventos para escanear → "No tienes eventos para escanear… pide al organizador que te agregue…".
-- [ ] Viewer (si lo usas): también ve Escanear (cualquier miembro puede escanear).
+- [x] Organizador → pestaña **Escanear**: lista "Elige un evento" con los eventos que tu cuenta puede escanear (tus organizaciones, co-organizados y a los que te agregaron), con "Ahora" en el que está en curso; si hay solo uno en curso, se abre directo. **No pide código.**
+- [x] Evento → Escáner → "Escanear tickets ahora" → abre el escáner ya en ese evento.
+- [x] Escanear un ticket del evento → "Ticket válido" (nombre, tier, "Ticket 2 de 3") → "Registrar entrada" → "Entrada registrada"; aparece en "Escaneos recientes". Volver a escanear el mismo → "Ya registrado" con la hora. Ticket de otro evento → "Este ticket es de otro evento".
+- [x] **Flash:** encender y **apagar** varias veces (al apagar, la cámara se reinicia un instante: es a propósito). "Detener cámara" también lo apaga.
+- [x] **Persona agregada (no miembro):** en 🌐 web (o en la app) agrega en Escáner → Cuentas una cuenta Flame que **no** sea de tu organización. Entra con esa cuenta en el celular → Ajustes → **Scan Tickets** → ve ese evento en la lista y escanea sin código. Un ticket de otro evento tuyo → "No puedes escanear tickets de este evento".
+- [x] Ajustes → Scan Tickets **sin sesión** → escáner con código de acceso (como antes). **Con sesión**, abajo de la lista: "¿Tienes un código de acceso? Escanear con el código" → ese mismo escáner con código.
+- [x] Cuenta sin eventos para escanear → "No tienes eventos para escanear… pide al organizador que te agregue…".
+- [x] Viewer (si lo usas): también ve Escanear (cualquier miembro puede escanear).
 
 **Compras con asistencia (app 📱 y 🌐 web):**
-- [ ] Pestaña Compras: aparecen ventas, transferencias y tickets enviados gratis, cada uno con su **origen** (Venta / Transferencia / Envío gratis) y **escaneados "x/N"** (verde completo, amarillo parcial, gris ninguno); abajo "X de Y tickets escaneados". Escanea 1 de una compra de 2 → pasa a "1/2". Compara app y web.
+- [x] Pestaña Compras: aparecen ventas, transferencias y tickets enviados gratis, cada uno con su **origen** (Venta / Transferencia / Envío gratis) y **escaneados "x/N"** (verde completo, amarillo parcial, gris ninguno); abajo "X de Y tickets escaneados". Escanea 1 de una compra de 2 → pasa a "1/2". Compara app y web.
 
 **Enviar tickets:**
-- [ ] Enviar gratis justo después de reiniciar la web (`npm run dev`, primera llamada lenta): ya no sale "Algo salió mal"; si tarda más de 1 minuto sale "No pudimos confirmar el envío a tiempo… revisa Enviados" y la lista se actualiza.
+- [x] Enviar gratis justo después de reiniciar la web (`npm run dev`, primera llamada lenta): ya no sale "Algo salió mal"; si tarda más de 1 minuto sale "No pudimos confirmar el envío a tiempo… revisa Enviados" y la lista se actualiza.
 
 **Teclado:**
-- [ ] Al escribir en cualquier campo del organizador (búsqueda, enlaces, códigos, enviar tickets, escáner), la barra inferior desaparece y los botones quedan visibles; al cerrar el teclado vuelve. En Co-organizadores, la hoja sube con el teclado.
+- [ ] Al escribir en cualquier campo del organizador (búsqueda, enlaces, códigos, enviar tickets, escáner), la barra inferior desaparece y los botones quedan visibles; al cerrar el teclado vuelve. ~~En Co-organizadores, la hoja sube con el teclado.~~ `//Ronda 3: la hoja no subía → corregido, ver Ronda 3.`
+
+## Ronda 3 (2026-10-23) — correcciones
+**Co-organizadores con teclado · 📱 Celular** (reinicia Metro con `-c`)
+- [ ] Evento → Co-organizadores → toca "Buscar organización": la hoja **sube entera** encima del teclado; se ven el campo y los resultados con "Agregar". Cierra el teclado → la hoja baja a su sitio, sin hueco abajo.
+- [ ] Si queda un hueco entre la hoja y el teclado, o el teclado tapa un trozo, anota cuánto (aprox.) y el modelo del celular.
+
+**Nuevo tier con fechas por defecto · 🌐 Web**
+- [ ] Evento existente → Tiers → "Nuevo tier": nombre, precio y cantidad; **no toques** inicio ni fin de venta ("Ahora" / "Cuando termina el evento") → Guardar → se crea sin error. El fin de venta del tier = fin del evento.
+- [ ] Editar un tier con fin de venta propio → "×" para volver a "Cuando termina el evento" → Guardar → sin error.
+- [ ] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
