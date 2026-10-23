@@ -93,13 +93,13 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 
 ## Ronda 3 (2026-10-23) — correcciones
 **Co-organizadores con teclado · 📱 Celular** (reinicia Metro con `-c`)
-- [ ] Evento → Co-organizadores → toca "Buscar organización": la hoja **sube entera** encima del teclado; se ven el campo y los resultados con "Agregar". Cierra el teclado → la hoja baja a su sitio, sin hueco abajo.
-- [ ] Si queda un hueco entre la hoja y el teclado, o el teclado tapa un trozo, anota cuánto (aprox.) y el modelo del celular.
+- [x] Evento → Co-organizadores → toca "Buscar organización": la hoja **sube entera** encima del teclado; se ven el campo y los resultados con "Agregar". Cierra el teclado → la hoja baja a su sitio, sin hueco abajo.
+- [x] Si queda un hueco entre la hoja y el teclado, o el teclado tapa un trozo, anota cuánto (aprox.) y el modelo del celular. `//todo bien`
 
 **Nuevo tier con fechas por defecto · 🌐 Web**
-- [ ] Evento existente → Tiers → "Nuevo tier": nombre, precio y cantidad; **no toques** inicio ni fin de venta ("Ahora" / "Cuando termina el evento") → Guardar → se crea sin error. El fin de venta del tier = fin del evento.
-- [ ] Editar un tier con fin de venta propio → "×" para volver a "Cuando termina el evento" → Guardar → sin error.
-- [ ] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
+- [x] Evento existente → Tiers → "Nuevo tier": nombre, precio y cantidad; **no toques** inicio ni fin de venta ("Ahora" / "Cuando termina el evento") → Guardar → se crea sin error. El fin de venta del tier = fin del evento.
+- [x] Editar un tier con fin de venta propio → "×" para volver a "Cuando termina el evento" → Guardar → sin error.
+- [x] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.

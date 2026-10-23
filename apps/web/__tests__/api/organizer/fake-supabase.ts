@@ -66,7 +66,11 @@ export function fakeSupabase(
       gte: () => api,
       lt: () => api,
       lte: () => api,
-      ilike: () => api,
+      ilike: (c: string, pattern: string) => {
+        const re = new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*")}$`, "i");
+        preds.push((r) => re.test(String(get(r, c) ?? "")));
+        return api;
+      },
       or: () => api,
       order: (col: string, o?: { ascending?: boolean; foreignTable?: string }) =>
         o?.foreignTable ? api : ((orderBy = { col, asc: o?.ascending !== false }), api),

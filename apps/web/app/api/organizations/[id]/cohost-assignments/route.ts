@@ -8,6 +8,10 @@ import { supabaseAdmin } from "../../../../lib/supabase/server";
  * Cohost-org assignments for an event.
  *
  *   GET    ?event_id=<uuid>  → list current cohost orgs for that event
+ *   GET    ?search=<text>[&event_id=<uuid>] → approved orgs to add as co-host (owner/admin):
+ *          name contains <text>, excluding this org and the event's current co-hosts. Used by
+ *          the app (fase 1b), which only talks to the web API; the web v1/v2 modal reads the same
+ *          data with the anon Supabase client.
  *   POST   { eventId, cohostOrgId } → add cohost (owner/admin only)
  *   DELETE ?id=<assignmentId> → remove (owner/admin only)
  *
@@ -57,6 +61,44 @@ export async function GET(
     }
 
     const eventId = req.nextUrl.searchParams.get("event_id");
+    const search = req.nextUrl.searchParams.get("search");
+
+    if (search !== null) {
+      if (gate.role !== "owner" && gate.role !== "admin") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      // PostgREST pattern / filter syntax characters out; at most 50 chars.
+      const term = search.replace(/[%_,()\\*]/g, " ").trim().slice(0, 50);
+      if (!term) return NextResponse.json({ organizations: [] });
+
+      const exclude = new Set<string>([orgId]);
+      if (eventId) {
+        const { data: current, error: currentError } = await supabaseAdmin
+          .from("event_assignments")
+          .select("cohost_organization_id")
+          .eq("organization_id", orgId)
+          .eq("event_id", eventId)
+          .not("cohost_organization_id", "is", null);
+        if (currentError) {
+          console.error("[GET cohost-assignments search] current", { orgId, eventId, currentError });
+          return NextResponse.json({ error: "Failed to search organizations" }, { status: 500 });
+        }
+        for (const r of current ?? []) exclude.add(r.cohost_organization_id as string);
+      }
+
+      const { data: orgs, error: searchError } = await supabaseAdmin
+        .from("organizations")
+        .select("id, name, slug, logo_url, city")
+        .eq("approved", true)
+        .ilike("name", `%${term}%`)
+        .order("name", { ascending: true })
+        .limit(20 + exclude.size);
+      if (searchError) {
+        console.error("[GET cohost-assignments search] error", { orgId, searchError });
+        return NextResponse.json({ error: "Failed to search organizations" }, { status: 500 });
+      }
+      return NextResponse.json({ organizations: (orgs ?? []).filter((o) => !exclude.has(o.id)).slice(0, 20) });
+    }
 
     let query = supabaseAdmin
       .from("event_assignments")

@@ -138,7 +138,7 @@ App (celular, build Android):
 - [] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo. `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
 - [ ] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event". `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
 - [x] Expo web (navegador, `localhost:8081`): no aparece "Scan Tickets" en Ajustes ni "QR Scanner" en el panel; `/scanner` → inicio. 
-- [ ] (Emergencia) `SCANNER_ACCESS_CODES=off` en `.env` y reinicio: el código deja de dar acceso (403). `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
+- [x] (Emergencia) `SCANNER_ACCESS_CODES=off` en `.env` y reinicio: el código deja de dar acceso (403). 
 
 ## 7d. Ajustes (nuevo)
 - [x] Menú "Ajustes" (owner/admin) abre la pestaña Organización y queda resaltado; el botón "Gestionar" del panel también. `//Corregir, separar ajustes de cuenta vs ajustes de orgnanizacion`
