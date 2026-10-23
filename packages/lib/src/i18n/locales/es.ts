@@ -524,6 +524,7 @@ export const es: Messages = {
       startRequired: "Elige cuándo empieza el evento.",
       endRequired: "Elige cuándo termina el evento.",
       dateInvalid: "Esa fecha no es válida.",
+      salesDatesRejected: "Revisa las fechas de venta: elige la fecha y hora de inicio y de fin, o déjalas en su valor por defecto.",
       startTooSoon: "El evento debe empezar al menos 2 horas desde ahora.",
       endBeforeStart: "El fin debe ser después del inicio.",
       tiersRequired: "Agrega al menos un tier.",

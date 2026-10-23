@@ -33,10 +33,20 @@ import { fieldId } from "../../../../event-form/ui";
 
 type ForcePrompt = { sold: number; reserved: number; requested: number; allowed: boolean };
 
-async function errorOf(res: Response, generic: string): Promise<{ message: string; code?: string; details?: Record<string, number> }> {
-  const json = (await res.json().catch(() => null)) as { error?: string; code?: string; details?: Record<string, number> } | null;
+async function errorOf(
+  res: Response,
+  generic: string,
+  datesText?: string,
+): Promise<{ message: string; code?: string; details?: Record<string, number> }> {
+  const json = (await res.json().catch(() => null)) as { error?: string; code?: string; details?: unknown } | null;
+  // Schema errors come back as "Invalid input" + zod issues; name the sales dates when they're the cause.
+  const issues = Array.isArray(json?.details) ? (json!.details as { path?: unknown[] }[]) : [];
+  if (datesText && issues.some((i) => Array.isArray(i.path) && (i.path[0] === "sales_start" || i.path[0] === "sales_end"))) {
+    return { message: datesText, code: json?.code };
+  }
   const message = res.status < 500 && typeof json?.error === "string" && json.error ? json.error : generic;
-  return { message, code: json?.code, details: json?.details };
+  const details = json?.details && !Array.isArray(json.details) ? (json.details as Record<string, number>) : undefined;
+  return { message, code: json?.code, details };
 }
 
 /**
@@ -183,7 +193,7 @@ export default function TierEditor({
     try {
       const res = await send(plan);
       if (res.ok) return await done();
-      const err = await errorOf(res, t("errors.generic"));
+      const err = await errorOf(res, t("errors.generic"), t("eventForm.errors.salesDatesRejected"));
       if (err.code === "QUANTITY_BELOW_RESERVED" && err.details) {
         setForce({
           sold: err.details.quantity_sold ?? sold,

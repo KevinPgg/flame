@@ -526,6 +526,7 @@ export const en = {
       startRequired: "Pick when the event starts.",
       endRequired: "Pick when the event ends.",
       dateInvalid: "That date isn’t valid.",
+      salesDatesRejected: "Check the sales dates: pick a start and end date and time, or leave them on their defaults.",
       startTooSoon: "The event must start at least 2 hours from now.",
       endBeforeStart: "The end must be after the start.",
       tiersRequired: "Add at least one tier.",

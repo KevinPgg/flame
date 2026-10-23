@@ -245,6 +245,23 @@ describe("buildTierSave — POST for a new tier", () => {
   });
 });
 
+describe("buildTierSave — event end as the database returns it", () => {
+  // Supabase sends "+00:00"; the API only accepts "Z" (zod .datetime()) → "Invalid ISO datetime".
+  const DB_EVENT: EditorEvent = { ...EVENT, ends_at: "2026-12-01T07:00:00+00:00" };
+
+  it("new tier on 'When the event ends' sends the end as UTC with Z", () => {
+    const s = newTierEditor("Tier 4");
+    Object.assign(s.draft, { price: "0", quantity: "30" });
+    expect(buildTierSave(s, DB_EVENT, null).body.sales_end).toBe(ENDS);
+  });
+
+  it("going back to the default on an existing tier also sends Z", () => {
+    const s = tierEditorFromTier(VIP, DB_EVENT);
+    s.draft.salesEnd = "";
+    expect(buildTierSave(s, DB_EVENT, VIP).body).toEqual({ id: "t2", sales_end: ENDS });
+  });
+});
+
 describe("canForceReduce", () => {
   it("only existing simple tiers", () => {
     expect(canForceReduce(edit(GENERAL), GENERAL)).toBe(true);

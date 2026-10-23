@@ -196,6 +196,12 @@ export interface TierSavePlan {
 
 const sameList = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
+/** Any parseable timestamp → "YYYY-MM-DDTHH:mm:ss.sssZ" (what the API validates); unparseable stays as is. */
+function utcIso(value: string): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? value : d.toISOString();
+}
+
 export function buildTierSave(
   state: TierEditorState,
   event: EditorEvent,
@@ -204,6 +210,10 @@ export function buildTierSave(
 ): TierSavePlan {
   const t = state.draft;
   const tz = tzOf(event);
+  // The database returns timestamps as "…+00:00"; the API (zod .datetime()) only accepts "…Z".
+  // Sending event.ends_at as-is gave "Invalid ISO datetime" when the sales end was left on
+  // "When the event ends" (Kevin, 2026-10-23, new tier on the web).
+  const eventEnd = utcIso(event.ends_at);
   const stages = t.useStages
     ? t.stages.map((s, i) => ({
         ...(s.id ? { id: s.id } : {}),
@@ -250,7 +260,7 @@ export function buildTierSave(
     name: t.name.trim(),
     per_user_limit: parseIntInput(t.perUserLimit) ?? 1,
     sales_start: t.salesStart ? toUtc(t.salesStart, tz) : null,
-    sales_end: t.salesEnd ? toUtc(t.salesEnd, tz) : event.ends_at,
+    sales_end: t.salesEnd ? toUtc(t.salesEnd, tz) : eventEnd,
     secret_code: tierSecretCode(t),
     description: description || null,
     is_hidden: t.hidden,
@@ -278,7 +288,7 @@ export function buildTierSave(
       name: original.name,
       per_user_limit: original.per_user_limit ?? 1,
       sales_start: original.sales_start ?? null,
-      sales_end: original.sales_end ?? event.ends_at,
+      sales_end: original.sales_end ?? eventEnd,
       secret_code: original.secret_code ?? null,
       description: original.description ?? null,
       is_hidden: original.is_hidden === true,
