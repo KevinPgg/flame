@@ -37,8 +37,8 @@ Plan y decisiones de la fase 1b. Fase 1 (organizador web v2) cerrada el mismo d�
 | 1b.2 | Detalle de evento: Tiers, Compras (XLSX), Desglose, Promotores, Códigos, Enviar tickets, Co-organizadores | `org-event-detail`, `components/org-dashboard/*` |
 | 1b.3 | RSVPs: lista y detalle (aprobar/rechazar, aprobar todas, exportar) | `rsvp-management`, `rsvp-detail` |
 | 1b.4 | Crear y editar evento + editor de tiers (etapas, preguntas, reducción forzada) | `(tabs)/create-event`, `edit-event`, `components/create-event`, `components/events-management` |
-| 1b.5 | Equipo, ajustes de organización, payouts, Mi cuenta (idioma) | `org-members`, `PayoutsSettingsTab` |
-| 1b.6 | Escáner v2: cámara, cuentas y código de acceso por evento | `scanner` |
+| 1b.5 | Desde **Manage**: Equipo, Pagos, Ajustes de organización. **Ajustes de usuario únicos** (ver decisión 10-23). Cola de aprobación de organizaciones (soporte) en estilo 2.0 | `org-members`, `PayoutsSettingsTab`, `account`, `settings`, `SupportAdminSection` |
+| 1b.6 | Escáner v2 desde la pestaña **Escanear** del organizador (cuentas: owner/admin/organizer y personas agregadas). Ajustes → Scan Tickets queda **solo para códigos** | `scanner` |
 | 1b.7 | Cierre: paridad con la web, pantallas v1 detrás del interruptor, PruebasReales 1b (incluye los casos de app heredados de la fase 1) | — |
 
 Las pantallas v1 de la app **no se borran** en la 1b: quedan detrás de `EXPO_PUBLIC_ORGANIZER_V1` (igual que la web).
@@ -75,3 +75,27 @@ La 1b.2 se parte en dos: **1b.2a** (esta) y **1b.2b** (Enlaces de promotor, Cód
 
 **Verificado:** jest app 23/23 (+10 `EventAdmin.test.tsx`); vitest lib 369/369; tsc app 40 (sin nuevos). **No verificado:** aspecto en el celular (Kevin, `FASE_1B…` §1b.2a).
 **Siguiente:** 1b.2b.
+
+## Ronda 1 de pruebas de Kevin y correcciones (2026-10-23)
+**Lo que reportó**
+- 1b.0: la parte de asistente sigue en inglés (esperado: se traduce en la fase 2); el organizador v2 **no tomaba el idioma** de la cuenta ("son independientes"). La tipografía sí, pero **la app era una copia reducida de la web**: hay que respetar el diseño de teléfono del prototipo, sin menú lateral, con el botón **Manage** de la barra inferior.
+- 1b.1: la "organización pendiente que sí se abre" era la **cola de aprobación de soporte** del perfil (está bien gestionarla desde el celular; pasarla a estilo 2.0). Demasiados botones de ajustes en web y app. No ve notificaciones de organizador. Editar evento y Co-organizadores llevan a v1 (esperado hasta 1b.4 / 1b.2b). Quitar el menú de las pruebas.
+- Heredado: Ajustes → Scan Tickets debe ser **solo para códigos**; las cuentas asignadas escanean desde el organizador.
+
+**Error mío:** en la 1b.1 tomé la vista teléfono del organizador *web* (sidebar → cajón) en vez del diseño de teléfono del prototipo: barra inferior `owTabbar` (Events · RSVPs · Scan · Manage), hub `OW_SCREENS.manage` ("one hub instead of a growing tab bar"), título con selector de organización (`switcher`), "+" para crear evento y avatar → "Back to You". En la fase 1 el hub "Manage" se dejó sin hacer por falta de respuesta; ahora Kevin lo pidió.
+
+**Decisiones de Kevin (10-23)**
+- App: diseño de teléfono del prototipo, sin menú lateral; lo de la organización vive en **Manage**.
+- **Ajustes:** solo tres cosas: la gestión de cuenta de Clerk, **un único "Ajustes" de usuario** (personal, cuenta, notificaciones… todo junto) y **un "Ajustes" de organización**. Aplica a web y app (app en la 1b.5; web: ver pendiente).
+- Escanear con cuenta → pestaña Escanear del organizador; Ajustes → Scan Tickets → solo códigos (1b.6).
+
+**Corregido**
+- `OrganizerShell` reescrito: sin cajón; barra superior ← · título (en el panel, ▾ abre una hoja con las organizaciones aprobadas y "Mis organizadores") · acciones · avatar (Clerk `useUser` vía `hooks/v2/useMe.ts`, → perfil); barra inferior por rol: Eventos y RSVPs (todos), Escanear (owner/admin/organizer, solo en celular → escáner v1 hasta 1b.6), Manage (owner/admin).
+- `ManageHub` + ruta `/v2/organizer/manage`: frase del prototipo y filas Equipo (N miembros, `GET /api/organizations/{id}/members`), Pagos (disponible, `GET /api/organizer/payouts/summary` + `balanceRows`; sin Stripe → "Conecta Stripe para cobrar") y Ajustes; abren v1 hasta la 1b.5. Finanzas y Comunicaciones no se muestran (no existen; fase 4). i18n `manage.*`, `tabs.manage`.
+- Panel como el prototipo en teléfono: "+" blanco arriba (crear evento), tarjeta hero (logo sobre su color, rol, Stripe, Total de ingresos / Total de eventos), selector Actuales/Pasados solo si hay de los dos, búsqueda solo con más de 4 eventos; sin chip "Gestionar".
+- Idioma: la app pedía el idioma una sola vez (`staleTime: Infinity`), así que un cambio hecho en la web con la app abierta nunca llegaba. Ahora se relee al volver la app al frente (`AppState`) y un fallo se registra en consola (`[i18n] Failed to read…`). [Probable] era la causa; si persiste, el log lo dirá.
+
+**Notificaciones de organizador (respuesta):** existen `new_rsvp_request` y `ticket_sold` (owner/admin). Se guardan en `notifications` aunque no haya push y se ven en la campana del encabezado de la app (lado asistente). Cómo provocarlas: `FASE_1B…` → "Notificaciones de organizador". Pendientes anotados: textos de notificación fijos en inglés (D4 pide el idioma del usuario) y enlaces profundos que van a v1 (`/(tabs)/rsvp`, `/(tabs)/events-management`) → apuntarlos a v2 en la 1b.3 / 1b.7.
+
+**Verificado:** jest app 28/28 (marco 5, Manage 3, panel 6, evento 10, base 4); vitest lib 369/369; tsc app 40. **No verificado:** aspecto en el celular.
+**Pendiente de decisión:** aplicar Manage y la limpieza de ajustes también a la web v2 (sidebar con "Manage" como el prototipo).
