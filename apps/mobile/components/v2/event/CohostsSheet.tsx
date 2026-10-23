@@ -11,6 +11,7 @@ import { useI18n } from "../../../lib/i18n";
 import { apiClient, apiGet, apiPost } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { apiErrorText } from "../../../lib/v2/organizer-api";
+import { useKeyboardHeight } from "../../../hooks/v2/useKeyboardVisible";
 import { Button, ConfirmDialog, ErrorText, Field, Icon, OrgAvatar, Skeleton } from "../ui";
 
 type OrgLite = { id: string; name: string; slug: string; logo_url: string | null; city?: string | null };
@@ -58,6 +59,14 @@ export function CohostsSheet({
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Assignment | null>(null);
   const reqId = useRef(0);
+
+  // Android: lift the sheet above the keyboard ourselves (see useKeyboardHeight). If the device
+  // does resize the modal window, subtract what it already shrank so the lift isn't doubled.
+  const keyboard = useKeyboardHeight();
+  const fullHeight = useRef(0);
+  const [height, setHeight] = useState(0);
+  const shrunk = fullHeight.current > 0 && height > 0 ? Math.max(0, fullHeight.current - height) : 0;
+  const lift = Platform.OS === "android" ? Math.max(0, keyboard - shrunk) : 0;
 
   // Debounced search (350 ms, like the web modal); stale answers are dropped.
   useEffect(() => {
@@ -124,9 +133,22 @@ export function CohostsSheet({
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        enabled={Platform.OS === "ios"}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          fullHeight.current = Math.max(fullHeight.current, h);
+          setHeight(h);
+        }}
+      >
       <Pressable className="flex-1 bg-black/60" onPress={onClose} accessibilityLabel={t("common.close")} />
-      <View style={{ paddingBottom: insets.bottom + 12 }} className="max-h-[85%] rounded-t-v2-sheet bg-v2-ink2 px-4 pt-3">
+      <View
+        testID="cohosts-sheet"
+        style={{ paddingBottom: (lift > 0 ? 12 : insets.bottom + 12), marginBottom: lift }}
+        className="max-h-[85%] rounded-t-v2-sheet bg-v2-ink2 px-4 pt-3"
+      >
         <View className="mb-3 h-1 w-10 self-center rounded-full bg-v2-c30" />
         <View className="flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">

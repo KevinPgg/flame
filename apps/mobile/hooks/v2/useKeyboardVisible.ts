@@ -18,3 +18,22 @@ export function useKeyboardVisible(): boolean {
   }, []);
   return visible;
 }
+
+/**
+ * Height of the on-screen keyboard (0 when closed). Needed on Android for sheets inside a
+ * `Modal`: with edge-to-edge (Expo SDK 54) the modal window isn't resized and
+ * `KeyboardAvoidingView` doesn't move it, so the co-hosts sheet stayed under the keyboard
+ * (Kevin, 2026-10-23). The sheet lifts itself by this height instead.
+ */
+export function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", (e) => setHeight(e.endCoordinates?.height ?? 0));
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
