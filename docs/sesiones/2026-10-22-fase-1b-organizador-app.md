@@ -99,3 +99,42 @@ La 1b.2 se parte en dos: **1b.2a** (esta) y **1b.2b** (Enlaces de promotor, Cód
 
 **Verificado:** jest app 28/28 (marco 5, Manage 3, panel 6, evento 10, base 4); vitest lib 369/369; tsc app 40. **No verificado:** aspecto en el celular.
 **Pendiente de decisión:** aplicar Manage y la limpieza de ajustes también a la web v2 (sidebar con "Manage" como el prototipo).
+
+### 10-23 (cont.)
+- Idioma: releer al volver al frente **no actualizó** en el celular de Kevin. Decisión de Kevin: leerlo solo al arrancar (se quitó el `AppState`, `staleTime: Infinity`). [Probable] si tampoco funciona en frío hay un fallo de lectura (GET devuelve "en" o falla) → prueba en frío en `FASE_1B…` Ronda 1.
+- `WARN [notifications] Permission not granted…`: permiso del sistema denegado (el manifest sí declara `POST_NOTIFICATIONS`); inofensivo, sin cambios.
+- **Decisión de Kevin:** el hub Manage y la limpieza de ajustes en la web v2 se hacen **después de la 1b.5**, reutilizando el mismo diseño en web y app.
+- Idioma al arrancar: Kevin marcó la prueba en frío como correcta (el organizador v2 sale en español).
+
+## Entrega 1b.2b (2026-10-23): resto de herramientas del evento
+- Pestañas v2 en la app: `PromotersTab` (crear/copiar/borrar; enlace público con `PUBLIC_SITE_URL` = `EXPO_PUBLIC_APP_URL` o **https://www.flme.co** — con `www` para no caer en la trampa de redirección de ESTADO §1.4; v1 usaba `https://flme.co`), `PromotionsTab` (chips de % `PROMO_DISCOUNT_OPTIONS`, límite), `SendTab` (3 pasos gratis/transferencia, sin cuenta, etapa, precio propio, historial), `ScannersTab` (cuentas + código; en la app, botón "Escanear tickets ahora" en lugar del aviso web) y `CohostsSheet` (hoja con actuales, búsqueda y agregar/quitar). Ya no queda ninguna pestaña que abra v1 (se quitaron `eventV1` y los textos temporales).
+- Piezas nuevas en `components/v2/ui.tsx`: `Button`, `Field`, `ErrorText`, `SuccessNote`, `ConfirmDialog` (Modal).
+- **API web nueva:** `GET /api/organizations/[id]/cohost-assignments?search=<texto>[&event_id=]` (owner/admin): organizaciones aprobadas por nombre, sin la propia ni los co-organizadores actuales del evento. El modal web (v1/v2) buscaba con el cliente anónimo de Supabase; la app solo usa la API (decisión 10-22). Test `cohost-search.test.ts` (2). `fake-supabase.ts`: `ilike` ahora filtra de verdad (patrón `%`); el resto de la suite organizador sigue verde.
+- i18n: `eventAdmin.cohostsSheet.*`, `scanners.scanNow`.
+- Co-organizadores en la app solo para owner/admin del dueño (lo que permite la API); en la web el botón se ve para cualquier rol del dueño y la API rechaza al organizer.
+
+**Verificado:** jest app 36/36 (+9 `EventTools.test.tsx`; prueba de mutación: con el precio propio mal enviado o el código visible para organizer, fallan 2); vitest lib 369, web v2 184, API organizador verde (los 6 de `create-payment-intent` ya fallaban, fase 3); tsc app 40, web 0. **No verificado:** aspecto en el celular.
+**Siguiente:** 1b.3 RSVPs.
+
+## Ronda 2 de Kevin y 1b.6 adelantada (2026-10-23)
+**Reportó**
+- **Editar evento** (lleva a v1, incluso "Editar tier"): mejorarlo como el prototipo (captura: flyer con "Cambiar", Nombre, CUÁNDO con filas "Empieza / Termina", DÓNDE con "Lugar / Ciudad", ACERCA DE con contador, tiers, "Guardar cambios" fijo abajo); en la app v1 hay un solo calendario para las dos fechas y alturas/padding desparejos (lugar en dos filas, ciudad con mucho padding). **Fallo v1:** en la app se pueden borrar preguntas de tiers con registros (la web no lo permite). → Todo esto es la **1b.4** (editor v2 con las mismas reglas que la web, que bloquea esas preguntas).
+- Enviar tickets gratis: se envió (aparece en Enviados) pero salió "Something went wrong" y quedó en el paso 3 (1 de 2 veces; sin error en la API).
+- Escáner: el flash no se apaga; no se ve cuántas entradas de una compra están escaneadas (solo "Escaneado" sí/no) ni las enviadas; owner/admin/organizer no pueden escanear sin código; una persona agregada no tiene por dónde entrar (no es miembro → sin pestaña Escanear; Ajustes → Scan Tickets solo admite códigos). "Centrémonos en el escaneo".
+- Teclado: tapa las opciones.
+
+**Diagnóstico**
+- Escaneo: el servidor ya permitía todo desde la fase 1 (`GET /api/qr-scanner/events` lista los eventos de la cuenta — miembros, co-organizadores, personas agregadas —, y `verify`/`checkin` autorizan con la sesión). Faltaba la pantalla de la app: el escáner v1 **siempre** pide código para elegir el evento. Era la 1b.6 → **adelantada**.
+- Flash: el botón v1 cambia bien el estado y el código nativo de expo-camera 17 aplica `enableTorch`; [Probable] fallo nativo del celular. En v2, apagar el flash **remonta la cámara** (siempre arranca apagado).
+- Enviar tickets: la API crea los tickets y **después** espera el correo antes de responder; la app corta a los 15 s; en desarrollo la primera llamada compila la ruta (20–25 s). [Probable] causa. 
+- Teclado: Android usa `adjustResize` → la barra flotante sube y tapa campos/botones.
+
+**Hecho**
+- **Escáner v2** (`app/v2/scanner.tsx`, `components/v2/scanner/ScannerApp.tsx`): lista por cuenta (abre directo si hay uno solo en curso), cámara, resultado de color (válido / ya registrado / otro evento / no válido / error), registrar entrada, escaneos recientes, flash con remontaje al apagar, permiso de cámara denegado → "Abrir ajustes", enlace al escáner con código (v1 público). Lógica de `packages/lib` (`parseTicketQr`, `scanResultKind`, `scanErrorKind`, `scannerEventList`, `isHappeningNow`) y textos `scanner.*` de la fase 1 (+ `codeLink`, `cameraDenied`, `openSettings`, `signInHint`).
+- Entradas: pestaña Escanear del organizador (ahora para **cualquier miembro**, como permite `scan-access.ts`) → `/v2/scanner?org=`; Escáner del evento → `?event=`; **Ajustes → Scan Tickets con sesión → `/v2/scanner`** (sin sesión, el de código como antes). Resuelve a la persona agregada.
+- **Compras con asistencia** (web y app): `packages/lib/src/organizer/attendance.ts` (`attendance()`: ventas + transferencias + envíos gratis agrupados, origen, escaneados por fila y total; 3 tests). API: `Purchase.scannedCount` (`purchase-data.ts`) y `checked_in_count` en transferencias (`bank-transfer-data.ts`, antes solo el primer ticket); campos nuevos, los viejos no cambian. Tabla web (`PurchasesTab`, columnas Origen / Escaneados, total) y lista de la app. i18n `eventAdmin.purchases.colOrigin|colScanned|origin.*|scannedOf|totalScanned`. El XLSX sigue siendo solo ventas con tarjeta.
+- **Enviar tickets**: `apiClient` acepta `timeoutMs`; los envíos esperan 60 s; si no hay respuesta → `eventAdmin.send.unsure` ("puede que sí se haya hecho, revisa Enviados") + refresco, en vez de invitar a reenviar.
+- **Teclado**: `hooks/v2/useKeyboardVisible.ts`; el marco oculta la barra inferior al escribir y usa `KeyboardAvoidingView` en iOS; la hoja de co-organizadores sube con el teclado.
+
+**Verificado:** jest app 43/43 (Scanner 5, EventTools 11 incl. compras y envío sin respuesta, marco 5, evento 9, panel 6, Manage 3, base 4); vitest lib 372 (+3 attendance), API organizador 236, web v2 `EventAdminTabs` 16 + `PurchasesTab` 1 nuevo, `bank-transfer-data` 1 nuevo; tsc app 40, web 0. **No verificado:** cámara y flash reales (Kevin, 📱).
+**Orden que queda:** 1b.3 RSVPs → 1b.4 crear/editar evento + tiers (con lo pedido arriba) → 1b.5 Manage → 1b.7 cierre.
