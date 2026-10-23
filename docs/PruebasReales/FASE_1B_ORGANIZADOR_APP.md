@@ -116,6 +116,37 @@ Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a
 - [ ] Evento → "Gestionar RSVPs" abre esta misma pantalla v2. Notificación de nueva solicitud (campana) → abre la v2 de ese evento.
 - [ ] Deslizar hacia abajo recarga; sin tocar nada, una solicitud nueva aparece sola en ≤15 s.
 
+## 1b.4 · Crear y editar evento, editor de tiers · 📱 Celular (+ 🌐 web para comparar)
+Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería ya estaban en el build).
+
+**Editar evento** (evento → "Editar evento")
+- [ ] Se ve como el prototipo: flyer con "Cambiar" y 🗑, Nombre (fijo), CUÁNDO con **Empieza** y **Termina** en filas separadas (cada una abre su propio selector: fecha y luego hora), DÓNDE Lugar / Ciudad con la misma altura, ACERCA DE con contador, Tiers → "Editar en la pestaña Tiers", Ajustes fijos; "Cancelar" / "Guardar cambios" siempre abajo.
+- [ ] Cambiar solo el lugar → Guardar → vuelve al evento y en la web el lugar cambió (y nada más).
+- [ ] Ciudad: al escribir "Guay" aparecen sugerencias; elegir una la pone; texto libre también se guarda.
+- [ ] Cambiar la fecha → pide "¿Cambiar la fecha del evento?" (avisa a quienes tienen ticket) → confirmar → guarda.
+- [ ] Evento que empieza en <2 h: fechas deshabilitadas con el aviso.
+- [ ] Guardar sin cambios → "No hay cambios para guardar".
+- [ ] Flyer: "Cambiar" → galería → se ve recortado 4:5 → Guardar → en la web aparece el nuevo flyer. 🗑 y Guardar → sin flyer.
+- [ ] Teclado (descripción y lugar): el campo queda visible y la barra de Guardar se oculta mientras escribes; reaparece al cerrar el teclado.
+
+**Editor de tier** (pestaña Tiers → "Editar" / "Nuevo tier")
+- [ ] Nuevo tier sin tocar las fechas de venta ("Ahora" / "Cuando termina el evento") → Crear tier → aparece en Tiers (y en la web) sin error.
+- [ ] Inicio/fin de venta: tocar abre el selector; "×" vuelve al valor por defecto.
+- [ ] Bajar cupos por debajo de lo vendido → "No puede ser menor que lo ya vendido". Tier con ventas: "Eliminar tier" deshabilitado con el motivo.
+- [ ] Ocultar el tier activa el código de acceso; mostrarlo lo borra. "Marcar como agotado" funciona como el interruptor de la pestaña.
+- [ ] Evento RSVP: preguntas del tier; una **pregunta guardada** sale con "Pregunta guardada · su texto no se puede cambiar"; quitarla del tier y guardar → en la web el tier ya no la pide, **pero las respuestas anteriores siguen** en Datos de registro de las RSVPs (antes, en la app v1, se borraba).
+- [ ] Agregar una pregunta nueva → guardar → aparece en el tier (web y app), sin duplicarse.
+- [ ] Reducir cupos con checkouts/RSVPs pendientes que no caben → confirmación "Reducir y rechazar" → reduce y guarda el resto (nombre, etc.).
+
+**Crear evento** ("+" arriba en el panel, owner/admin)
+- [ ] Publicar vacío → "Corrige N campos" y el scroll baja al primero con error.
+- [ ] Nombre "Noche de Salsa" → el enlace se llena solo (`noche-de-salsa`); editarlo a mano deja de seguir al nombre.
+- [ ] Empieza → elegir fecha y hora → Termina se pone sola 5 h después; cambiar Termina a mano.
+- [ ] Tiers: precio "12,50", cupos, agregar "Tier 2", quitarlo; "El precio cambia según se vende" crea etapas Early Bird / Regular.
+- [ ] RSVP activado → cada tier tiene su formulario; "Usadas en tiers anteriores" reutiliza preguntas.
+- [ ] Moneda y zona horaria se eligen en una hoja desde abajo.
+- [ ] Con flyer → Publicar → "Publicando…" → "Subiendo flyer…" → abre el evento nuevo; en la web está igual (tiers, preguntas, flyer, RSVP).
+
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
 - [x] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event".
@@ -123,7 +154,7 @@ Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a
 - [x] Descubrir (`localhost:8081`): "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
 
 ## Cosas conocidas
-- Mientras dura la 1b, las pantallas que aún no son v2 (crear/editar, equipo, ajustes, payouts) abren su versión v1; al volver, regresas al panel v2.
+- Mientras dura la 1b, las pantallas que aún no son v2 (equipo, ajustes, payouts) abren su versión v1; al volver, regresas al panel v2.
 - "Mis organizadores" en la app sigue siendo la sección del Perfil (el rediseño del perfil es de la fase 2).
 - Errores del XLSX ("Export failed", "Sharing unavailable") salen en inglés: vienen del exportador v1 que se reutiliza.
 - `WARN [notifications] Permission not granted for push notifications` al levantar: el permiso de notificaciones del celular está denegado. Inofensivo; sin Firebase tampoco habría push en Android.
