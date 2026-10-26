@@ -1,3 +1,5 @@
+import { Redirect as V2Redirect, useLocalSearchParams as useV2Params, type Href as V2Href } from "expo-router";
+import { organizerV2Enabled as v2On } from "../lib/v2/flags";
 import { useState } from "react";
 import { View, ScrollView, Pressable, Alert, Text, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
@@ -146,7 +148,7 @@ function MenuRow({
   );
 }
 
-export default function SettingsScreen() {
+function SettingsV1Screen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isSignedIn, signOut, userId, getToken } = useOptionalAuth();
@@ -276,4 +278,10 @@ export default function SettingsScreen() {
       </ScrollView>
     </View>
   );
+}
+
+/** Fase 1b.5b: one Settings (v2) unless the emergency switch brings v1 back. */
+export default function SettingsScreen() {
+  if (v2On()) return <V2Redirect href={"/v2/settings" as V2Href} />;
+  return <SettingsV1Screen />;
 }

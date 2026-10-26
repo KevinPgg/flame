@@ -1,3 +1,5 @@
+import { Redirect as V2Redirect, useLocalSearchParams as useV2Params, type Href as V2Href } from "expo-router";
+import { organizerV2Enabled as v2On } from "../lib/v2/flags";
 import { useState, useEffect, useRef } from "react";
 import { View, ScrollView, Keyboard } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -31,7 +33,7 @@ function renderTab(tab: SettingsTab) {
 
 const ORG_ONLY_TABS: SettingsTab[] = ["organization", "payouts"];
 
-export default function AccountScreen() {
+function AccountV1Screen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -108,4 +110,20 @@ export default function AccountScreen() {
       </View>
     </RequireAuthGate>
   );
+}
+
+/**
+ * Fase 1b.5b: "Account" split by decision 2026-10-23 — personal → the one Settings (v2);
+ * organization / payouts tabs → that organization's Manage screens (need ?orgId=).
+ */
+export default function AccountScreen() {
+  const params = useV2Params<{ tab?: string | string[]; orgId?: string | string[] }>();
+  if (v2On()) {
+    const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const orgId = Array.isArray(params.orgId) ? params.orgId[0] : params.orgId;
+    if (orgId && tab === "payouts") return <V2Redirect href={`/v2/organizer/payouts?orgId=${encodeURIComponent(orgId)}` as V2Href} />;
+    if (orgId && tab === "organization") return <V2Redirect href={`/v2/organizer/settings?orgId=${encodeURIComponent(orgId)}` as V2Href} />;
+    if (tab !== "organization" && tab !== "payouts") return <V2Redirect href={"/v2/settings" as V2Href} />;
+  }
+  return <AccountV1Screen />;
 }

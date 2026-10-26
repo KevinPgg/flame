@@ -1,3 +1,5 @@
+import { Redirect as V2Redirect, useLocalSearchParams as useV2Params, type Href as V2Href } from "expo-router";
+import { organizerV2Enabled as v2On } from "../lib/v2/flags";
 import { View, ScrollView, Pressable, Switch, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,7 +32,7 @@ const NOTIFICATION_ITEMS: NotificationItem[] = [
   { type: "auth_expiry_warning", label: "Payment Expiry", description: "When an RSVP payment authorization is about to expire", orgOnly: true },
 ];
 
-export default function NotificationsSettingsScreen() {
+function NotificationsSettingsV1Screen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { preferences, updatePreference } = useNotificationPreferences();
@@ -123,4 +125,10 @@ export default function NotificationsSettingsScreen() {
       </ScrollView>
     </View>
   );
+}
+
+/** Fase 1b.5b: notifications live in the one Settings (v2). */
+export default function NotificationsSettingsScreen() {
+  if (v2On()) return <V2Redirect href={"/v2/settings" as V2Href} />;
+  return <NotificationsSettingsV1Screen />;
 }
