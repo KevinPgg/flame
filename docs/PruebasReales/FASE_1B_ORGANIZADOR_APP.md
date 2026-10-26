@@ -89,7 +89,7 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 - [x] Enviar gratis justo después de reiniciar la web (`npm run dev`, primera llamada lenta): ya no sale "Algo salió mal"; si tarda más de 1 minuto sale "No pudimos confirmar el envío a tiempo… revisa Enviados" y la lista se actualiza.
 
 **Teclado:**
-- [ ] Al escribir en cualquier campo del organizador (búsqueda, enlaces, códigos, enviar tickets, escáner), la barra inferior desaparece y los botones quedan visibles; al cerrar el teclado vuelve. ~~En Co-organizadores, la hoja sube con el teclado.~~ `//Ronda 3: la hoja no subía → corregido, ver Ronda 3.`
+- [x] Al escribir en cualquier campo del organizador (búsqueda, enlaces, códigos, enviar tickets, escáner), la barra inferior desaparece y los botones quedan visibles; al cerrar el teclado vuelve. ~~En Co-organizadores, la hoja sube con el teclado.~~ `//Ronda 3: la hoja no subía → corregido, ver Ronda 3.`
 
 ## Ronda 3 (2026-10-23) — correcciones
 **Co-organizadores con teclado · 📱 Celular** (reinicia Metro con `-c`)
@@ -104,25 +104,33 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 ## ▶ Ronda 3 de pruebas (desde 2026-10-26) — orden sugerido
 Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes). Antes de empezar:
 1. 💻 Aplica la migración nueva: `npx supabase migration up` (no `db reset`). Detalle en §1b.5a.
-2. 💻 `pnpm --filter @project-flame/mobile test` → **77** tests en verde (Windows).
+2. 💻 `pnpm --filter @project-flame/mobile test` → **81** tests en verde (Windows).
 3. 💻 Reinicia la web (`npm run dev` en `apps/web`) y Metro con `-c`. No hace falta recompilar la app.
+**Correcciones 10-26 (volver a probar):**
+- [ ] Editar evento: fondo con el flyer difuminado arriba; "Acerca de" más alto y ya no se monta sobre Tiers (escribe 6+ líneas).
+- [ ] Teclado: hay un pequeño espacio (~8 px) entre el campo que escribes y el teclado (formularios y hojas).
+- [ ] Nuevo tier: el nombre "Tier N" se ve completo (no cortado arriba/abajo).
+- [ ] Editar tier: un toque en un chip de pregunta conocida la agrega. Si no, describe qué pasa (¿al segundo toque? ¿con el teclado abierto?).
+- [ ] Manage → Equipo → Agregar: escribe un nombre → **una** sola línea `GET /api/organizer/people…` en la terminal de la web por cada pausa al escribir; aparecen sugerencias. Email completo de alguien fuera de tu organización (aunque tenga mayúsculas guardadas) → "Encontrado por e-mail".
+- [ ] Cambiar flyer (editar evento): si vuelve a fallar, copia **las líneas `[flyer] upload failed …` de Metro y lo que salga en la terminal de la web** en ese momento, y prueba el cambio de flyer de la app v1 (`EXPO_PUBLIC_ORGANIZER_V1=true`) en el mismo celular.
+- [ ] (💻) Cuentas de depósito: `select stripe_account_id, array_agg(name) from organizations where stripe_account_id is not null group by 1 having count(*) > 1;` → debería salir vacío. Si sale algo, esas organizaciones comparten saldo (ver sesión 10-26).
 4. 📱 Sigue el orden: §1b.5b Ajustes (rápido, valida sesión e idioma) → §1b.3 RSVPs → §1b.4 Crear/editar → §1b.5a Manage.
 Anota al lado de cada punto lo que falle (`//Ronda 3: …`) como en las rondas anteriores.
 
 ## 1b.3 · RSVPs · 📱 Celular (+ 🌐 web para comparar y para pedir solicitudes)
 Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a un evento RSVP tuyo, una gratis y otra de pago (Stripe test `4242 4242 4242 4242`). Reinicia Metro con `-c`.
-- [ ] Barra inferior → **RSVPs**: lista de tus eventos RSVP (no los normales) con flyer, fecha, lugar y el número de pendientes (rojo si hay). Actuales/Pasados con su número; la búsqueda encuentra "carnaval" ↔ "Carnával". Organizer asignado: solo sus eventos.
-- [ ] Tocar un evento → sus solicitudes: abre en **Pendientes** si hay; pestañas Todas / Pendientes / Aprobadas / Rechazadas con números iguales a la web (🌐 `/v2/organizer/rsvps/<id>?org=<slug>`). La barra de pestañas queda pegada arriba al hacer scroll.
-- [ ] Cada solicitud: nombre, cédula (o "Sin cédula") · fecha, estado de color, "N tickets · tier", monto (lo que recibes).
-- [ ] **Aprobar la de pago:** pide confirmación diciendo que se cobra la tarjeta y cuánto recibes → "… aprobada"; en la web pasa a Aprobadas/Pagada, la persona recibe el ticket y en Stripe test el pago aparece capturado.
-- [ ] **Rechazar:** confirmación "se libera la retención…" → pasa a Rechazadas; la persona recibe el correo.
-- [ ] **Aprobar todas** (con 2+ pendientes): la confirmación dice cuántas son de pago y el total; muestra "Aprobando 1 de N…" con **Detener**; al final "N solicitudes aprobadas".
-- [ ] Dos dispositivos: aprueba en la web una que en el celular sigue pendiente y luego apruébala en el celular → "Otra persona ya gestionó esta solicitud…".
-- [ ] Ícono 👁 → hoja "Datos de registro": email, cédula, ticket, monto, fecha, nacimiento (si hay) y las respuestas del formulario (obligatorias con *, sin respuesta → "Sin respuesta").
-- [ ] **Exportar pendientes** (solo si hay): menú de compartir con el `.xlsx`; mismas columnas que el exportado desde la web.
-- [ ] Evento ya terminado (en Pasados): aviso "Este evento terminó…" y sin botones de aprobar/rechazar.
-- [ ] Evento → "Gestionar RSVPs" abre esta misma pantalla v2. Notificación de nueva solicitud (campana) → abre la v2 de ese evento.
-- [ ] Deslizar hacia abajo recarga; sin tocar nada, una solicitud nueva aparece sola en ≤15 s.
+- [x] Barra inferior → **RSVPs**: lista de tus eventos RSVP (no los normales) con flyer, fecha, lugar y el número de pendientes (rojo si hay). Actuales/Pasados con su número; la búsqueda encuentra "carnaval" ↔ "Carnával". Organizer asignado: solo sus eventos.
+- [x] Tocar un evento → sus solicitudes: abre en **Pendientes** si hay; pestañas Todas / Pendientes / Aprobadas / Rechazadas con números iguales a la web (🌐 `/v2/organizer/rsvps/<id>?org=<slug>`). La barra de pestañas queda pegada arriba al hacer scroll.
+- [x] Cada solicitud: nombre, cédula (o "Sin cédula") · fecha, estado de color, "N tickets · tier", monto (lo que recibes).
+- [x] **Aprobar la de pago:** pide confirmación diciendo que se cobra la tarjeta y cuánto recibes → "… aprobada"; en la web pasa a Aprobadas/Pagada, la persona recibe el ticket y en Stripe test el pago aparece capturado.
+- [x] **Rechazar:** confirmación "se libera la retención…" → pasa a Rechazadas; la persona recibe el correo.
+- [x] **Aprobar todas** (con 2+ pendientes): la confirmación dice cuántas son de pago y el total; muestra "Aprobando 1 de N…" con **Detener**; al final "N solicitudes aprobadas".
+- [x] Dos dispositivos: aprueba en la web una que en el celular sigue pendiente y luego apruébala en el celular → "Otra persona ya gestionó esta solicitud…".
+- [x] Ícono 👁 → hoja "Datos de registro": email, cédula, ticket, monto, fecha, nacimiento (si hay) y las respuestas del formulario (obligatorias con *, sin respuesta → "Sin respuesta").
+- [x] **Exportar pendientes** (solo si hay): menú de compartir con el `.xlsx`; mismas columnas que el exportado desde la web.
+- [x] Evento ya terminado (en Pasados): aviso "Este evento terminó…" y sin botones de aprobar/rechazar.
+- [x] Evento → "Gestionar RSVPs" abre esta misma pantalla v2. Notificación de nueva solicitud (campana) → abre la v2 de ese evento.
+- [x] Deslizar hacia abajo recarga; sin tocar nada, una solicitud nueva aparece sola en ≤15 s.
 
 ## 1b.4 · Crear y editar evento, editor de tiers · 📱 Celular (+ 🌐 web para comparar)
 Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería ya estaban en el build).
