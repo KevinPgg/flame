@@ -1110,7 +1110,8 @@ export async function createOrder(
               "Ticket Sold!",
               `${quantity}x ${tierData.name} ticket(s) sold for ${eventData.name}`,
               ["owner", "admin"],
-              { data: { deepLink: `/(tabs)/events-management` } },
+              // eventId + orgId let the app open that event's Purchases (v2) instead of the v1 list.
+              { data: { deepLink: `/(tabs)/events-management`, eventId, orgId: eventData.organization_id } },
             ).catch(err => console.error("[push] ticket_sold failed:", err));
           }
         }

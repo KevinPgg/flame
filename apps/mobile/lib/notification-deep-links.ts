@@ -29,6 +29,7 @@
  * app/(tabs)/dashboard.tsx is reachable at /dashboard. All resolver outputs
  * below are verified against the file tree in apps/mobile/app/.
  */
+import { organizerV2Enabled } from "./v2/flags";
 
 export interface NotificationData {
   deepLink?: string;
@@ -79,6 +80,13 @@ export function resolveNotificationDeepLink(
       : withOrgId("/rsvp-management", orgId);
   }
 
+  // Organizer: ticket sold (fase 1b.7) — that event's Purchases in the v2 organizer when the
+  // notification says which event and organization; otherwise the organization's panel.
+  if (type === "ticket_sold" && organizerV2Enabled()) {
+    if (eventId && orgId) return `/v2/organizer/event/${encodeURIComponent(eventId)}?orgId=${encodeURIComponent(orgId)}&tab=purchases`;
+    return orgId ? withOrgId("/organizer-admin", orgId) : "/profile";
+  }
+
   // User: RSVP rejected — send back to event page so they can retry
   if (type === "rsvp_rejected" && eventId) {
     return `/event/${encodeURIComponent(eventId)}`;
@@ -108,6 +116,8 @@ export function resolveNotificationDeepLink(
   if (mapped) {
     // Org-scoped tab targets (like /(tabs)/rsvp → /rsvp-management) carry orgId forward.
     if (mapped === "/rsvp-management") return withOrgId(mapped, orgId);
+    // The v1 events list has no v2 twin: v2 opens the organization's panel (or My organizers).
+    if (mapped === "/events-management" && organizerV2Enabled()) return orgId ? withOrgId("/organizer-admin", orgId) : "/profile";
     return mapped;
   }
 

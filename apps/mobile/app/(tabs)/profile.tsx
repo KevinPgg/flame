@@ -25,6 +25,8 @@ import { useUserProfile } from "../../hooks/useUserProfile";
 import { useUserOrgs, type UserOrg } from "../../hooks/useUserOrgs";
 import { useMemberRoleContext } from "../../contexts/MemberRoleContext";
 import { SupportAdminSection } from "../../components/profile/SupportAdminSection";
+import { OrgApprovalsEntry } from "../../components/v2/support/OrgApprovals";
+import { organizerV2Enabled } from "../../lib/v2/flags";
 import { PastItemsAccordion } from "../../components/shared/PastItemsAccordion";
 import { TicketSearchBar } from "../../components/dashboard/TicketSearchBar";
 
@@ -240,8 +242,9 @@ function ProfileContent() {
           </PastItemsAccordion>
         </View>
 
-        {/* Support-only org-approval queue (W7-H1) — renders nothing for non-admins */}
-        <SupportAdminSection />
+        {/* Support-only org-approval queue (W7-H1) — renders nothing for non-admins.
+            Fase 1b.7: an entry to the 2.0 screen; the v1 inline queue only with the switch. */}
+        {organizerV2Enabled() ? <OrgApprovalsEntry /> : <SupportAdminSection />}
       </ScrollView>
 
       <BecomeOrganizerSheet
