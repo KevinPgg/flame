@@ -1,14 +1,9 @@
 /**
  * Every link the v2 organizer screens of the app use, in one place (same idea as
- * apps/web/app/v2/lib/routes.ts). Screens not rebuilt yet point to their v1 screen; when a screen
- * moves to v2 only this file changes. v1 screens read the organization from `orgId`.
+ * apps/web/app/v2/lib/routes.ts). Since fase 1b.5 every organizer screen is v2; v1 screens
+ * stay only behind EXPO_PUBLIC_ORGANIZER_V1 (they read the organization from `orgId`).
  */
 export type OrgRef = { id: string; slug: string };
-
-const v1 = (path: string, org: OrgRef, extra: Record<string, string> = {}) => {
-  const params = new URLSearchParams({ ...extra, orgId: org.id });
-  return `${path}?${params.toString()}`;
-};
 
 export const routes = {
   // v2
@@ -31,10 +26,10 @@ export const routes = {
   tier: (eventId: string, org: OrgRef, tierId: string) =>
     `/v2/organizer/event/${encodeURIComponent(eventId)}/tiers/${encodeURIComponent(tierId)}?org=${encodeURIComponent(org.slug)}`,
   createEvent: (org: OrgRef) => `/v2/organizer/create?org=${encodeURIComponent(org.slug)}`,
-  // v1 until their entrega (1b.5)
-  team: (org: OrgRef) => v1("/org-members", org),
-  payouts: (org: OrgRef) => v1("/account", org, { tab: "payouts" }),
-  settings: (org: OrgRef) => v1("/account", org, { tab: "organization" }),
+  /** Manage → Team, Payouts, Organization settings (fase 1b.5). */
+  team: (org: OrgRef) => `/v2/organizer/team?org=${encodeURIComponent(org.slug)}`,
+  payouts: (org: OrgRef) => `/v2/organizer/payouts?org=${encodeURIComponent(org.slug)}`,
+  settings: (org: OrgRef) => `/v2/organizer/settings?org=${encodeURIComponent(org.slug)}`,
   // outside the organizer
   myOrganizers: () => "/profile",
   discover: () => "/discover",

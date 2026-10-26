@@ -557,6 +557,16 @@ export const es: Messages = {
       questionPlaceholderTooLong: "Máximo 200 caracteres.",
     },
   },
+  people: {
+    label: "Nombre o e-mail",
+    placeholder: "Nombre o nombre@email.com",
+    hint: "Las personas ya conectadas con {org} (equipo, compradores, invitados) aparecen mientras escribes. Cualquier otra: escribe su e-mail completo.",
+    searching: "Buscando…",
+    none: "Nadie conectado con {org} coincide. ¿Alguien nuevo? Escribe su e-mail completo.",
+    noAccount: "No hay una cuenta de Flame con ese e-mail. Primero tiene que registrarse.",
+    byEmail: "Encontrado por e-mail",
+    change: "Cambiar",
+  },
   team: {
     title: "Equipo",
     lede: "Personas que pueden gestionar {org}.",
@@ -670,6 +680,7 @@ export const es: Messages = {
     signInHint: "Con tu cuenta escaneas los eventos de tus organizaciones y los que te agregaron.",
   },
   payouts: {
+    ownersOnly: "Solo dueños y admins pueden ver los pagos.",
     title: "Pagos",
     lede: "El saldo de {org} en todos sus eventos. Los pagos son de toda la organización, no por evento.",
     available: "Disponible para retirar",

@@ -40,6 +40,8 @@ const ICONS = {
   scan: "scan-outline",
   eye: "eye-outline",
   up: "chevron-up",
+  clock: "time-outline",
+  camera: "camera-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 

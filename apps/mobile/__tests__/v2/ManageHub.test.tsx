@@ -32,9 +32,9 @@ it("rows with live numbers; each opens its screen", async () => {
   expect(await screen.findByText("4 members")).toBeTruthy();
   expect(await screen.findByText("$6,549.63 available")).toBeTruthy();
   await fireEvent.press(screen.getByLabelText("Team"));
-  expect(mockPush).toHaveBeenCalledWith("/org-members?orgId=org-1");
+  expect(mockPush).toHaveBeenCalledWith("/v2/organizer/team?org=kora");
   await fireEvent.press(screen.getByLabelText("Settings"));
-  expect(mockPush).toHaveBeenCalledWith("/account?tab=organization&orgId=org-1");
+  expect(mockPush).toHaveBeenCalledWith("/v2/organizer/settings?org=kora");
 });
 
 it("Stripe not connected", async () => {

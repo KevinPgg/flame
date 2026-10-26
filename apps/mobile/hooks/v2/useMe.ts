@@ -22,10 +22,10 @@ const useUserHook: () => { user?: ClerkUser } = (() => {
   }
 })();
 
-export function useMe(): { name: string; imageUrl: string | null } | null {
+export function useMe(): { name: string; imageUrl: string | null; email: string | null } | null {
   const { user } = useUserHook();
   if (!user) return null;
   const name =
     [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || user.primaryEmailAddress?.emailAddress || "";
-  return { name, imageUrl: user.hasImage === false ? null : (user.imageUrl ?? null) };
+  return { name, imageUrl: user.hasImage === false ? null : (user.imageUrl ?? null), email: user.primaryEmailAddress?.emailAddress?.toLowerCase() ?? null };
 }

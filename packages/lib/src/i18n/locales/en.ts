@@ -559,6 +559,16 @@ export const en = {
       questionPlaceholderTooLong: "Keep the hint under 200 characters.",
     },
   },
+  people: {
+    label: "Name or e-mail",
+    placeholder: "Name or name@email.com",
+    hint: "People already connected to {org} (team, buyers, guests) show up as you type. Anyone else: type their full e-mail.",
+    searching: "Searching…",
+    none: "No one connected to {org} matches. Someone new? Type their full e-mail.",
+    noAccount: "No Flame account with that e-mail. They need to sign up first.",
+    byEmail: "Found by e-mail",
+    change: "Change",
+  },
   team: {
     title: "Team",
     lede: "People who can manage {org}.",
@@ -672,6 +682,7 @@ export const en = {
     signInHint: "Signed in, you scan the events of your organizations and the ones you were added to.",
   },
   payouts: {
+    ownersOnly: "Only owners and admins can see payouts.",
     title: "Payouts",
     lede: "{org}’s balance across all events. Payouts are for the whole organization, not per event.",
     available: "Available to pay out",
