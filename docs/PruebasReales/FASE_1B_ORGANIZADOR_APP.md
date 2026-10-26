@@ -136,75 +136,75 @@ Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a
 Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería ya estaban en el build).
 
 **Editar evento** (evento → "Editar evento")
-- [ ] Se ve como el prototipo: flyer con "Cambiar" y 🗑, Nombre (fijo), CUÁNDO con **Empieza** y **Termina** en filas separadas (cada una abre su propio selector: fecha y luego hora), DÓNDE Lugar / Ciudad con la misma altura, ACERCA DE con contador, Tiers → "Editar en la pestaña Tiers", Ajustes fijos; "Cancelar" / "Guardar cambios" siempre abajo.
-- [ ] Cambiar solo el lugar → Guardar → vuelve al evento y en la web el lugar cambió (y nada más).
-- [ ] Ciudad: al escribir "Guay" aparecen sugerencias; elegir una la pone; texto libre también se guarda.
-- [ ] Cambiar la fecha → pide "¿Cambiar la fecha del evento?" (avisa a quienes tienen ticket) → confirmar → guarda.
-- [ ] Evento que empieza en <2 h: fechas deshabilitadas con el aviso.
-- [ ] Guardar sin cambios → "No hay cambios para guardar".
-- [ ] Flyer: "Cambiar" → galería → se ve recortado 4:5 → Guardar → en la web aparece el nuevo flyer. 🗑 y Guardar → sin flyer.
-- [ ] Teclado (descripción y lugar): el campo queda visible y la barra de Guardar se oculta mientras escribes; reaparece al cerrar el teclado.
+- [x] Se ve como el prototipo: flyer con "Cambiar" y 🗑, Nombre (fijo), CUÁNDO con **Empieza** y **Termina** en filas separadas (cada una abre su propio selector: fecha y luego hora), DÓNDE Lugar / Ciudad con la misma altura, ACERCA DE con contador, Tiers → "Editar en la pestaña Tiers", Ajustes fijos; "Cancelar" / "Guardar cambios" siempre abajo.
+- [x] Cambiar solo el lugar → Guardar → vuelve al evento y en la web el lugar cambió (y nada más).
+- [x] Ciudad: al escribir "Guay" aparecen sugerencias; elegir una la pone; texto libre también se guarda.
+- [x] Cambiar la fecha → pide "¿Cambiar la fecha del evento?" (avisa a quienes tienen ticket) → confirmar → guarda.
+- [x] Evento que empieza en <2 h: fechas deshabilitadas con el aviso.
+- [x] Guardar sin cambios → "No hay cambios para guardar".
+- [x] Flyer: "Cambiar" → galería → se ve recortado 4:5 → Guardar → en la web aparece el nuevo flyer. 🗑 y Guardar → sin flyer.
+- [x] Teclado (descripción y lugar): el campo queda visible y la barra de Guardar se oculta mientras escribes; reaparece al cerrar el teclado.
 
 **Editor de tier** (pestaña Tiers → "Editar" / "Nuevo tier")
-- [ ] Nuevo tier sin tocar las fechas de venta ("Ahora" / "Cuando termina el evento") → Crear tier → aparece en Tiers (y en la web) sin error.
-- [ ] Inicio/fin de venta: tocar abre el selector; "×" vuelve al valor por defecto.
-- [ ] Bajar cupos por debajo de lo vendido → "No puede ser menor que lo ya vendido". Tier con ventas: "Eliminar tier" deshabilitado con el motivo.
-- [ ] Ocultar el tier activa el código de acceso; mostrarlo lo borra. "Marcar como agotado" funciona como el interruptor de la pestaña.
-- [ ] Evento RSVP: preguntas del tier; una **pregunta guardada** sale con "Pregunta guardada · su texto no se puede cambiar"; quitarla del tier y guardar → en la web el tier ya no la pide, **pero las respuestas anteriores siguen** en Datos de registro de las RSVPs (antes, en la app v1, se borraba).
-- [ ] Agregar una pregunta nueva → guardar → aparece en el tier (web y app), sin duplicarse.
-- [ ] Reducir cupos con checkouts/RSVPs pendientes que no caben → confirmación "Reducir y rechazar" → reduce y guarda el resto (nombre, etc.).
+- [x] Nuevo tier sin tocar las fechas de venta ("Ahora" / "Cuando termina el evento") → Crear tier → aparece en Tiers (y en la web) sin error.
+- [x] Inicio/fin de venta: tocar abre el selector; "×" vuelve al valor por defecto.
+- [x] Bajar cupos por debajo de lo vendido → "No puede ser menor que lo ya vendido". Tier con ventas: "Eliminar tier" deshabilitado con el motivo.
+- [x] Ocultar el tier activa el código de acceso; mostrarlo lo borra. "Marcar como agotado" funciona como el interruptor de la pestaña.
+- [x] Evento RSVP: preguntas del tier; una **pregunta guardada** sale con "Pregunta guardada · su texto no se puede cambiar"; quitarla del tier y guardar → en la web el tier ya no la pide, **pero las respuestas anteriores siguen** en Datos de registro de las RSVPs (antes, en la app v1, se borraba).
+- [x] Agregar una pregunta nueva → guardar → aparece en el tier (web y app), sin duplicarse.
+- [x] Reducir cupos con checkouts/RSVPs pendientes que no caben → confirmación "Reducir y rechazar" → reduce y guarda el resto (nombre, etc.).
 
 **Crear evento** ("+" arriba en el panel, owner/admin)
-- [ ] Publicar vacío → "Corrige N campos" y el scroll baja al primero con error.
-- [ ] Nombre "Noche de Salsa" → el enlace se llena solo (`noche-de-salsa`); editarlo a mano deja de seguir al nombre.
-- [ ] Empieza → elegir fecha y hora → Termina se pone sola 5 h después; cambiar Termina a mano.
-- [ ] Tiers: precio "12,50", cupos, agregar "Tier 2", quitarlo; "El precio cambia según se vende" crea etapas Early Bird / Regular.
-- [ ] RSVP activado → cada tier tiene su formulario; "Usadas en tiers anteriores" reutiliza preguntas.
-- [ ] Moneda y zona horaria se eligen en una hoja desde abajo.
-- [ ] Con flyer → Publicar → "Publicando…" → "Subiendo flyer…" → abre el evento nuevo; en la web está igual (tiers, preguntas, flyer, RSVP).
+- [x] Publicar vacío → "Corrige N campos" y el scroll baja al primero con error.
+- [x] Nombre "Noche de Salsa" → el enlace se llena solo (`noche-de-salsa`); editarlo a mano deja de seguir al nombre.
+- [x] Empieza → elegir fecha y hora → Termina se pone sola 5 h después; cambiar Termina a mano.
+- [x] Tiers: precio "12,50", cupos, agregar "Tier 2", quitarlo; "El precio cambia según se vende" crea etapas Early Bird / Regular.
+- [x] RSVP activado → cada tier tiene su formulario; "Usadas en tiers anteriores" reutiliza preguntas.
+- [x] Moneda y zona horaria se eligen en una hoja desde abajo.
+- [x] Con flyer → Publicar → "Publicando…" → "Subiendo flyer…" → abre el evento nuevo; en la web está igual (tiers, preguntas, flyer, RSVP).
 
 ## 1b.5a · Manage: Equipo, Pagos, Ajustes de organización · 📱 Celular (+ 🌐 web para comparar)
 **Antes · 💻 PC:** aplicar la migración nueva `supabase/migrations/20261023180000_search_org_people.sql` en tu Supabase local: `npx supabase migration up` (en la raíz del proyecto; **no** uses `db reset`, borra los datos). Si prefieres, pega el archivo en el SQL Editor de Studio (`http://localhost:54323`). Reinicia la web (`npm run dev`) y Metro con `-c`.
-- [ ] (💻, opcional) Comprobar la función: `select * from search_org_people('<id de tu organización>', 'an');` → solo personas de tu organización (miembros, compradores, RSVPs, escáneres, a quienes enviaste tickets).
+- [x] (💻, opcional) Comprobar la función: `select * from search_org_people('<id de tu organización>', 'an');` → solo personas de tu organización (miembros, compradores, RSVPs, escáneres, a quienes enviaste tickets).
 
 **Manage** (barra inferior → Manage, owner/admin)
-- [ ] Equipo, Pagos y Ajustes ya abren pantallas nuevas (estilo 2.0, con ← que vuelve a Manage), no las v1.
+- [x] Equipo, Pagos y Ajustes ya abren pantallas nuevas (estilo 2.0, con ← que vuelve a Manage), no las v1.
 
 **Equipo**
-- [ ] Lista: avatar, nombre, email, rol de color (Owner blanco, Admin rojo, Organizer gris) y "Todos los eventos" / "N eventos asignados"; tu fila dice "(tú)". El owner no tiene ⚙.
-- [ ] "+" → "Agregar miembro": escribe 2–3 letras del nombre de alguien que **ya compró / pidió RSVP / es escáner** de tus eventos → aparece en sugerencias. Escribe el nombre de alguien de Flame **sin relación** con tu organización → no aparece ("Nadie conectado con … coincide"). Escribe su **email completo** → aparece con "Encontrado por e-mail".
-- [ ] Email completo que no existe en Flame → "No hay una cuenta de Flame con ese e-mail…".
-- [ ] Elegir persona → elegir rol (Admin / Organizer con su explicación) → "Agregar al equipo" → aparece en la lista (y en 🌐 web → Equipo). Alguien que ya es miembro → aviso "ya está en el equipo".
-- [ ] ⚙ de un miembro → hoja con Cambiar rol / Asignar eventos (solo organizer) / Quitar del equipo. Cambiar rol → se refleja. Asignar eventos: marcar/desmarcar → "N seleccionados" → Guardar → "N eventos asignados"; entra con esa cuenta: solo ve esos eventos.
-- [ ] Quitar → confirmación → desaparece. (Si te quitas a ti mismo → vuelves a Mis organizadores.)
-- [ ] Con rol organizer: Equipo solo lista, sin "+" ni ⚙.
-- [ ] Teclado: al escribir en "Nombre o e-mail" la hoja sube y se ven las sugerencias.
+- [x] Lista: avatar, nombre, email, rol de color (Owner blanco, Admin rojo, Organizer gris) y "Todos los eventos" / "N eventos asignados"; tu fila dice "(tú)". El owner no tiene ⚙.
+- [x] "+" → "Agregar miembro": escribe 2–3 letras del nombre de alguien que **ya compró / pidió RSVP / es escáner** de tus eventos → aparece en sugerencias. Escribe el nombre de alguien de Flame **sin relación** con tu organización → no aparece ("Nadie conectado con … coincide"). Escribe su **email completo** → aparece con "Encontrado por e-mail".
+- [x] Email completo que no existe en Flame → "No hay una cuenta de Flame con ese e-mail…".
+- [x] Elegir persona → elegir rol (Admin / Organizer con su explicación) → "Agregar al equipo" → aparece en la lista (y en 🌐 web → Equipo). Alguien que ya es miembro → aviso "ya está en el equipo".
+- [x] ⚙ de un miembro → hoja con Cambiar rol / Asignar eventos (solo organizer) / Quitar del equipo. Cambiar rol → se refleja. Asignar eventos: marcar/desmarcar → "N seleccionados" → Guardar → "N eventos asignados"; entra con esa cuenta: solo ve esos eventos.
+- [x] Quitar → confirmación → desaparece. (Si te quitas a ti mismo → vuelves a Mis organizadores.)
+- [x] Con rol organizer: Equipo solo lista, sin "+" ni ⚙.
+- [x] Teclado: al escribir en "Nombre o e-mail" la hoja sube y se ven las sugerencias.
 
 **Pagos** (owner/admin)
-- [ ] Organización sin Stripe: tarjeta "Conecta Stripe para vender tickets", país (hoja), "Conectar con Stripe" → abre Stripe en el navegador. Al volver a la app, el estado se actualiza solo.
-- [ ] Configuración incompleta: lista de cobros/pagos con ✓/⚠ y "Terminar configuración".
+- [x] Organización sin Stripe: tarjeta "Conecta Stripe para vender tickets", país (hoja), "Conectar con Stripe" → abre Stripe en el navegador. Al volver a la app, el estado se actualiza solo.
+- [x] Configuración incompleta: lista de cobros/pagos con ✓/⚠ y "Terminar configuración".
 - [ ] Conectada: "Disponible para retirar" (con borde rojo) y "Disponible pronto" con los mismos números que 🌐 web → Pagos; historial con estado de color; banco "•• 1234 · vía Stripe"; "Gestionar en Stripe" abre Stripe.
 - [ ] "Solicitar pago" pide confirmación con el monto y el banco → "Solicitaste $… · llegará a tu banco en unos días" (Stripe test). Pedir otro enseguida → "Ya hay un pago en camino…". Saldo bajo el mínimo → botón deshabilitado con el mínimo.
 
 **Ajustes de la organización**
-- [ ] Se cargan Instagram, ciudad y descripción iguales a 🌐 web → Ajustes. Nombre fijo con su explicación.
-- [ ] Cambiar ciudad → abajo "Cambios sin guardar" → "Guardar cambios" → "Todo guardado"; en la web aparece el cambio.
-- [ ] Instagram con "@" o URL se limpia al salir del campo; uno inválido → error.
-- [ ] Logo: "Subir nuevo" → galería con recorte cuadrado → se sube y se ve en el panel y en la web. Una imagen de menos de 400×400 → aviso con su tamaño. "Quitar" pide confirmación.
+- [x] Se cargan Instagram, ciudad y descripción iguales a 🌐 web → Ajustes. Nombre fijo con su explicación.
+- [x] Cambiar ciudad → abajo "Cambios sin guardar" → "Guardar cambios" → "Todo guardado"; en la web aparece el cambio.
+- [x] Instagram con "@" o URL se limpia al salir del campo; uno inválido → error.
+- [x] Logo: "Subir nuevo" → galería con recorte cuadrado → se sube y se ve en el panel y en la web. Una imagen de menos de 400×400 → aviso con su tamaño. "Quitar" pide confirmación.
 - [ ] Con rol organizer/viewer: todo de solo lectura, abajo "Solo dueños y admins pueden editar la organización".
 
 ## 1b.5b · Ajustes únicos · 📱 Celular
 Un solo "Ajustes" para tu persona (las cosas de la organización están en Manage).
-- [ ] Engranaje del encabezado (lado asistente) → abre **Ajustes** nuevo (estilo 2.0). Perfil → la opción de cuenta también abre este mismo Ajustes.
-- [ ] Cuenta: tu foto (o iniciales), nombre y e-mail correctos. "Cambiar foto" → galería con recorte cuadrado → se actualiza; "Quitar foto" pide confirmación.
-- [ ] "Contraseña, correos y seguridad" → se abre el portal de cuenta de Flame (Clerk) en el navegador. **Anota la URL que abre** y si muestra tu cuenta (o pide iniciar sesión). Si no abre nada o da error, dímelo: se ajusta con `EXPO_PUBLIC_CLERK_ACCOUNT_URL`.
-- [ ] Idioma: cambiar a Español → los textos v2 cambian al momento; cierra y abre la app → sigue en Español; en 🌐 web → Mi cuenta también figura Español.
-- [ ] Notificaciones "Como asistente": interruptores; "Ticket recibido" siempre activa (no se apaga). Si eres miembro de una organización, aparece también "Como organizador". Apaga "Ventas de tickets" → sal y vuelve: sigue apagada. Con otra cuenta compra un ticket → **no** llega la notificación de venta (la campana del asistente); vuelve a encenderla.
-- [ ] Escanear tickets: con sesión abre la lista de eventos que puedes escanear; **sin sesión** (cierra sesión) abre el escáner con código.
-- [ ] Ayuda y legal: Soporte abre su pantalla; privacidad / términos / compra / cookies abren en el navegador (**www.flme.co**).
-- [ ] Cerrar sesión → vuelve al inicio sin sesión; Ajustes sin sesión muestra solo escanear, legal e "Iniciar sesión".
-- [ ] (Solo con una **cuenta de prueba**) Eliminar cuenta → "¿Eliminar tu cuenta de Flame?" → Continuar → "¿Estás completamente seguro?" → "Sí, eliminar para siempre" → sale al inicio sin sesión; esa cuenta ya no puede entrar.
-- [ ] Abajo se ve "Versión x.y.z".
+- [x] Engranaje del encabezado (lado asistente) → abre **Ajustes** nuevo (estilo 2.0). Perfil → la opción de cuenta también abre este mismo Ajustes.
+- [x] Cuenta: tu foto (o iniciales), nombre y e-mail correctos. "Cambiar foto" → galería con recorte cuadrado → se actualiza; "Quitar foto" pide confirmación.
+- [x] "Contraseña, correos y seguridad" → se abre el portal de cuenta de Flame (Clerk) en el navegador. **Anota la URL que abre** y si muestra tu cuenta (o pide iniciar sesión). Si no abre nada o da error, dímelo: se ajusta con `EXPO_PUBLIC_CLERK_ACCOUNT_URL`.
+- [x] Idioma: cambiar a Español → los textos v2 cambian al momento; cierra y abre la app → sigue en Español; en 🌐 web → Mi cuenta también figura Español.
+- [x] Notificaciones "Como asistente": interruptores; "Ticket recibido" siempre activa (no se apaga). Si eres miembro de una organización, aparece también "Como organizador". Apaga "Ventas de tickets" → sal y vuelve: sigue apagada. Con otra cuenta compra un ticket → **no** llega la notificación de venta (la campana del asistente); vuelve a encenderla.
+- [x] Escanear tickets: con sesión abre la lista de eventos que puedes escanear; **sin sesión** (cierra sesión) abre el escáner con código.
+- [x] Ayuda y legal: Soporte abre su pantalla; privacidad / términos / compra / cookies abren en el navegador (**www.flme.co**).
+- [x] Cerrar sesión → vuelve al inicio sin sesión; Ajustes sin sesión muestra solo escanear, legal e "Iniciar sesión".
+- [x] (Solo con una **cuenta de prueba**) Eliminar cuenta → "¿Eliminar tu cuenta de Flame?" → Continuar → "¿Estás completamente seguro?" → "Sí, eliminar para siempre" → sale al inicio sin sesión; esa cuenta ya no puede entrar.
+- [x] Abajo se ve "Versión x.y.z".
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
