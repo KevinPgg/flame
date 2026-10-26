@@ -83,7 +83,7 @@ export function TierFields({
             placeholder={t("eventForm.tierN", { n: index + 1 })}
             accessibilityLabel={t("eventForm.tierName")}
             invalid={inv(`${p}.name`)}
-            className="font-v2-ui-semibold text-[17px]"
+            className="h-12 font-v2-ui-semibold text-[17px]"
           />
         </View>
         {canRemove && <IconBtn icon="close" label={t("eventForm.removeTier")} onPress={onRemove} />}

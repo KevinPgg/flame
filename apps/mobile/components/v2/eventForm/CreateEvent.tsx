@@ -28,7 +28,7 @@ import {
   type TierDraft,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { apiClient, apiPost, apiUploadFormData } from "../../../lib/api";
+import { apiClient, apiPost } from "../../../lib/api";
 import { routes } from "../../../lib/v2/routes";
 import { PUBLIC_SITE_URL, apiErrorText, type MyOrganization } from "../../../lib/v2/organizer-api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
@@ -36,7 +36,7 @@ import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { OrganizerShell } from "../OrganizerShell";
 import { Button, ErrorBox, Icon } from "../ui";
 import { FormScreen } from "../form/FormScreen";
-import { FlyerPicker, flyerFormData, type FlyerFile } from "../form/FlyerPicker";
+import { FlyerPicker, uploadFlyer as uploadFlyerFile, type FlyerFile } from "../form/FlyerPicker";
 import { CityField } from "../form/CityField";
 import { TierFields } from "../form/TierFields";
 import { DateTimeRow, FieldError, Group, Hint, Input, Row, Section, SelectRow, SwitchRow } from "../form/ui";
@@ -111,9 +111,9 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
   const uploadFlyer = async (event: { id: string; slug: string }): Promise<boolean> => {
     if (!flyer) return true;
     try {
-      const up = await apiUploadFormData<{ url?: string }>("/api/upload-image", flyerFormData(flyer, event), getToken);
-      if (!up.url) return false;
-      await apiClient("/api/events", { method: "PATCH", body: JSON.stringify({ id: event.id, image_url: up.url }), getToken });
+      const url = await uploadFlyerFile(flyer, event, getToken);
+      if (!url) return false;
+      await apiClient("/api/events", { method: "PATCH", body: JSON.stringify({ id: event.id, image_url: url }), getToken });
       return true;
     } catch {
       return false;
@@ -155,6 +155,7 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
   return shell(
     <FormScreen
       scrollRef={scroll}
+      backdrop={flyer?.uri ?? null}
       actions={
         createdWithoutFlyer ? (
           <View className="gap-2">
@@ -249,8 +250,7 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
             invalid={inv("description")}
             editable={!busy}
             multiline
-            textAlignVertical="top"
-            className="h-auto min-h-[110px] py-3 leading-[20px]"
+            className="leading-[20px]"
           />
           <FieldError message={errorText("description")} />
         </Section>

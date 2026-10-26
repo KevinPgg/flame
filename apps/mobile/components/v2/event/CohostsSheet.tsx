@@ -59,6 +59,11 @@ export function CohostsSheet({
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Assignment | null>(null);
   const reqId = useRef(0);
+  // Same as PeoplePicker: unstable getToken / t must not re-run the search in a loop.
+  const tokenRef = useRef(getToken);
+  tokenRef.current = getToken;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // Android: lift the sheet above the keyboard ourselves (see useKeyboardLift).
   const { lift, onLayout } = useKeyboardLift();
@@ -78,17 +83,17 @@ export function CohostsSheet({
       try {
         const json = await apiGet<{ organizations: OrgLite[] }>(
           `/api/organizations/${orgId}/cohost-assignments?search=${encodeURIComponent(term)}&event_id=${eventId}`,
-          getToken,
+          () => tokenRef.current(),
         );
         if (id === reqId.current) setResults(json.organizations ?? []);
       } catch (e) {
-        if (id === reqId.current) setError(apiErrorText(e, t("errors.generic")));
+        if (id === reqId.current) setError(apiErrorText(e, tRef.current("errors.generic")));
       } finally {
         if (id === reqId.current) setSearching(false);
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [query, orgId, eventId, getToken, t]);
+  }, [query, orgId, eventId]);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: cohostsKey(orgId, eventId) });

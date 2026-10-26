@@ -27,8 +27,12 @@ jest.mock("../../lib/api", () => ({
   apiUploadFormData: (...a: unknown[]) => mockUpload(...a),
 }));
 jest.mock("../../hooks/useStripeConnect", () => ({ useStripeConnect: () => ({ status: null, isLoading: false }) }));
-jest.mock("expo-image-picker", () => ({ requestMediaLibraryPermissionsAsync: jest.fn(), launchImageLibraryAsync: jest.fn() }));
-jest.mock("../../lib/event-image", () => ({ processEventImageTo4x5: jest.fn() }));
+jest.mock("expo-image-picker", () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: false, assets: [{ uri: "file:///pick.jpg", width: 1080, height: 1350 }] })),
+}));
+jest.mock("../../lib/event-image", () => ({ processEventImageTo4x5: jest.fn(async () => ({ uri: "file:///flyer.jpg", mime: "image/jpeg", ext: "jpg" })) }));
+jest.mock("expo-file-system/legacy", () => ({ getInfoAsync: jest.fn(async () => ({ exists: true, size: 245000 })) }));
 // The wheel (iOS in tests) "turns" to a fixed future moment as soon as it opens.
 const mockPicked = new Date(Date.now() + 10 * 24 * 3600 * 1000);
 mockPicked.setUTCHours(3, 0, 0, 0); // 22:00 the evening before in Guayaquil
@@ -60,7 +64,7 @@ const EV = event("ev-1", "Lovin Sunset", 10, {
   description: "Sunset session",
   ends_at: DB_END(10.3),
   registration_form_config: [{ id: "ig", label: "Instagram", type: "text", required: true }],
-  ticket_tiers: [tier("t-ga", "General", { quantity_sold: 40 }), tier("t-vip", "VIP", { registration_form_fields: ["ig"] })],
+  ticket_tiers: [tier("t-ga", "General", { quantity_sold: 40 }), tier("t-vip", "VIP", { registration_form_fields: ["ig"] }), tier("t-free", "Free", { registration_form_fields: [] })],
 } as never);
 const COHOSTED = event("ev-co", "Their Night", 5, { organization_id: "org-9", slug: "their-night" } as never);
 
@@ -110,12 +114,22 @@ describe("edit event", () => {
     await renderV2(<EditEvent eventId="ev-co" organization={org("owner")} />);
     expect(await screen.findByText("Only the organization that owns this event can edit it.")).toBeTruthy();
   });
+  it("new flyer: uploads it (retrying once on a network failure) and saves its URL", async () => {
+    mockUpload.mockRejectedValueOnce(new FakeApiError(0, "Network request failed")).mockResolvedValueOnce({ url: "https://cdn.test/new.jpg" });
+    await renderV2(<EditEvent eventId="ev-1" organization={org("owner")} />);
+    await fireEvent.press(await screen.findByLabelText("Add flyer"));
+    await fireEvent.press(await screen.findByText("Save changes"));
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalled());
+    expect(mockUpload).toHaveBeenCalledTimes(2);
+    const body = JSON.parse((mockApiClient.mock.calls[0] as [string, { body: string }])[1].body);
+    expect(body).toEqual({ id: "ev-1", image_url: "https://cdn.test/new.jpg" });
+  });
 });
 
 describe("tier editor", () => {
   it("new tier on the defaults: POST with the sales end in Z (not the database's +00:00)", async () => {
     await renderV2(<TierEditor eventId="ev-1" tierId="new" organization={org("owner")} />);
-    expect(await screen.findByDisplayValue("Tier 3")).toBeTruthy();
+    expect(await screen.findByDisplayValue("Tier 4")).toBeTruthy();
     expect(screen.getByLabelText("Sales end: When the event ends")).toBeTruthy();
     await fireEvent.changeText(screen.getByLabelText("Spots"), "30");
     await fireEvent.changeText(screen.getByLabelText("Price"), "0");
@@ -124,7 +138,7 @@ describe("tier editor", () => {
     const [url, opts] = mockApiClient.mock.calls[0] as [string, { method: string; body: string }];
     expect([url, opts.method]).toEqual(["/api/ticket-tiers", "POST"]);
     const body = JSON.parse(opts.body);
-    expect(body).toMatchObject({ event_id: "ev-1", name: "Tier 3", quantity_total: 30, price_cents: 0 });
+    expect(body).toMatchObject({ event_id: "ev-1", name: "Tier 4", quantity_total: 30, price_cents: 0 });
     expect(body.sales_end).toMatch(/Z$/);
   });
 
@@ -161,6 +175,13 @@ describe("tier editor", () => {
     expect(url).toBe("/api/ticket-tiers");
     expect(JSON.parse(opts.body)).toEqual({ id: "t-vip", registration_form_fields: [] });
   });
+  it("a known event question is added to the tier with one tap", async () => {
+    await renderV2(<TierEditor eventId="ev-1" tierId="t-free" organization={org("owner")} />);
+    const chip = await screen.findByLabelText("+ Instagram");
+    await fireEvent.press(chip);
+    expect(screen.getByDisplayValue("Instagram")).toBeTruthy();
+    expect(screen.queryByLabelText("+ Instagram")).toBeNull();
+  });
 });
 
 describe("create event", () => {
@@ -194,6 +215,25 @@ describe("create event", () => {
     expect(new Date(ev.ends_at as string).getTime() - mockPicked.getTime()).toBe(5 * 3600 * 1000);
     expect((body.ticket_tiers as Array<Record<string, unknown>>)[0]).toMatchObject({ name: "General", price_cents: 1250, quantity_total: 80 });
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/v2/organizer/event/ev-new?org=kora"));
+  });
+
+  it("with a flyer: publishes, uploads the flyer and patches its URL", async () => {
+    mockApiPost.mockResolvedValue({ event: { id: "ev-new", slug: "noche" } });
+    mockUpload.mockResolvedValue({ url: "https://cdn.test/f.jpg" });
+    await renderV2(<CreateEvent organization={org("owner")} />);
+    await fireEvent.press(screen.getByLabelText("Add flyer"));
+    await fireEvent.changeText(await screen.findByLabelText("Event name"), "Noche");
+    await fireEvent.press(screen.getByLabelText(/^Starts:/));
+    await fireEvent.press(screen.getByText("Done"));
+    await fireEvent.changeText(screen.getByLabelText("Venue"), "Luna");
+    await fireEvent.changeText(screen.getByLabelText("City"), "Guayaquil");
+    await fireEvent.changeText(screen.getByLabelText("Tier name"), "General");
+    await fireEvent.changeText(screen.getByLabelText("Price"), "10");
+    await fireEvent.changeText(screen.getByLabelText("Spots"), "50");
+    await fireEvent.press(screen.getByText("Publish event"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/v2/organizer/event/ev-new?org=kora"));
+    expect(mockUpload).toHaveBeenCalledWith("/api/upload-image", expect.anything(), expect.any(Function));
+    expect(mockApiClient).toHaveBeenCalledWith("/api/events", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ id: "ev-new", image_url: "https://cdn.test/f.jpg" }) }));
   });
 
   it("organizer role can't create", async () => {

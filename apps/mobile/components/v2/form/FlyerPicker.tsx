@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import { apiUploadFormData } from "../../../lib/api";
 import { flameV2Colors as c } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { processEventImageTo4x5 } from "../../../lib/event-image";
@@ -98,4 +100,39 @@ export function flyerFormData(file: FlyerFile, event: { id: string; slug: string
   body.append("eventId", event.id);
   body.append("eventSlug", event.slug);
   return body;
+}
+
+/**
+ * POST /api/upload-image for a picked flyer → its public URL. Kevin (10-26) got "Network request
+ * failed" changing a flyer: log what was about to be sent (does the file still exist? size?)
+ * and retry once on a pure network failure (status 0), which is safe — the upload only stores
+ * a new file.
+ */
+export async function uploadFlyer(
+  file: FlyerFile,
+  event: { id: string; slug: string },
+  getToken: Parameters<typeof apiUploadFormData>[2],
+): Promise<string | null> {
+  let info: { exists: boolean; size?: number } | null = null;
+  try {
+    info = (await FileSystem.getInfoAsync(file.uri)) as { exists: boolean; size?: number };
+  } catch {
+    info = null;
+  }
+  if (info && !info.exists) {
+    console.warn("[flyer] the picked image is no longer on the device", { uri: file.uri });
+    return null;
+  }
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await apiUploadFormData<{ url?: string }>("/api/upload-image", flyerFormData(file, event), getToken);
+      return res.url ?? null;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      console.warn("[flyer] upload failed", { attempt, status, uri: file.uri, bytes: info?.size, message: (e as Error).message });
+      if (status !== 0 || attempt === 2) throw e;
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  return null;
 }

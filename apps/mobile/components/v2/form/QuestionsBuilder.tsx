@@ -120,14 +120,22 @@ export function QuestionsBuilder({
                 onPress={() => onChange([...questions, copyQuestion(q)])}
                 accessibilityRole="button"
                 accessibilityLabel={`+ ${q.label.trim()}`}
-                className="h-8 max-w-full flex-row items-center gap-1 rounded-v2-pill bg-v2-ink4 px-3 active:bg-v2-c16"
+                hitSlop={6}
+                style={({ pressed }) => ({ backgroundColor: pressed ? c.c16 : c.ink4 })}
+                className="h-9 max-w-full flex-row items-center gap-1 rounded-v2-pill px-3"
               >
                 <Icon name="plus" size={14} color={c.cream} />
                 <Text numberOfLines={1} className="shrink font-v2-ui text-[12.5px] text-v2-cream">{q.label.trim()}</Text>
               </Pressable>
             ))}
             {reusable.length > 1 && (
-              <Pressable onPress={() => onChange([...questions, ...reusable.map(copyQuestion)])} accessibilityRole="button" className="h-8 justify-center rounded-v2-pill bg-v2-ink4 px-3 active:bg-v2-c16">
+              <Pressable
+                onPress={() => onChange([...questions, ...reusable.map(copyQuestion)])}
+                accessibilityRole="button"
+                hitSlop={6}
+                style={({ pressed }) => ({ backgroundColor: pressed ? c.c16 : c.ink4 })}
+                className="h-9 justify-center rounded-v2-pill px-3"
+              >
                 <Text className="font-v2-ui-semibold text-[12.5px] text-v2-cream">{t("eventForm.reuseAll")}</Text>
               </Pressable>
             )}

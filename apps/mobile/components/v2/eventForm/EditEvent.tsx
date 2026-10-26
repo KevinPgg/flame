@@ -23,7 +23,7 @@ import {
   type EditableEvent,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { apiClient, apiUploadFormData } from "../../../lib/api";
+import { apiClient } from "../../../lib/api";
 import { routes } from "../../../lib/v2/routes";
 import { PUBLIC_SITE_URL, apiErrorText, type MyOrganization, type OrgEventV2 } from "../../../lib/v2/organizer-api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
@@ -31,7 +31,7 @@ import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { OrganizerShell } from "../OrganizerShell";
 import { Button, ConfirmDialog, ErrorBox, Icon, Skeleton } from "../ui";
 import { FormScreen } from "../form/FormScreen";
-import { FlyerPicker, flyerFormData, type FlyerFile } from "../form/FlyerPicker";
+import { FlyerPicker, uploadFlyer, type FlyerFile } from "../form/FlyerPicker";
 import { CityField } from "../form/CityField";
 import { DateTimeRow, FieldError, Group, Hint, Input, Row, Section } from "../form/ui";
 
@@ -119,8 +119,7 @@ export function EditEvent({ eventId, organization }: { eventId: string; organiza
       let imageUrl: string | undefined = removeFlyer ? "" : undefined;
       if (flyer) {
         try {
-          const up = await apiUploadFormData<{ url?: string }>("/api/upload-image", flyerFormData(flyer, event), getToken);
-          imageUrl = up.url;
+          imageUrl = (await uploadFlyer(flyer, event, getToken)) ?? undefined;
         } catch {
           imageUrl = undefined;
         }
@@ -145,6 +144,7 @@ export function EditEvent({ eventId, organization }: { eventId: string; organiza
   return shell(
     <>
       <FormScreen
+        backdrop={flyer?.uri ?? (removeFlyer ? null : event.image_url || null)}
         actions={
           <View className="gap-2">
             {showErrors && errorCount > 0 && <Text accessibilityRole="alert" className="text-center font-v2-ui text-[13px] text-v2-errorText">{t("eventForm.fixFields", { count: errorCount })}</Text>}
@@ -215,8 +215,7 @@ export function EditEvent({ eventId, organization }: { eventId: string; organiza
             invalid={inv("description")}
             editable={!saving}
             multiline
-            textAlignVertical="top"
-            className="h-auto min-h-[110px] py-3 leading-[20px]"
+            className="leading-[20px]"
           />
           <FieldError message={errorText("description")} />
         </Section>

@@ -49,13 +49,17 @@ export async function GET(req: NextRequest) {
     }
     const people: Array<Person & { related: boolean }> = ((related ?? []) as Person[]).map((p) => ({ ...p, related: true }));
 
-    // Outside the circle: only the exact e-mail (stored lowercase).
+    // Outside the circle: only the exact e-mail.
     const email = q.toLowerCase();
     if (EMAIL.test(email) && !people.some((p) => p.email.toLowerCase() === email)) {
+      // Case-insensitive but exact: LIKE without wildcards (%, _ and \ escaped), e.g. an
+      // e-mail stored as "Kevin@Outlook.com" is still found by "kevin@outlook.com".
+      const literal = email.replace(/[\\%_]/g, (ch) => `\\${ch}`);
       const { data: exact } = await supabaseAdmin
         .from("users")
         .select("id, email, first_name, last_name")
-        .eq("email", email)
+        .ilike("email", literal)
+        .limit(1)
         .maybeSingle();
       if (exact) people.unshift({ ...(exact as Person), related: false });
     }

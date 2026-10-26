@@ -28,7 +28,7 @@ beforeEach(() => {
       { id: "u-owner", clerk_id: "c-owner" },
       { id: "u-org", clerk_id: "c-org" },
       { id: "u-view", clerk_id: "c-view" },
-      { id: "u-stranger", clerk_id: "c-s", email: "luis@x.com", first_name: "Luis", last_name: "Mora" },
+      { id: "u-stranger", clerk_id: "c-s", email: "Luis@X.com", first_name: "Luis", last_name: "Mora" },
       { id: "u-ana", clerk_id: "c-ana", email: "ana@x.com", first_name: "Ana", last_name: "Ruiz" },
     ],
     organization_members: [
@@ -60,7 +60,7 @@ describe("GET /api/organizer/people", () => {
     state.clerk = "c-owner";
     const partial = await (await search("luis@x.co")).json();
     expect(partial.people.map((p: { id: string }) => p.id)).toEqual(["u-ana"]);
-    const exact = await (await search("Luis@X.com")).json();
+    const exact = await (await search("luis@x.com")).json(); // stored as "Luis@X.com"
     expect(exact.people[0]).toMatchObject({ id: "u-stranger", related: false });
   });
 

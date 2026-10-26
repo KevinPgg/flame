@@ -44,12 +44,15 @@ export function useKeyboardHeight(): number {
  * Put `onLayout` on the view's root; apply `lift` as bottom padding/margin. iOS → 0 (use
  * KeyboardAvoidingView there).
  */
+/** Breathing room between the focused field and the keyboard (Kevin, 10-26: "unos 5px"). */
+export const KEYBOARD_GAP = 8;
+
 export function useKeyboardLift(): { lift: number; onLayout: (e: { nativeEvent: { layout: { height: number } } }) => void } {
   const keyboard = useKeyboardHeight();
   const fullHeight = useRef(0);
   const [height, setHeight] = useState(0);
   const shrunk = fullHeight.current > 0 && height > 0 ? Math.max(0, fullHeight.current - height) : 0;
-  const lift = Platform.OS === "android" ? Math.max(0, keyboard - shrunk) : 0;
+  const lift = Platform.OS === "android" && keyboard > 0 ? Math.max(0, keyboard - shrunk) + KEYBOARD_GAP : 0;
   const onLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
     const h = e.nativeEvent.layout.height;
     fullHeight.current = Math.max(fullHeight.current, h);

@@ -4,7 +4,7 @@
  * out or on any error (logged as `[i18n] Failed to read the saved language`).
  * Only v2 screens translate; v1 screens ignore it.
  */
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Language } from "@project-flame/lib";
 import { I18nProvider } from "../../lib/i18n";
@@ -30,14 +30,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (error) console.warn("[i18n] Failed to read the saved language (showing English):", error);
   }, [error]);
 
+  // Stable callback: Clerk's getToken may change identity; keep the latest in a ref.
+  const tokenRef = useRef(getToken);
+  tokenRef.current = getToken;
   const save = useCallback(
     (language: Language) => {
       queryClient.setQueryData(LANGUAGE_QUERY_KEY, { language });
-      apiClient("/api/me/language", { method: "PUT", body: JSON.stringify({ language }), getToken }).catch((err) =>
+      apiClient("/api/me/language", { method: "PUT", body: JSON.stringify({ language }), getToken: (o) => tokenRef.current(o) }).catch((err) =>
         console.warn("[i18n] Failed to save language:", err),
       );
     },
-    [getToken, queryClient],
+    [queryClient],
   );
 
   return (

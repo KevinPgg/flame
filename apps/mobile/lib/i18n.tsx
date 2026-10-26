@@ -57,14 +57,17 @@ export function I18nProvider({
     [onLanguageChange]
   );
 
+  // `t` changes only with the language: effects that depend on it must not re-run because the
+  // save callback (which follows Clerk's getToken) changed (10-26: people search ran in a loop).
+  const t = useMemo(() => createTranslator(language), [language]);
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
       locale: LOCALE_BY_LANGUAGE[language],
-      t: createTranslator(language),
+      t,
       setLanguage,
     }),
-    [language, setLanguage]
+    [language, t, setLanguage]
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

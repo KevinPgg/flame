@@ -76,15 +76,21 @@ export function Labeled({ label, optional, error, children }: { label: string; o
 }
 
 /** Text input on ink-3; red ring when invalid. `bare` = inside a row (no own background). */
-export function Input({ invalid, bare, dark, className, ...props }: ComponentProps<typeof TextInput> & { invalid?: boolean; bare?: boolean; dark?: boolean }) {
+export function Input({ invalid, bare, dark, className, style, ...props }: ComponentProps<typeof TextInput> & { invalid?: boolean; bare?: boolean; dark?: boolean }) {
+  // Multiline grows from a real minimum height (a fixed h-11 let the text spill over the next
+  // section — Kevin, 10-26). Single line: no vertical padding, so Android doesn't clip big text.
+  const size = props.multiline ? "rounded-v2-md px-4 py-3" : bare ? "h-10 px-1" : "h-11 rounded-v2-md px-4";
+  const bg = bare ? "" : dark ? "bg-v2-ink2" : "bg-v2-ink3";
   return (
     <TextInput
       placeholderTextColor={c.c50}
       autoCorrect={false}
+      textAlignVertical={props.multiline ? "top" : "center"}
       {...props}
-      className={`${bare ? "h-10 px-1" : `h-11 rounded-v2-md px-4 ${dark ? "bg-v2-ink2" : "bg-v2-ink3"}`} font-v2-ui text-[14px] text-v2-cream ${
-        invalid ? "border border-v2-errorText" : ""
-      } ${props.editable === false ? "opacity-60" : ""} ${className ?? ""}`}
+      style={[props.multiline ? { minHeight: 140 } : { paddingVertical: 0 }, style]}
+      className={`${size} ${bg} font-v2-ui text-[14px] text-v2-cream ${invalid ? "border border-v2-errorText" : ""} ${
+        props.editable === false ? "opacity-60" : ""
+      } ${className ?? ""}`}
     />
   );
 }

@@ -39,6 +39,12 @@ export function PeoplePicker({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const req = useRef(0);
+  // getToken / t can change identity on every render (Clerk): read them through refs so the
+  // search runs once per change of the text, not in a loop (Kevin, 10-26: server log flooded).
+  const tokenRef = useRef(getToken);
+  tokenRef.current = getToken;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   useEffect(() => {
     const term = q.trim();
@@ -54,17 +60,17 @@ export function PeoplePicker({
       try {
         const json = await apiGet<{ people: Person[] }>(
           `/api/organizer/people?organizationId=${encodeURIComponent(organization.id)}&q=${encodeURIComponent(term)}`,
-          getToken,
+          () => tokenRef.current(),
         );
         if (id === req.current) setResults(json.people ?? []);
       } catch (e) {
-        if (id === req.current) setError(apiErrorText(e, t("errors.generic")));
+        if (id === req.current) setError(apiErrorText(e, tRef.current("errors.generic")));
       } finally {
         if (id === req.current) setSearching(false);
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [q, organization.id, getToken, t]);
+  }, [q, organization.id]);
 
   if (value) {
     return (
