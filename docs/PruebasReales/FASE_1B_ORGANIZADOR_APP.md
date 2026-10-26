@@ -102,20 +102,20 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 - [x] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
 
 ## ▶ Ronda 3 de pruebas (desde 2026-10-26) — orden sugerido
-Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes). Antes de empezar:
+Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes) y el cierre 1b.7 (buscador en todas partes, cola de soporte, notificaciones). Antes de empezar:
 1. 💻 Aplica la migración nueva: `npx supabase migration up` (no `db reset`). Detalle en §1b.5a.
-2. 💻 `pnpm --filter @project-flame/mobile test` → **82** tests en verde (Windows).
+2. 💻 `pnpm --filter @project-flame/mobile test` → **89** tests en verde (Windows).
 3. 💻 Reinicia la web (`npm run dev` en `apps/web`) y Metro con `-c`. No hace falta recompilar la app.
 **Correcciones 10-26 (volver a probar):**
-- [ ] Editar evento: fondo con el flyer difuminado arriba; "Acerca de" más alto y ya no se monta sobre Tiers (escribe 6+ líneas).
-- [ ] Teclado: hay un pequeño espacio (~8 px) entre el campo que escribes y el teclado (formularios y hojas).
-- [ ] Nuevo tier: el nombre "Tier N" se ve completo (no cortado arriba/abajo).
-- [ ] Editar tier: un toque en un chip de pregunta conocida la agrega. Si no, describe qué pasa (¿al segundo toque? ¿con el teclado abierto?).
-- [ ] Manage → Equipo → Agregar: escribe un nombre → **una** sola línea `GET /api/organizer/people…` en la terminal de la web por cada pausa al escribir; aparecen sugerencias. Email completo de alguien fuera de tu organización (aunque tenga mayúsculas guardadas) → "Encontrado por e-mail".
-- [ ] Cambiar flyer (editar evento): si vuelve a fallar, copia **las líneas `[flyer] upload failed …` de Metro y lo que salga en la terminal de la web** en ese momento, y prueba el cambio de flyer de la app v1 (`EXPO_PUBLIC_ORGANIZER_V1=true`) en el mismo celular.
-- [ ] Manage → Equipo → ⚙ de un organizer → Asignar eventos: solo aparecen eventos **que aún no empiezan** (📱 y 🌐). Si ese organizer tenía asignado un evento pasado, sigue contándose en "N eventos asignados" y **no se pierde** al guardar (entra con esa cuenta: ve el evento pasado).
-- [ ] (💻) Cuentas de depósito: `select stripe_account_id, array_agg(name) from organizations where stripe_account_id is not null group by 1 having count(*) > 1;` → debería salir vacío. Si sale algo, esas organizaciones comparten saldo (ver sesión 10-26).
-4. 📱 Sigue el orden: §1b.5b Ajustes (rápido, valida sesión e idioma) → §1b.3 RSVPs → §1b.4 Crear/editar → §1b.5a Manage.
+- [x] Editar evento: fondo con el flyer difuminado arriba; "Acerca de" más alto y ya no se monta sobre Tiers (escribe 6+ líneas).
+- [x] Teclado: hay un pequeño espacio (~8 px) entre el campo que escribes y el teclado (formularios y hojas).
+- [x] Nuevo tier: el nombre "Tier N" se ve completo (no cortado arriba/abajo).
+- [x] Editar tier: un toque en un chip de pregunta conocida la agrega. Si no, describe qué pasa (¿al segundo toque? ¿con el teclado abierto?).
+- [x] Manage → Equipo → Agregar: escribe un nombre → **una** sola línea `GET /api/organizer/people…` en la terminal de la web por cada pausa al escribir; aparecen sugerencias. Email completo de alguien fuera de tu organización (aunque tenga mayúsculas guardadas) → "Encontrado por e-mail".
+- [x] Cambiar flyer (editar evento): si vuelve a fallar, copia **las líneas `[flyer] upload failed …` de Metro y lo que salga en la terminal de la web** en ese momento, y prueba el cambio de flyer de la app v1 (`EXPO_PUBLIC_ORGANIZER_V1=true`) en el mismo celular.
+- [x] Manage → Equipo → ⚙ de un organizer → Asignar eventos: solo aparecen eventos **por iniciar y en curso** (los terminados no) (📱 y 🌐). Si ese organizer tenía asignado un evento pasado, sigue contándose en "N eventos asignados" y **no se pierde** al guardar (entra con esa cuenta: ve el evento pasado).
+- [x] (💻) Cuentas de depósito: `select stripe_account_id, array_agg(name) from organizations where stripe_account_id is not null group by 1 having count(*) > 1;` → debería salir vacío. Si sale algo, esas organizaciones comparten saldo (ver sesión 10-26).
+4. 📱 Sigue el orden: §1b.5b Ajustes (rápido, valida sesión e idioma) → §1b.3 RSVPs → §1b.4 Crear/editar → §1b.5a Manage → §1b.7 Cierre.
 Anota al lado de cada punto lo que falle (`//Ronda 3: …`) como en las rondas anteriores.
 
 ## 1b.3 · RSVPs · 📱 Celular (+ 🌐 web para comparar y para pedir solicitudes)
@@ -206,6 +206,26 @@ Un solo "Ajustes" para tu persona (las cosas de la organización están en Manag
 - [x] Cerrar sesión → vuelve al inicio sin sesión; Ajustes sin sesión muestra solo escanear, legal e "Iniciar sesión".
 - [x] (Solo con una **cuenta de prueba**) Eliminar cuenta → "¿Eliminar tu cuenta de Flame?" → Continuar → "¿Estás completamente seguro?" → "Sí, eliminar para siempre" → sale al inicio sin sesión; esa cuenta ya no puede entrar.
 - [x] Abajo se ve "Versión x.y.z".
+
+## 1b.7 · Cierre de la fase 1b · 📱 Celular + 🌐 Web
+**Buscador restringido en todas partes** (mismo comportamiento que en Equipo)
+- [ ] 📱 Evento → Enviar tickets (gratis): escribe 2–3 letras de alguien que ya compró o pidió RSVP en tus eventos → sugerencia → eligiendo sigue el flujo de siempre. Email completo de alguien sin cuenta → "Crear orden sin cuenta Flame" (Transferencias) / "Enviar sin cuenta Flame" (gratis).
+- [ ] 📱 Evento → Escáner → Cuentas: escribe y elige de las sugerencias → se agrega; repetido → "ya puede escanear". Email completo sin cuenta → "No hay una cuenta de Flame con ese e-mail…".
+- [ ] 🌐 Lo mismo en la web: Equipo → Agregar miembro, Enviar tickets y Escáner usan "Nombre o e-mail" con sugerencias (ya no hay botón Buscar).
+- [ ] 💻 En la terminal de la web, una sola llamada `GET /api/organizer/people…` por cada pausa al escribir.
+
+**Cola de aprobación de soporte** (solo con una cuenta de soporte)
+- [ ] 📱 Perfil → "Aprobación de organizadores · N esperando revisión" (con número rojo si hay) → pantalla 2.0 con Pendientes / Rechazadas.
+- [ ] Aprobar pide confirmación → la organización sale de Pendientes y el dueño ya puede crear eventos (y recibe el e-mail).
+- [ ] Rechazar → hoja con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación.
+- [ ] Con una cuenta normal, la entrada no aparece en el Perfil.
+
+**Notificaciones de organizador**
+- [ ] Con otra cuenta compra un ticket de tu evento → en tu celular, campana → tocar "Ticket vendido" → abre **ese evento en la pestaña Compras (v2)**. (Las notificaciones viejas, de antes de este cambio, abren el panel de la organización.)
+- [ ] Nueva solicitud de RSVP → abre las solicitudes v2 de ese evento.
+
+**Interruptor de emergencia** (al final)
+- [ ] `EXPO_PUBLIC_ORGANIZER_V1=true` en `apps/mobile/.env` + Metro `-c`: Perfil → organización abre el panel **v1**; engranaje → Ajustes **v1**; RSVPs, editar evento y la cola de soporte v1. Quitarlo y volver a `-c`: todo v2.
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.

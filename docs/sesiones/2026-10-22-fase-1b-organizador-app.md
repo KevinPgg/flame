@@ -232,3 +232,24 @@ Kevin: "termina ajustes y luego comienzo con las pruebas". De la 1b.5b se hizo *
 - `assignableEvents` (lib, usado por web y app) ahora ofrece solo eventos que **aún no empiezan** (ni en curso ni sin fecha), del más cercano al más lejano.
 - Riesgo evitado: `PUT /api/organizations/[id]/event-assignments` **reemplaza** toda la lista del organizador; si solo se ocultaban los pasados, guardar habría borrado en silencio sus asignaciones viejas (y su acceso a ventas/asistentes de esos eventos). Nuevo `assignmentsToSave(seleccionados, ofrecidos, actuales)`: lo marcado + las asignaciones actuales a eventos que ya no se ofrecen. El contador "N seleccionados" cuenta solo los visibles.
 - Tests: lib team 6/6 (+1), web `Team.test.tsx` 15 (+1), app `Manage.test.tsx` 11 (+1). jest app 82/82, vitest lib 377; tsc app 40, web 0.
+- **Ajuste (Kevin, 10-26):** también se pueden asignar eventos **en curso**. Regla final: se ofrecen los eventos que **no han terminado** (por iniciar y en curso; sin fin conocido, decide el inicio), del más cercano al más lejano; los terminados no salen y sus asignaciones se conservan al guardar. Tests lib/web/app actualizados (app incluye un evento en curso visible).
+
+## Cierre de la 1b (2026-10-26): 1b.5b restante + 1b.7
+Kevin eligió **cerrar la 1b** antes de abrir otra fase.
+
+**Buscador restringido en todas partes** (decisión 10-23)
+- App: `PeoplePicker` con espacio `noAccount(email)` (para "crear orden sin cuenta"); usado en **Enviar tickets** (gratis y transferencias) y **Escáner → cuentas** (además de Equipo). `SendTab` recibe `organization`.
+- Web: nuevo `app/v2/components/PeoplePicker.tsx` (mismo comportamiento, `fetch` con espera de 300 ms y respuestas viejas descartadas); usado en **Equipo → Agregar**, **Enviar tickets** y **Escáner**. `GET /api/organizer/search-users` (email exacto) ya no lo usa v2; queda para v1.
+- Tests: web `SendTab` 21, `ScannersTab` 8, `Team` 15 reescritos al flujo nuevo; app `EventTools` 11 adaptados.
+
+**Cola de aprobación de soporte en estilo 2.0** (app)
+- `/v2/support/organizations` (`components/v2/support/OrgApprovals.tsx`): Pendientes / Rechazadas con número, búsqueda (más de 4), tarjeta (dueño, fecha, motivo si fue rechazada), Aprobar (confirmación), Rechazar con motivo opcional (hoja), Eliminar (confirmación). Mismos hooks y API admin (`useAdminOrganizations`, el servidor decide quién es soporte). En el Perfil, solo para soporte, una entrada "Aprobación de organizadores · N esperando revisión" en lugar de los acordeones v1 (v1 vuelve con el interruptor). i18n `supportQueue.*`. Test `OrgApprovals.test.tsx` (4).
+- Web: la cola de soporte sigue siendo v1 (entra en la limpieza web de Manage/Ajustes).
+
+**1b.7 cierre**
+- Enlaces de notificaciones: **ticket vendido** llevaba a la lista v1 de eventos (sin redirección, el servidor no mandaba evento ni organización). Servidor (`lib/orders.ts`): `data` ahora incluye `eventId` y `orgId` (aditivo). App (`lib/notification-deep-links.ts`): ticket vendido → `/v2/organizer/event/{id}?orgId=…&tab=purchases`; notificaciones viejas sin datos → panel de la organización o Mis organizadores, nunca la lista v1. Test `deep-links.test.ts` (3). Nueva solicitud de RSVP ya iba a v2 por la redirección de `rsvp-detail`.
+- Pantallas v1 sin redirección que quedan: `org-event-detail`, `org-members`, `(tabs)/events-management` → solo se llega desde el organizador v1 (interruptor) o el mapeo ya corregido. Todas las redirecciones nuevas respetan `EXPO_PUBLIC_ORGANIZER_V1=true`.
+- **Paridad web ↔ app del organizador v2:** panel, detalle de evento (Tiers, Compras con asistencia, Desglose, Promotores, Códigos, Enviar tickets, Escáner, Co-organizadores), RSVPs, crear/editar evento y tiers, Equipo, Pagos y Ajustes de organización: **iguales** (mismas APIs y reglas de `packages/lib`). Diferencias **a propósito**: escanear solo en la app (decisión 10-16); la app no tiene menú lateral (Manage). Diferencias **pendientes**: la web aún no tiene el hub Manage ni los Ajustes únicos ni la cola de soporte 2.0 (siguiente paso acordado 10-23); textos de notificaciones solo en inglés (D4, pendiente).
+
+**Verificado:** jest app 89/89; vitest API organizador + compra 301, web v2 (SendTab, ScannersTab, Team, EventAdminTabs, V2Boundaries, Rsvps) verdes; tsc app 40, web 0.
+**Estado:** el código de la fase 1b está completo. Falta la **ronda 3 de pruebas reales** (1b.3–1b.7) para cerrarla.
