@@ -56,7 +56,7 @@ beforeEach(() => {
     if (url.includes("cohost-assignments?search=")) return { organizations: [{ id: "o-luna", name: "Luna Club", slug: "luna", logo_url: null, city: "Quito" }] };
     if (url.includes("cohost-assignments")) return { assignments: cohosts };
     if (url.endsWith("/scanners")) return { scanners };
-    if (url.startsWith("/api/organizer/search-users")) return url.includes("ana%40x.com") ? { users: [{ id: "u-ana", email: "ana@x.com", first_name: "Ana", last_name: "Ruiz" }] } : { users: [] };
+    if (url.startsWith("/api/organizer/people")) return url.includes("q=an") ? { people: [{ id: "u-ana", email: "ana@x.com", first_name: "Ana", last_name: "Ruiz", related: true }] } : { people: [] };
     throw new Error(url);
   });
 });
@@ -121,9 +121,9 @@ describe("send tickets", () => {
 
   it("free: find account → ticket & quantity → confirm → POST promotional-tickets", async () => {
     await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
-    await fireEvent.changeText(await screen.findByLabelText("Email"), "Ana@X.com");
-    await fireEvent.press(screen.getByText("Search"));
-    await fireEvent.press(await screen.findByText("Ana Ruiz"));
+    await fireEvent.changeText(await screen.findByLabelText("Name or e-mail"), "ana");
+    await fireEvent.press(await screen.findByLabelText("Ana Ruiz ana@x.com", {}, { timeout: 2000 }));
+    expect(mockApiGet).toHaveBeenCalledWith("/api/organizer/people?organizationId=org-1&q=ana", expect.any(Function));
     await fireEvent.press(screen.getByLabelText("More"));
     await fireEvent.press(screen.getByText("Continue"));
     await fireEvent.press(screen.getByText("Send 2 tickets"));
@@ -137,9 +137,8 @@ describe("send tickets", () => {
   it("bank transfer to an email without account, custom price", async () => {
     await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
     await fireEvent.press(await screen.findByRole("tab", { name: "Bank transfers" }));
-    await fireEvent.changeText(screen.getByLabelText("Email"), "new@x.com");
-    await fireEvent.press(screen.getByText("Search"));
-    await fireEvent.press(await screen.findByText(/Create order without a Flame account/));
+    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "New@x.com");
+    await fireEvent.press(await screen.findByText(/Create order without a Flame account/, {}, { timeout: 2000 }));
     await fireEvent(screen.getByLabelText("Set a custom price"), "valueChange", true);
     await fireEvent.changeText(screen.getByLabelText("Price per ticket"), "12,50");
     await fireEvent.press(screen.getByText("Continue"));
@@ -160,10 +159,15 @@ describe("scanners", () => {
   it("accounts: list, server error codes, remove; access code: generate", async () => {
     await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
     expect(await screen.findByText("Door Staff")).toBeTruthy();
-    mockApiPost.mockRejectedValueOnce(Object.assign(new Error("x"), { status: 404, code: "NOT_FOUND" }));
-    await fireEvent.changeText(screen.getByLabelText("E-mail of their Flame account"), "nobody@x.com");
-    await fireEvent.press(screen.getByText("Add person"));
-    expect(await screen.findByText(/They need to sign up first/)).toBeTruthy();
+    // Restricted search: someone already connected to the organization, picked from the suggestions.
+    mockApiPost.mockRejectedValueOnce(Object.assign(new Error("x"), { status: 409, code: "ALREADY_SCANNER" }));
+    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "ana");
+    await fireEvent.press(await screen.findByLabelText("Ana Ruiz ana@x.com", {}, { timeout: 2000 }));
+    expect(mockApiPost).toHaveBeenCalledWith("/api/organizer/events/ev-1/scanners", { email: "ana@x.com" }, expect.any(Function));
+    expect(await screen.findByText("This person can already scan this event.")).toBeTruthy();
+    // A full e-mail with no Flame account → says so (nothing to add).
+    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "nobody@x.com");
+    expect(await screen.findByText(/They need to sign up first/, {}, { timeout: 2000 })).toBeTruthy();
 
     await fireEvent.press(screen.getByLabelText("Remove Door Staff"));
     await fireEvent.press(screen.getAllByText("Remove").at(-1)!);
@@ -249,9 +253,8 @@ describe("send tickets: no answer in time", () => {
     mockRoute.tab = "send";
     mockApiClient.mockRejectedValueOnce(Object.assign(new Error("timeout"), { status: 0 }));
     await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
-    await fireEvent.changeText(await screen.findByLabelText("Email"), "ana@x.com");
-    await fireEvent.press(screen.getByText("Search"));
-    await fireEvent.press(await screen.findByText("Ana Ruiz"));
+    await fireEvent.changeText(await screen.findByLabelText("Name or e-mail"), "ana");
+    await fireEvent.press(await screen.findByLabelText("Ana Ruiz ana@x.com", {}, { timeout: 2000 }));
     await fireEvent.press(screen.getByText("Continue"));
     const calls = mockApiGet.mock.calls.length;
     await fireEvent.press(screen.getByText("Send 1 ticket"));

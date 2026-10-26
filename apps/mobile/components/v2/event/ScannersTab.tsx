@@ -10,7 +10,7 @@ import { Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
-import { isLikelyEmail, isValidAccessCode, normalizeAccessCode, normalizeEmail, personName } from "@project-flame/lib";
+import { isValidAccessCode, normalizeAccessCode, normalizeEmail, personName } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { apiClient, apiDelete, apiGet, apiPost } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
@@ -18,6 +18,7 @@ import { routes } from "../../../lib/v2/routes";
 import { SCANNING_SUPPORTED } from "../../../lib/scanner-platform";
 import type { MyOrganization, OrgEventV2 } from "../../../lib/v2/organizer-api";
 import { Button, ConfirmDialog, ErrorBox, ErrorText, Field, Skeleton } from "../ui";
+import { PeoplePicker, type Person } from "../people/PeoplePicker";
 
 type Scanner = { id: string; user_id: string; email: string | null; first_name: string | null; last_name: string | null };
 
@@ -41,7 +42,8 @@ export function ScannersTab({
   const { getToken } = useOptionalAuth();
   const queryClient = useQueryClient();
   const key = ["v2", "event-scanners", event.id];
-  const [email, setEmail] = useState("");
+  // Restricted people search (10-23); remounting the picker clears it after adding.
+  const [pickerKey, setPickerKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState<Scanner | null>(null);
@@ -52,13 +54,12 @@ export function ScannersTab({
     queryFn: () => apiGet(`/api/organizer/events/${event.id}/scanners`, getToken),
   });
 
-  async function add() {
+  async function add(person: Person) {
     setError(null);
-    if (!isLikelyEmail(email)) return setError(t("scanners.invalidEmail"));
     setBusy(true);
     try {
-      await apiPost(`/api/organizer/events/${event.id}/scanners`, { email: normalizeEmail(email) }, getToken);
-      setEmail("");
+      await apiPost(`/api/organizer/events/${event.id}/scanners`, { email: normalizeEmail(person.email) }, getToken);
+      setPickerKey((k) => k + 1);
       await queryClient.invalidateQueries({ queryKey: key });
     } catch (e) {
       const err = e as { code?: string; status?: number; message?: string };
@@ -110,22 +111,8 @@ export function ScannersTab({
         ) : (
           <>
             <View className="gap-2">
-              <Text className="font-v2-ui text-[12.5px] text-v2-c70">{t("scanners.emailLabel")}</Text>
-              <View className="flex-row gap-2">
-                <Field
-                  value={email}
-                  onChangeText={(v) => {
-                    setEmail(v);
-                    setError(null);
-                  }}
-                  placeholder={t("scanners.emailPlaceholder")}
-                  accessibilityLabel={t("scanners.emailLabel")}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  className="flex-1"
-                />
-                <Button icon="plus" variant="primary" label={busy && !removing ? t("scanners.adding") : t("scanners.add")} onPress={add} disabled={busy || !email.trim()} />
-              </View>
+              <PeoplePicker key={pickerKey} organization={organization} value={null} onChange={(p) => p && void add(p)} disabled={busy} />
+              {busy && !removing ? <Text className="font-v2-ui text-[13px] text-v2-c50">{t("scanners.adding")}</Text> : null}
               {error && <ErrorText>{error}</ErrorText>}
             </View>
 

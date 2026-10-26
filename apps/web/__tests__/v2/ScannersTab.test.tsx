@@ -22,6 +22,7 @@ function tab(
     <QueryClientProvider client={qc}>
       <ScannersTab
         event={{ id: "e1", name: "Salsa", qr_scanner_code: code ?? undefined } as never}
+        organization={{ id: "org1", name: "Kora" }}
         organizationName="Kora"
         canEdit={canEdit}
         canManageCode={canManageCode}
@@ -45,29 +46,31 @@ describe("ScannersTab — accounts", () => {
     expect(await screen.findByText("Luis Mora")).toBeInTheDocument();
   });
 
-  it("adds by e-mail (normalized) and maps API codes to clear messages", async () => {
+  it("adds someone picked in the restricted search and maps API codes to clear messages", async () => {
     const user = userEvent.setup();
-    let code = "NOT_FOUND";
+    let code = "ALREADY_SCANNER";
     const { f } = tab([
       list([]),
+      { match: (u) => u.startsWith("/api/organizer/people") && u.includes("q=lu"), body: { people: [{ id: "u9", email: "Luis@X.com", first_name: "Luis", last_name: "Mora", related: true }] } },
       { match: (u, i) => u === SCANNERS && i?.method === "POST", status: 409, get body() { return { code, error: "x" }; } } as Route,
     ]);
     await screen.findByText("Nobody else yet.");
-    await user.type(screen.getByLabelText("E-mail of their Flame account"), "  Luis@X.com ");
-    await user.click(screen.getByRole("button", { name: "Add person" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("They need to sign up first");
+    await user.type(screen.getByLabelText("Name or e-mail"), "lu");
+    await user.click(await screen.findByText("Luis Mora"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("can already scan this event");
     expect(f.posts()[0]!.body).toEqual({ email: "luis@x.com" });
+    expect(f.calls.some((c) => c.url === "/api/organizer/people?organizationId=org1&q=lu")).toBe(true);
     code = "ALREADY_MEMBER";
-    await user.click(screen.getByRole("button", { name: "Add person" }));
+    await user.type(screen.getByLabelText("Name or e-mail"), "lu");
+    await user.click(await screen.findByText("Luis Mora"));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("they can already scan"));
   });
 
-  it("invalid e-mail never reaches the API", async () => {
+  it("a full e-mail without a Flame account never reaches the add API", async () => {
     const user = userEvent.setup();
-    const { f } = tab([list([])]);
-    await user.type(screen.getByLabelText("E-mail of their Flame account"), "luis");
-    await user.click(screen.getByRole("button", { name: "Add person" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Enter a valid email");
+    const { f } = tab([list([]), { match: (u) => u.startsWith("/api/organizer/people"), body: { people: [] } }]);
+    await user.type(screen.getByLabelText("Name or e-mail"), "ghost@x.com");
+    expect(await screen.findByText(/No Flame account with that e-mail/)).toBeInTheDocument();
     expect(f.posts()).toHaveLength(0);
   });
 

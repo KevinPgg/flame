@@ -66,34 +66,40 @@ export interface AssignableEvent {
 
 /**
  * Events an organizer can be newly scoped to: the organization's own and the ones it co-hosts
- * (organizer data shape) that **haven't started yet**, soonest first, no duplicates. Events
- * already started or over aren't offered (Kevin, 2026-10-26: "solo eventos por iniciar").
- * Undated events can't be placed in time and aren't offered either.
+ * (organizer data shape) that **haven't ended yet** — upcoming and running (Kevin, 2026-10-26:
+ * past events aren't offered, but someone can still be added during an event) — soonest first,
+ * no duplicates. Without an end time the start decides; undated events aren't offered.
  */
+type DatedEvent = { id: string; name: string; starts_at?: string | null; ends_at?: string | null };
+
 export function assignableEvents(
   data: {
-    events?: Array<{ id: string; name: string; starts_at?: string | null }> | null;
-    cohost_events?: Array<{ event: { id: string; name: string; starts_at?: string | null } }> | null;
+    events?: DatedEvent[] | null;
+    cohost_events?: Array<{ event: DatedEvent }> | null;
   },
   now: Date = new Date(),
 ): AssignableEvent[] {
   const seen = new Set<string>();
-  const out: AssignableEvent[] = [];
-  const push = (e: { id: string; name: string; starts_at?: string | null }, cohost: boolean) => {
+  const out: Array<AssignableEvent & { ends: number }> = [];
+  const time = (iso?: string | null) => (iso ? new Date(iso).getTime() : Number.NaN);
+  const push = (e: DatedEvent, cohost: boolean) => {
     if (seen.has(e.id)) return;
     seen.add(e.id);
-    out.push({ id: e.id, name: e.name, starts_at: e.starts_at ?? null, cohost });
+    const ends = time(e.ends_at);
+    out.push({ id: e.id, name: e.name, starts_at: e.starts_at ?? null, cohost, ends: Number.isFinite(ends) ? ends : time(e.starts_at) });
   };
   for (const e of data.events ?? []) push(e, false);
   for (const c of data.cohost_events ?? []) push(c.event, true);
-  const t = (e: AssignableEvent) => (e.starts_at ? new Date(e.starts_at).getTime() : Number.NaN);
-  return out.filter((e) => t(e) > now.getTime()).sort((a, b) => t(a) - t(b));
+  return out
+    .filter((e) => e.ends > now.getTime())
+    .sort((a, b) => time(a.starts_at) - time(b.starts_at))
+    .map(({ ends: _ends, ...e }) => e);
 }
 
 /**
  * Event ids to send to PUT event-assignments (which REPLACES the person's whole list): what's
  * checked among the offered events, plus their current assignments that aren't offered anymore
- * (events already started or over) — hiding past events must not silently remove the access the
+ * (events already over) — hiding past events must not silently remove the access the
  * organizer still needs to those events' sales and guests.
  */
 export function assignmentsToSave(selected: Iterable<string>, offered: Array<{ id: string }>, current: string[]): string[] {

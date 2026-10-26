@@ -7,8 +7,6 @@ import {
   formatCentsAsPrice,
   formatEventDateTime,
   initialsOf,
-  isLikelyEmail,
-  normalizeEmail,
   parseCustomPrice,
   personName,
   sendOptions,
@@ -21,6 +19,7 @@ import {
 } from "@project-flame/lib";
 import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../../../../lib/i18n";
+import { PeoplePicker } from "../../../../components/PeoplePicker";
 import { Icon } from "../../../../components/Icon";
 import { apiErrorMessage } from "../../../../lib/api-error";
 
@@ -45,10 +44,12 @@ const recipientEmail = (r: Recipient) => (r.kind === "user" ? r.user.email : r.e
  */
 export default function SendTab({
   event,
+  organization,
   canEdit,
   onChanged,
 }: {
   event: OrganizerEvent;
+  organization: { id: string; name: string };
   canEdit: boolean;
   onChanged: () => Promise<unknown> | void;
 }) {
@@ -61,11 +62,8 @@ export default function SendTab({
   const [notice, setNotice] = useState<string | null>(null);
 
   // Step 1
-  const [email, setEmail] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<FoundUser[] | null>(null);
-  const [searchedEmail, setSearchedEmail] = useState("");
-  const [searchError, setSearchError] = useState<string | null>(null);
+  // Restricted people search (10-23); remounting the picker clears it when the flow restarts.
+  const [pickerKey, setPickerKey] = useState(0);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
 
   // Step 2
@@ -97,10 +95,7 @@ export default function SendTab({
 
   function resetFlow() {
     setStep(1);
-    setEmail("");
-    setResults(null);
-    setSearchedEmail("");
-    setSearchError(null);
+    setPickerKey((k) => k + 1);
     setRecipient(null);
     setOptionKey(null);
     setQty(1);
@@ -114,27 +109,6 @@ export default function SendTab({
     setMode(next);
     setNotice(null);
     resetFlow();
-  }
-
-  async function search(e: React.FormEvent) {
-    e.preventDefault();
-    setNotice(null);
-    setResults(null);
-    if (!isLikelyEmail(email)) return setSearchError(t("eventAdmin.send.invalidEmail"));
-    const term = normalizeEmail(email);
-    setSearchError(null);
-    setSearching(true);
-    try {
-      const res = await fetch(`/api/organizer/search-users?email=${encodeURIComponent(term)}`);
-      if (!res.ok) throw new Error(await apiErrorMessage(res, t("errors.generic")));
-      const json = (await res.json()) as { users?: FoundUser[] };
-      setResults(Array.isArray(json.users) ? json.users : []);
-      setSearchedEmail(term);
-    } catch (err) {
-      setSearchError(err instanceof Error ? err.message : t("errors.generic"));
-    } finally {
-      setSearching(false);
-    }
   }
 
   function pick(r: Recipient) {
@@ -281,56 +255,22 @@ export default function SendTab({
             </ol>
 
             {step === 1 && (
-              <>
-                <form onSubmit={search} className="flex gap-2" noValidate>
-                  <label className="relative flex-1">
-                    <span className="sr-only">{t("eventAdmin.send.emailLabel")}</span>
-                    <Icon name="search" size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-v2-c50" />
-                    <input
-                      type="email"
-                      inputMode="email"
-                      autoComplete="off"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t("eventAdmin.send.emailPlaceholder")}
-                      className={`${field} pl-10`}
-                    />
-                  </label>
-                  <button type="submit" disabled={searching || !email.trim()} className={primary}>
-                    {searching ? t("eventAdmin.send.searching") : t("common.search")}
-                  </button>
-                </form>
-                <p className="mt-2 text-[12.5px] text-v2-c50">{t("eventAdmin.send.emailHint")}</p>
-                {searchError && <p className="mt-2 text-[13px] text-v2-errorText">{searchError}</p>}
-
-                {results && results.length > 0 && (
-                  <div className="mt-3 flex flex-col gap-1">
-                    {results.map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => pick({ kind: "user", user: u })}
-                        className="flex items-center gap-3 rounded-v2-md p-3 text-left hover:bg-v2-ink3"
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-v2-ink4 text-[12px] font-v2-ui-semibold">
-                          {initialsOf(personName(u))}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <b className="block truncate text-[14px] font-v2-ui-semibold">{personName(u)}</b>
-                          <small className="block truncate text-[12.5px] text-v2-c50">{u.email}</small>
-                        </span>
-                        <Icon name="chev" size={16} className="text-v2-c50" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {results && results.length === 0 && searchedEmail && (
-                  <div className="mt-3 rounded-v2-md bg-v2-ink3 p-4">
-                    <p className="text-[13px] leading-relaxed text-v2-c70">{t("eventAdmin.send.noAccount", { email: searchedEmail })}</p>
+              <PeoplePicker
+                key={pickerKey}
+                id="send-person"
+                organization={organization}
+                value={null}
+                onChange={(p) => {
+                  if (!p) return;
+                  setNotice(null);
+                  pick({ kind: "user", user: p });
+                }}
+                noAccount={(email) => (
+                  <div className="rounded-v2-md bg-v2-ink3 p-4">
+                    <p className="text-[13px] leading-relaxed text-v2-c70">{t("eventAdmin.send.noAccount", { email })}</p>
                     <button
                       type="button"
-                      onClick={() => pick({ kind: "email", email: searchedEmail })}
+                      onClick={() => pick({ kind: "email", email })}
                       className="mt-3 inline-flex h-9 items-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink"
                     >
                       <Icon name="send" size={14} />
@@ -338,7 +278,7 @@ export default function SendTab({
                     </button>
                   </div>
                 )}
-              </>
+              />
             )}
 
             {step === 2 && recipient && option && (

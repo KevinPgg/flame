@@ -11,11 +11,9 @@ import {
   assignmentCounts,
   editableRole,
   formatEventDateTime,
-  isLikelyEmail,
   memberHasActions,
   memberInitials,
   memberName,
-  normalizeEmail,
   sortTeam,
   type AssignableRole,
   type OrgMemberRole,
@@ -23,6 +21,7 @@ import {
   type TeamMember,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
+import { PeoplePicker, personLabel, type Person } from "../../components/PeoplePicker";
 import { Icon } from "../../components/Icon";
 import { Modal } from "../../components/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -44,8 +43,6 @@ type Dialog =
 const primary =
   "inline-flex h-10 items-center justify-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[14px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-50";
 const ghost = "inline-flex h-10 items-center justify-center rounded-v2-pill bg-v2-ink3 px-4 text-[14px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4";
-const field =
-  "h-11 w-full min-w-0 rounded-v2-md bg-v2-ink3 px-4 text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none focus:ring-1 focus:ring-v2-c30";
 
 /**
  * Team v2 (prototype "ow:team"): members with role and, for organizers, how many events they're
@@ -196,7 +193,7 @@ export default function TeamView({
 
       {dialog?.kind === "add" && (
         <AddMemberDialog
-          orgId={organization.id}
+          organization={organization}
           members={members}
           onClose={() => setDialog(null)}
           onAdded={async () => {
@@ -312,50 +309,29 @@ async function send(url: string, method: string, body: unknown, generic: string)
   }
 }
 
-type FoundUser = { id: string; email: string; first_name: string | null; last_name: string | null };
-
 function AddMemberDialog({
-  orgId,
+  organization,
   members,
   onClose,
   onAdded,
 }: {
-  orgId: string;
+  organization: { id: string; name: string };
   members: TeamMember[];
   onClose: () => void;
   onAdded: () => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [email, setEmail] = useState("");
-  const [found, setFound] = useState<FoundUser | null>(null);
+  const [found, setFound] = useState<Person | null>(null);
   const [role, setRole] = useState<AssignableRole>("organizer");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const already = found ? members.some((m) => m.user_id === found.id) : false;
-  const foundName = found ? [found.first_name, found.last_name].filter(Boolean).join(" ") || found.email : "";
-
-  const search = async () => {
-    setError(null);
-    setFound(null);
-    if (!isLikelyEmail(email)) return setError(t("team.invalidEmail"));
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/organizer/search-users?email=${encodeURIComponent(normalizeEmail(email))}`);
-      if (!res.ok) return setError(await apiErrorMessage(res, t("errors.generic")));
-      const json = (await res.json()) as { users?: FoundUser[] };
-      if (!json.users?.length) return setError(t("team.notFound"));
-      setFound(json.users[0]!);
-    } catch {
-      setError(t("errors.generic"));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const foundName = found ? personLabel(found) : "";
 
   const add = async () => {
     if (!found || already) return;
     setBusy(true);
-    const err = await send(`/api/organizations/${orgId}/members`, "POST", { userId: found.id, role }, t("errors.generic"));
+    const err = await send(`/api/organizations/${organization.id}/members`, "POST", { userId: found.id, role }, t("errors.generic"));
     if (err) {
       setError(err);
       setBusy(false);
@@ -375,50 +351,25 @@ function AddMemberDialog({
             {t("common.cancel")}
           </button>
           <button type="button" onClick={() => void add()} disabled={!found || already || busy} className={primary}>
-            {busy && found ? t("team.adding") : t("team.add")}
+            {busy ? t("team.adding") : t("team.add")}
           </button>
         </>
       }
     >
-      <label htmlFor="tm-email" className="mb-1.5 block text-[12.5px] text-v2-c70">
-        {t("team.email")}
-      </label>
-      <div className="flex gap-2">
-        <input
-          id="tm-email"
-          type="email"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            setFound(null);
-            setError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void search();
-            }
-          }}
-          placeholder={t("team.emailPlaceholder")}
-          autoComplete="off"
-          className={field}
-        />
-        <button type="button" onClick={() => void search()} disabled={!email.trim() || busy} className={ghost}>
-          {busy && !found ? t("team.searching") : t("team.search")}
-        </button>
-      </div>
+      {/* Restricted people search (Kevin, 2026-10-23): suggestions only within the organization's circle. */}
+      <PeoplePicker
+        id="tm-person"
+        organization={organization}
+        value={found}
+        onChange={(p) => {
+          setFound(p);
+          setError(null);
+        }}
+        disabled={busy}
+      />
       {error && <p role="alert" className="mt-2 text-[13px] text-v2-errorText">{error}</p>}
       {found && (
         <div className="mt-4 flex flex-col gap-4">
-          <div className="flex items-center gap-3 rounded-v2-md bg-v2-ink3 p-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-v2-ink4 text-[13px] font-v2-ui-bold">
-              {(found.first_name?.charAt(0) || found.email.charAt(0)).toUpperCase()}
-            </span>
-            <span className="min-w-0">
-              <b className="block truncate text-[14px] font-v2-ui-semibold">{foundName}</b>
-              <small className="block truncate text-[12.5px] text-v2-c50">{found.email}</small>
-            </span>
-          </div>
           {already ? (
             <p role="alert" className="text-[13px] text-v2-warn">{t("team.alreadyMember", { name: foundName })}</p>
           ) : (
@@ -486,7 +437,7 @@ function AssignDialog({
   onSaved: () => Promise<void>;
 }) {
   const { t, locale } = useI18n();
-  // Only the offered (not started) events are listed and counted; past assignments are kept on save.
+  // Only the offered (not ended) events are listed and counted; past assignments are kept on save.
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initial.filter((id) => events.some((e) => e.id === id))));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

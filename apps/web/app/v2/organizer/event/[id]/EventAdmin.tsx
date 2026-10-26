@@ -282,13 +282,14 @@ export default function EventAdmin({
         ) : tab === "scanners" ? (
           <ScannersTab
             event={event}
+            organization={organization}
             organizationName={found?.ownerName ?? organization.name}
             canEdit={canEdit}
             canManageCode={isOwnerOrg && canManageAccessCodes(role)}
             onCodeChanged={invalidate}
           />
         ) : isOwnerOrg ? (
-          <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
+          <SendTab event={event} organization={organization} canEdit={canEdit} onChanged={invalidate} />
         ) : (
           <NoSales />
         )}

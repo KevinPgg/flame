@@ -59,7 +59,7 @@ function setup(opts: { extra?: Route[]; me?: { name: string; imageUrl: null; ema
     { match: (u, i) => u === "/api/organizations/org1/event-assignments" && (i?.method ?? "GET") === "GET", body: { assignments: [{ event_id: "e1", user_id: "u-m3" }, { event_id: "e2", user_id: "u-m3" }, { event_id: "e2", user_id: "u-m4" }] } },
     { match: (u) => u.startsWith("/api/organizer/data"), body: { events: EVENTS, cohost_events: [], owner_cohost_assignments: [] } },
     { match: (u) => u.startsWith("/api/stripe/"), body: { connected: true, chargesEnabled: true, payoutsEnabled: true } },
-    { match: (u) => u.startsWith("/api/organizer/search-users"), body: { users: [{ id: "u-new", email: "new@x.com", first_name: "Nuevo", last_name: "Uno" }] } },
+    { match: (u) => u.startsWith("/api/organizer/people") && u.includes("q=nu"), body: { people: [{ id: "u-new", email: "new@x.com", first_name: "Nuevo", last_name: "Uno", related: true }] } },
     { match: (u, i) => i?.method === "POST" || i?.method === "PATCH" || i?.method === "PUT", body: { success: true } },
   ]);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -87,18 +87,14 @@ describe("Team v2", () => {
     expect(screen.getByRole("button", { name: "Options for Beto" })).toBeInTheDocument();
   });
 
-  it("add member: validates the e-mail, finds the account, adds with the chosen role", async () => {
+  it("add member: restricted search, pick, role, add", async () => {
     const { user, fetchMock } = setup();
     await screen.findByText("ana@x.com");
     await user.click(screen.getByRole("button", { name: /Add member/ }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Email"), "nope");
-    await user.click(within(dialog).getByRole("button", { name: "Search" }));
-    expect(within(dialog).getByText("Enter a valid email, like name@email.com.")).toBeInTheDocument();
-    await user.clear(within(dialog).getByLabelText("Email"));
-    await user.type(within(dialog).getByLabelText("Email"), " New@X.com {enter}");
-    expect(await within(dialog).findByText("Nuevo Uno")).toBeInTheDocument();
-    expect(fetchMock.calls.some((c) => c.url === "/api/organizer/search-users?email=new%40x.com")).toBe(true);
+    await user.type(within(dialog).getByLabelText("Name or e-mail"), "nu");
+    await user.click(await within(dialog).findByText("Nuevo Uno"));
+    expect(fetchMock.calls.some((c) => c.url === "/api/organizer/people?organizationId=org1&q=nu")).toBe(true);
     await user.click(within(dialog).getByRole("radio", { name: /Admin/ }));
     await user.click(within(dialog).getByRole("button", { name: "Add to team" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -107,15 +103,19 @@ describe("Team v2", () => {
 
   it("add member: no account / already in the team", async () => {
     const { user } = setup({
-      extra: [{ match: (u) => u.includes("ghost%40x.com"), body: { users: [] } }, { match: (u) => u.includes("beto%40x.com"), body: { users: [{ id: "u-m3", email: "beto@x.com", first_name: "Beto", last_name: null }] } }],
+      extra: [
+        { match: (u) => u.startsWith("/api/organizer/people") && u.includes("ghost%40x.com"), body: { people: [] } },
+        { match: (u) => u.startsWith("/api/organizer/people") && u.includes("q=be"), body: { people: [{ id: "u-m3", email: "beto@x.com", first_name: "Beto", last_name: null, related: true }] } },
+      ],
     });
     await screen.findByText("ana@x.com");
     await user.click(screen.getByRole("button", { name: /Add member/ }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Email"), "ghost@x.com{enter}");
-    expect(await within(dialog).findByText(/No Flame account with that email/)).toBeInTheDocument();
-    await user.clear(within(dialog).getByLabelText("Email"));
-    await user.type(within(dialog).getByLabelText("Email"), "beto@x.com{enter}");
+    await user.type(within(dialog).getByLabelText("Name or e-mail"), "ghost@x.com");
+    expect(await within(dialog).findByText(/No Flame account with that e-mail/)).toBeInTheDocument();
+    await user.clear(within(dialog).getByLabelText("Name or e-mail"));
+    await user.type(within(dialog).getByLabelText("Name or e-mail"), "be");
+    await user.click(await within(dialog).findByText("Beto"));
     expect(await within(dialog).findByText("Beto is already in the team.")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Add to team" })).toBeDisabled();
   });
@@ -147,7 +147,7 @@ describe("Team v2", () => {
     expect(writes(fetchMock.calls)).toEqual([{ url: "/api/organizations/org1/event-assignments", method: "PUT", body: { userId: "u-m4", eventIds: ["e1", "e2"] } }]);
   });
 
-  it("assign events: only events not started yet are offered; saving keeps past assignments", async () => {
+  it("assign events: past events aren't offered (running ones are); saving keeps past assignments", async () => {
     const past = { id: "e0", name: "Viejo", organization_id: "org1", starts_at: new Date(Date.now() - 10 * day).toISOString(), ends_at: new Date(Date.now() - 9.8 * day).toISOString(), ticket_tiers: [], purchases: [] };
     const { user, fetchMock } = setup({
       extra: [

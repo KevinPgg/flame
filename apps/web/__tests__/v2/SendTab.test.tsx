@@ -48,13 +48,14 @@ const event = {
 } as never;
 
 const ana = { id: "u1", email: "ana@flame.ec", first_name: "Ana", last_name: "Pinto" };
+// Restricted people search (10-23): GET /api/organizer/people?organizationId=&q=
 const searchRoute: Route = {
-  match: (u) => u.includes("/api/organizer/search-users"),
-  body: { users: [] },
+  match: (u) => u.includes("/api/organizer/people"),
+  body: { people: [] },
 };
 const routesWith = (extra: Route[] = []) => [
   ...extra,
-  { match: (u: string) => u.includes("search-users?email=ana%40flame.ec"), body: { users: [ana] } },
+  { match: (u: string) => u.includes("/api/organizer/people") && /q=ana/i.test(u), body: { people: [{ ...ana, related: true }] } },
   searchRoute,
   { match: (u: string) => u.endsWith("/promotional-tickets"), body: { success: true } },
   { match: (u: string) => u.endsWith("/bank-transfer-tickets"), body: { success: true } },
@@ -63,15 +64,14 @@ const routesWith = (extra: Route[] = []) => [
 function setup(props: Partial<React.ComponentProps<typeof SendTab>> = {}, language: "en" | "es" = "en") {
   const onChanged = vi.fn();
   const user = userEvent.setup({ delay: null });
-  renderV2(<SendTab event={event} canEdit onChanged={onChanged} {...props} />, language);
+  renderV2(<SendTab event={event} organization={{ id: "org1", name: "Kora" }} canEdit onChanged={onChanged} {...props} />, language);
   return { user, onChanged };
 }
 
-async function findPerson(user: ReturnType<typeof userEvent.setup>, email: string) {
-  const input = screen.getByPlaceholderText("name@example.com");
+async function findPerson(user: ReturnType<typeof userEvent.setup>, text: string) {
+  const input = screen.getByPlaceholderText("Name or name@email.com");
   await user.clear(input);
-  await user.type(input, email);
-  await user.click(screen.getByRole("button", { name: "Search" }));
+  await user.type(input, text);
 }
 
 // Many clicks per test: slower machines (Windows) needed > 5 s with the default per-key delay.
@@ -84,7 +84,7 @@ describe("SendTab · permissions and empty states", () => {
     mockFetch(routesWith());
     setup({ canEdit: false });
     expect(screen.getByText("Your role can see what was sent, but not send tickets.")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText("name@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Name or name@email.com")).not.toBeInTheDocument();
     expect(screen.getByText("Camila Loor")).toBeInTheDocument();
     expect(screen.getByText("3 × General")).toBeInTheDocument();
   });
@@ -110,39 +110,37 @@ describe("SendTab · permissions and empty states", () => {
 });
 
 describe("SendTab · step 1 (find person)", () => {
-  it("an invalid email never reaches the API", async () => {
+  it("one character doesn't search", async () => {
     const f = mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "ana@flame");
-    expect(screen.getByText("Enter a valid email address.")).toBeInTheDocument();
+    await findPerson(user, "a");
+    await new Promise((r) => setTimeout(r, 400));
     expect(f.fn).not.toHaveBeenCalled();
   });
 
-  it("searches the trimmed, lowercased email (the API matches exactly)", async () => {
+  it("restricted search for this organization; suggestions as you type", async () => {
     const f = mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "  ANA@Flame.ec ");
+    await findPerson(user, "ana");
     expect(await screen.findByText("Ana Pinto")).toBeInTheDocument();
-    expect(f.calls[0].url).toBe("/api/organizer/search-users?email=ana%40flame.ec");
+    expect(f.calls.at(-1)!.url).toBe("/api/organizer/people?organizationId=org1&q=ana");
   });
 
-  it("no account: offers sending by email to the address that was searched", async () => {
+  it("no account: offers sending by email to that address (lowercased)", async () => {
     mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "nobody@x.com");
+    await findPerson(user, "Nobody@X.com");
     expect(await screen.findByText(/No Flame account uses nobody@x.com/)).toBeInTheDocument();
-    // Editing the field afterwards must not change who receives the tickets.
-    await user.type(screen.getByPlaceholderText("name@example.com"), "zzz");
     await user.click(screen.getByRole("button", { name: "Send without a Flame account" }));
     expect(screen.getByText("nobody@x.com")).toBeInTheDocument();
     expect(screen.getByText("No Flame account · by email")).toBeInTheDocument();
   });
 
   it("search failure shows the error", async () => {
-    mockFetch([{ match: () => true, status: 403, body: { error: "Not a member of any organization" } }]);
+    mockFetch([{ match: () => true, status: 403, body: { error: "Unauthorized - organizer access required" } }]);
     const { user } = setup();
-    await findPerson(user, "ana@flame.ec");
-    expect(await screen.findByText("Not a member of any organization")).toBeInTheDocument();
+    await findPerson(user, "ana");
+    expect(await screen.findByText("Unauthorized - organizer access required")).toBeInTheDocument();
   });
 });
 
@@ -150,7 +148,7 @@ describe("SendTab · free tickets", () => {
   it("full flow: pick person, tier and quantity, confirm, send", async () => {
     const f = mockFetch(routesWith());
     const { user, onChanged } = setup();
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
 
     // Default = first available, visible tier
@@ -176,13 +174,13 @@ describe("SendTab · free tickets", () => {
     ]);
     expect(onChanged).toHaveBeenCalledTimes(1);
     // Back to step 1, ready for the next person
-    expect(screen.getByPlaceholderText("name@example.com")).toHaveValue("");
+    expect(screen.getByPlaceholderText("Name or name@email.com")).toHaveValue("");
   });
 
   it("free mode lists tiers, not stages", async () => {
     mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
     expect(screen.getAllByRole("radio").map((r) => r.textContent)).toEqual([
       expect.stringContaining("General"),
@@ -195,7 +193,7 @@ describe("SendTab · free tickets", () => {
   it("quantity stays within 1–10 (API limit)", async () => {
     mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
     expect(screen.getByRole("button", { name: "Less" })).toBeDisabled();
     for (let i = 0; i < 9; i++) await user.click(screen.getByRole("button", { name: "More" }));
@@ -206,21 +204,21 @@ describe("SendTab · free tickets", () => {
   it("back from confirm keeps the choices; change goes back to the search", async () => {
     mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
     await user.click(screen.getByRole("radio", { name: /VIP/ }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("radio", { name: /VIP/ })).toHaveAttribute("aria-checked", "true");
     await user.click(screen.getByRole("button", { name: "Change" }));
-    expect(screen.getByPlaceholderText("name@example.com")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Name or name@email.com")).toBeInTheDocument();
   });
 });
 
 describe("SendTab · bank transfers", () => {
   async function toStep2(user: ReturnType<typeof userEvent.setup>, email = "nobody@x.com") {
     await user.click(screen.getByRole("tab", { name: "Bank transfers" }));
-    await findPerson(user, email);
+    await findPerson(user, email === "ana@flame.ec" ? "ana" : email);
     if (email === "ana@flame.ec") await user.click(await screen.findByText("Ana Pinto"));
     else await user.click(await screen.findByRole("button", { name: "Create order without a Flame account" }));
   }
@@ -318,17 +316,17 @@ describe("SendTab · bank transfers", () => {
   it("switching mode starts over", async () => {
     mockFetch(routesWith());
     const { user } = setup();
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
     await user.click(screen.getByRole("tab", { name: "Bank transfers" }));
-    expect(screen.getByPlaceholderText("name@example.com")).toHaveValue("");
+    expect(screen.getByPlaceholderText("Name or name@email.com")).toHaveValue("");
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 });
 
 describe("SendTab · errors on send", () => {
   async function toConfirm(user: ReturnType<typeof userEvent.setup>) {
-    await findPerson(user, "ana@flame.ec");
+    await findPerson(user, "ana");
     await user.click(await screen.findByText("Ana Pinto"));
     await user.click(screen.getByRole("button", { name: "Continue" }));
   }

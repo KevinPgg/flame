@@ -4,7 +4,7 @@
  * connected to the organization; anyone else only by their full e-mail.
  * GET /api/organizer/people?organizationId=&q= (debounced, stale answers dropped).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { flameV2Colors as c } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
@@ -26,11 +26,17 @@ export function PeoplePicker({
   value,
   onChange,
   disabled,
+  noAccount,
 }: {
   organization: { id: string; name: string };
   value: Person | null;
   onChange: (p: Person | null) => void;
   disabled?: boolean;
+  /**
+   * Shown instead of "no Flame account" when a full e-mail has no account (Send tickets: create
+   * the order without an account). Receives the e-mail in lowercase.
+   */
+  noAccount?: (email: string) => ReactNode;
 }) {
   const { t } = useI18n();
   const { getToken } = useOptionalAuth();
@@ -102,11 +108,13 @@ export function PeoplePicker({
       />
       <Text className="mt-1.5 font-v2-ui text-[12px] leading-[16px] text-v2-c50">{t("people.hint", { org: organization.name })}</Text>
       {searching && <Text className="mt-2 font-v2-ui text-[13px] text-v2-c50">{t("people.searching")}</Text>}
-      {empty && (
+      {empty && looksLikeEmail(term) && noAccount ? (
+        <View className="mt-2">{noAccount(term.toLowerCase())}</View>
+      ) : empty ? (
         <Text className="mt-2 font-v2-ui text-[13px] text-v2-c70">
           {looksLikeEmail(term) ? t("people.noAccount") : t("people.none", { org: organization.name })}
         </Text>
-      )}
+      ) : null}
       {results && results.length > 0 && (
         <View className="mt-2 overflow-hidden rounded-v2-md bg-v2-ink3">
           {results.map((p, i) => (

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { isLikelyEmail, isValidAccessCode, normalizeAccessCode, normalizeEmail, personName } from "@project-flame/lib";
+import { isValidAccessCode, normalizeAccessCode, normalizeEmail, personName } from "@project-flame/lib";
 import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../../../../lib/i18n";
+import { PeoplePicker, type Person } from "../../../../components/PeoplePicker";
 import { Icon } from "../../../../components/Icon";
 import { ConfirmDialog } from "../../../../components/ConfirmDialog";
 import { ErrorBox } from "../../../../components/ErrorBox";
@@ -21,12 +22,14 @@ type Scanner = { id: string; user_id: string; email: string | null; first_name: 
  */
 export default function ScannersTab({
   event,
+  organization,
   organizationName,
   canEdit,
   canManageCode,
   onCodeChanged,
 }: {
   event: OrganizerEvent;
+  organization: { id: string; name: string };
   organizationName: string;
   canEdit: boolean;
   canManageCode: boolean;
@@ -35,7 +38,8 @@ export default function ScannersTab({
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const key = ["event-scanners", event.id];
-  const [email, setEmail] = useState("");
+  // Restricted people search (10-23); remounting the picker clears it after adding.
+  const [pickerKey, setPickerKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [removing, setRemoving] = useState<Scanner | null>(null);
@@ -50,16 +54,14 @@ export default function ScannersTab({
     },
   });
 
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const add = async (person: Person) => {
     setError(null);
-    if (!isLikelyEmail(email)) return setError(t("scanners.invalidEmail"));
     setBusy(true);
     try {
       const res = await fetch(`/api/organizer/events/${event.id}/scanners`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizeEmail(email) }),
+        body: JSON.stringify({ email: normalizeEmail(person.email) }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => null)) as { code?: string; error?: string } | null;
@@ -76,7 +78,7 @@ export default function ScannersTab({
         );
         return;
       }
-      setEmail("");
+      setPickerKey((k) => k + 1);
       await queryClient.invalidateQueries({ queryKey: key });
     } catch {
       setError(t("errors.generic"));
@@ -119,34 +121,11 @@ export default function ScannersTab({
         <p className="text-[13px] text-v2-c50">{t("scanners.readOnly")}</p>
       ) : (
         <>
-          <form onSubmit={add} noValidate className="flex flex-col gap-2">
-            <label htmlFor="sc-email" className="text-[12.5px] text-v2-c70">
-              {t("scanners.emailLabel")}
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="sc-email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setError(null);
-                }}
-                placeholder={t("scanners.emailPlaceholder")}
-                autoComplete="off"
-                className="h-11 min-w-0 flex-1 rounded-v2-md bg-v2-ink3 px-4 text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none focus:ring-1 focus:ring-v2-c30"
-              />
-              <button
-                type="submit"
-                disabled={busy || !email.trim()}
-                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-v2-pill bg-v2-cream px-4 text-[14px] font-v2-ui-semibold text-v2-ink disabled:opacity-50"
-              >
-                <Icon name="plus" size={16} strokeWidth={2.2} />
-                {busy && !removing ? t("scanners.adding") : t("scanners.add")}
-              </button>
-            </div>
+          <div className="flex flex-col gap-2">
+            <PeoplePicker key={pickerKey} id="sc-person" organization={organization} value={null} onChange={(p) => p && void add(p)} disabled={busy} />
+            {busy && !removing && <p className="text-[13px] text-v2-c50">{t("scanners.adding")}</p>}
             {error && <p role="alert" className="text-[13px] text-v2-errorText">{error}</p>}
-          </form>
+          </div>
 
           <div>
             <h3 className="mb-2 text-[12px] font-v2-ui-semibold uppercase tracking-[0.06em] text-v2-c50">{t("scanners.listTitle")}</h3>

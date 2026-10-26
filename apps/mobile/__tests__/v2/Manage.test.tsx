@@ -111,8 +111,9 @@ describe("team", () => {
 
   it("assign events: past events aren't offered and their assignments are kept on save", async () => {
     const past = event("ev-old", "Viejo", -10);
+    const live = event("ev-live", "En curso", -0.05, { ends_at: new Date(Date.now() + 3 * 3600 * 1000).toISOString() });
     mockApiGet.mockImplementation(async (url: string) => {
-      if (url.startsWith("/api/organizer/data")) return { organization: {}, events: [past, ...EVS], cohost_events: [] };
+      if (url.startsWith("/api/organizer/data")) return { organization: {}, events: [past, live, ...EVS], cohost_events: [] };
       if (url.endsWith("/members")) return { members: MEMBERS };
       if (url.endsWith("/event-assignments")) return { assignments: [{ user_id: "u-ana", event_id: "ev-1" }, { user_id: "u-ana", event_id: "ev-old" }] };
       throw new Error(url);
@@ -121,6 +122,7 @@ describe("team", () => {
     await fireEvent.press(await screen.findByLabelText("Options for Ana Ruiz"));
     await fireEvent.press(screen.getByText("Assign events"));
     expect(screen.queryByRole("checkbox", { name: "Viejo" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "En curso" })).toBeTruthy();
     expect(screen.getByText("1 selected")).toBeTruthy();
     await fireEvent.press(screen.getByText("Save"));
     await waitFor(() =>

@@ -247,7 +247,7 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
         ) : tab === "promotions" ? (
           <PromotionsTab event={event} canEdit={canEdit} onChanged={invalidate} />
         ) : (
-          <SendTab event={event} canEdit={canEdit} onChanged={invalidate} />
+          <SendTab event={event} organization={organization} canEdit={canEdit} onChanged={invalidate} />
         )}
       </View>
       {canCohost && event && (
