@@ -147,6 +147,36 @@ Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería
 - [ ] Moneda y zona horaria se eligen en una hoja desde abajo.
 - [ ] Con flyer → Publicar → "Publicando…" → "Subiendo flyer…" → abre el evento nuevo; en la web está igual (tiers, preguntas, flyer, RSVP).
 
+## 1b.5a · Manage: Equipo, Pagos, Ajustes de organización · 📱 Celular (+ 🌐 web para comparar)
+**Antes · 💻 PC:** aplicar la migración nueva `supabase/migrations/20261023180000_search_org_people.sql` en tu Supabase local: `npx supabase migration up` (en la raíz del proyecto; **no** uses `db reset`, borra los datos). Si prefieres, pega el archivo en el SQL Editor de Studio (`http://localhost:54323`). Reinicia la web (`npm run dev`) y Metro con `-c`.
+- [ ] (💻, opcional) Comprobar la función: `select * from search_org_people('<id de tu organización>', 'an');` → solo personas de tu organización (miembros, compradores, RSVPs, escáneres, a quienes enviaste tickets).
+
+**Manage** (barra inferior → Manage, owner/admin)
+- [ ] Equipo, Pagos y Ajustes ya abren pantallas nuevas (estilo 2.0, con ← que vuelve a Manage), no las v1.
+
+**Equipo**
+- [ ] Lista: avatar, nombre, email, rol de color (Owner blanco, Admin rojo, Organizer gris) y "Todos los eventos" / "N eventos asignados"; tu fila dice "(tú)". El owner no tiene ⚙.
+- [ ] "+" → "Agregar miembro": escribe 2–3 letras del nombre de alguien que **ya compró / pidió RSVP / es escáner** de tus eventos → aparece en sugerencias. Escribe el nombre de alguien de Flame **sin relación** con tu organización → no aparece ("Nadie conectado con … coincide"). Escribe su **email completo** → aparece con "Encontrado por e-mail".
+- [ ] Email completo que no existe en Flame → "No hay una cuenta de Flame con ese e-mail…".
+- [ ] Elegir persona → elegir rol (Admin / Organizer con su explicación) → "Agregar al equipo" → aparece en la lista (y en 🌐 web → Equipo). Alguien que ya es miembro → aviso "ya está en el equipo".
+- [ ] ⚙ de un miembro → hoja con Cambiar rol / Asignar eventos (solo organizer) / Quitar del equipo. Cambiar rol → se refleja. Asignar eventos: marcar/desmarcar → "N seleccionados" → Guardar → "N eventos asignados"; entra con esa cuenta: solo ve esos eventos.
+- [ ] Quitar → confirmación → desaparece. (Si te quitas a ti mismo → vuelves a Mis organizadores.)
+- [ ] Con rol organizer: Equipo solo lista, sin "+" ni ⚙.
+- [ ] Teclado: al escribir en "Nombre o e-mail" la hoja sube y se ven las sugerencias.
+
+**Pagos** (owner/admin)
+- [ ] Organización sin Stripe: tarjeta "Conecta Stripe para vender tickets", país (hoja), "Conectar con Stripe" → abre Stripe en el navegador. Al volver a la app, el estado se actualiza solo.
+- [ ] Configuración incompleta: lista de cobros/pagos con ✓/⚠ y "Terminar configuración".
+- [ ] Conectada: "Disponible para retirar" (con borde rojo) y "Disponible pronto" con los mismos números que 🌐 web → Pagos; historial con estado de color; banco "•• 1234 · vía Stripe"; "Gestionar en Stripe" abre Stripe.
+- [ ] "Solicitar pago" pide confirmación con el monto y el banco → "Solicitaste $… · llegará a tu banco en unos días" (Stripe test). Pedir otro enseguida → "Ya hay un pago en camino…". Saldo bajo el mínimo → botón deshabilitado con el mínimo.
+
+**Ajustes de la organización**
+- [ ] Se cargan Instagram, ciudad y descripción iguales a 🌐 web → Ajustes. Nombre fijo con su explicación.
+- [ ] Cambiar ciudad → abajo "Cambios sin guardar" → "Guardar cambios" → "Todo guardado"; en la web aparece el cambio.
+- [ ] Instagram con "@" o URL se limpia al salir del campo; uno inválido → error.
+- [ ] Logo: "Subir nuevo" → galería con recorte cuadrado → se sube y se ve en el panel y en la web. Una imagen de menos de 400×400 → aviso con su tamaño. "Quitar" pide confirmación.
+- [ ] Con rol organizer/viewer: todo de solo lectura, abajo "Solo dueños y admins pueden editar la organización".
+
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
 - [x] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event".
@@ -154,7 +184,7 @@ Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería
 - [x] Descubrir (`localhost:8081`): "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
 
 ## Cosas conocidas
-- Mientras dura la 1b, las pantallas que aún no son v2 (equipo, ajustes, payouts) abren su versión v1; al volver, regresas al panel v2.
+- Desde la 1b.5a ninguna pantalla del organizador abre v1 (solo con `EXPO_PUBLIC_ORGANIZER_V1=true`). Pendiente 1b.5b: ajustes de usuario únicos y la cola de aprobación de soporte del perfil.
 - "Mis organizadores" en la app sigue siendo la sección del Perfil (el rediseño del perfil es de la fase 2).
 - Errores del XLSX ("Export failed", "Sharing unavailable") salen en inglés: vienen del exportador v1 que se reutiliza.
 - `WARN [notifications] Permission not granted for push notifications` al levantar: el permiso de notificaciones del celular está denegado. Inofensivo; sin Firebase tampoco habría push en Android.

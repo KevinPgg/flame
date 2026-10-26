@@ -37,7 +37,8 @@ Plan y decisiones de la fase 1b. Fase 1 (organizador web v2) cerrada el mismo d�
 | 1b.2 | Detalle de evento: Tiers, Compras (XLSX), Desglose, Promotores, Códigos, Enviar tickets, Co-organizadores | `org-event-detail`, `components/org-dashboard/*` |
 | 1b.3 | RSVPs: lista y detalle (aprobar/rechazar, aprobar todas, exportar) | `rsvp-management`, `rsvp-detail` |
 | 1b.4 | Crear y editar evento + editor de tiers (etapas, preguntas, reducción forzada) | `(tabs)/create-event`, `edit-event`, `components/create-event`, `components/events-management` |
-| 1b.5 | Desde **Manage**: Equipo, Pagos, Ajustes de organización. **Ajustes de usuario únicos** (ver decisión 10-23). Cola de aprobación de organizaciones (soporte) en estilo 2.0 | `org-members`, `PayoutsSettingsTab`, `account`, `settings`, `SupportAdminSection` |
+| 1b.5a | Desde **Manage**: Equipo, Pagos, Ajustes de organización + búsqueda de personas restringida (API + migración) | `org-members`, `PayoutsSettingsTab`, `OrganizationSettingsTab` |
+| 1b.5b | **Ajustes de usuario únicos** (decisión 10-23); cola de aprobación de organizaciones (soporte) en estilo 2.0; buscador restringido en Enviar tickets y Escáner (web y app) y Equipo web | `account`, `settings`, `SupportAdminSection`, `search-users` |
 | 1b.6 | Escáner v2 desde la pestaña **Escanear** del organizador (cuentas: owner/admin/organizer y personas agregadas). Ajustes → Scan Tickets queda **solo para códigos** | `scanner` |
 | 1b.7 | Cierre: paridad con la web, pantallas v1 detrás del interruptor, PruebasReales 1b (incluye los casos de app heredados de la fase 1) | — |
 
@@ -185,3 +186,17 @@ Kevin: "empiézala; faltan pruebas, las hacemos en la siguiente entrega" → pru
 
 **Verificado:** jest app 61/61 (+10 `EventForms.test.tsx`: editar solo lo cambiado, confirmación de fecha, no editable; tier nuevo con fin en `Z`, cupos bajo lo vendido, reducción forzada y luego el resto, quitar pregunta guardada solo del tier; crear con huecos no envía, crear completo = payload web, organizer no crea; mutación sin la confirmación de fecha → falla 1); tsc app 40 (sin nuevos). **No verificado:** selectores de fecha nativos, galería y subida del flyer, teclado en Android (Kevin, PruebasReales §1b.4).
 **Siguiente:** pruebas reales 1b.3 + 1b.4; luego 1b.5 (Manage: equipo, pagos, ajustes; búsqueda de personas restringida).
+
+## Entrega 1b.5a (2026-10-23): Manage → Equipo, Pagos, Ajustes de organización + búsqueda de personas restringida
+Kevin: "sigue, luego probamos; actualiza el checklist". La 1b.5 se parte: **1b.5a** (esta) y **1b.5b** (ajustes de usuario únicos, cola de aprobación de soporte en estilo 2.0, buscador de personas en Enviar tickets y Escáner — web y app — y en Equipo de la web).
+- **Búsqueda restringida** (decisión de Kevin 10-23): migración `supabase/migrations/20261023180000_search_org_people.sql` → función `search_org_people(org, texto, límite)` (SECURITY DEFINER, solo `service_role`): coincidencias parciales por nombre o email **solo** entre miembros, compradores (`orders`), solicitantes de RSVP, escáneres (`event_scanners`) y destinatarios de tickets enviados (`promotional_tickets` por email) de los eventos de la organización; comodines `%`/`_` escapados; mínimo 2 caracteres, máximo 20. API `GET /api/organizer/people?organizationId=&q=` (owner/admin/organizer de esa organización): círculo + **email exacto** para cualquier otra persona (`related: false`). [Seguro, por parser] la SQL es válida (pglast); [no verificado] contra una base real → Kevin aplica la migración.
+- **API** `GET /api/organizations/[id]`: perfil de la organización (instagram, ciudad, descripción, logo) para cualquier miembro, con su rol — la app no lee Supabase directo. Tests `people-search.test.ts` (4).
+- **App** `components/v2/people/PeoplePicker.tsx` (sugerencias mientras escribes, "Encontrado por e-mail" fuera del círculo), `components/v2/Sheet.tsx` (hoja inferior genérica que sube con el teclado).
+- **Equipo** (`/v2/organizer/team`): miembros con rol y eventos asignados, "(tú)"; owner/admin: "+" agregar (PeoplePicker + rol), por miembro (no owner): cambiar rol, asignar eventos (organizer), quitar con confirmación (quitarte a ti mismo → Mis organizadores). Organizer/viewer: solo lista.
+- **Pagos** (`/v2/organizer/payouts`, owner/admin): conectar Stripe con país / terminar configuración (abre Stripe en el navegador; al volver se relee el estado), saldo disponible y "disponible pronto" por moneda, pedir pago con confirmación y clave de idempotencia, 409 → "ya hay uno en camino", historial, banco y "Gestionar en Stripe".
+- **Ajustes de la organización** (`/v2/organizer/settings`): logo (galería con recorte cuadrado, mínimo 400×400, re-codificado ≤1024 px JPEG; quitar con confirmación), nombre fijo, Instagram, ciudad, descripción con contador; guardar solo lo del perfil (`PATCH /api/organizations/[id]`). Organizer/viewer: solo lectura.
+- Manage: las tres filas abren v2 (`routes.team|payouts|settings`). Ya no queda ninguna ruta del organizador apuntando a v1 (`v1()` eliminado de `routes.ts`).
+- i18n nuevo: `people.*`, `payouts.ownersOnly`; iconos `clock`, `camera`; `useMe` devuelve también el email (para "(tú)").
+
+**Verificado:** jest app 71/71 (+10 `Manage.test.tsx`; `ManageHub` actualizado; mutación: sin clave de idempotencia → falla 1); vitest API organizador 240/240 (+4), lib 374/374; tsc app 40 (sin nuevos), web 0. **No verificado:** la función SQL contra la base, Stripe real, galería/logo, aspecto en el celular.
+**Siguiente:** 1b.5b.
