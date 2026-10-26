@@ -226,3 +226,9 @@ Kevin: "termina ajustes y luego comienzo con las pruebas". De la 1b.5b se hizo *
 - (7) [Seguro, por código] cada organización crea **su propia cuenta Express de Stripe** al conectar (`/api/stripe/connect/onboard`, `stripe_account_id` por organización con bloqueo optimista): saldos y pagos nunca se mezclan, aunque usen el mismo banco para depositar (Stripe lo permite). Lo que **no** está protegido: la BD no exige `stripe_account_id` único; si dos organizaciones quedan con el mismo id (copia del seed, edición manual) compartirían saldo y una podría retirar el dinero de la otra. Propuesta pendiente de decisión: revisar duplicados y agregar índice único parcial.
 
 **Verificado:** jest app 81/81; vitest people-search 4/4; tsc app 40.
+
+### 10-26 (cont.) · Asignar eventos solo por iniciar
+- Kevin: en Manage → Equipo → Asignar eventos no deben salir eventos viejos, solo por iniciar.
+- `assignableEvents` (lib, usado por web y app) ahora ofrece solo eventos que **aún no empiezan** (ni en curso ni sin fecha), del más cercano al más lejano.
+- Riesgo evitado: `PUT /api/organizations/[id]/event-assignments` **reemplaza** toda la lista del organizador; si solo se ocultaban los pasados, guardar habría borrado en silencio sus asignaciones viejas (y su acceso a ventas/asistentes de esos eventos). Nuevo `assignmentsToSave(seleccionados, ofrecidos, actuales)`: lo marcado + las asignaciones actuales a eventos que ya no se ofrecen. El contador "N seleccionados" cuenta solo los visibles.
+- Tests: lib team 6/6 (+1), web `Team.test.tsx` 15 (+1), app `Manage.test.tsx` 11 (+1). jest app 82/82, vitest lib 377; tsc app 40, web 0.

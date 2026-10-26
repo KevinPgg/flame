@@ -104,7 +104,7 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 ## ▶ Ronda 3 de pruebas (desde 2026-10-26) — orden sugerido
 Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes). Antes de empezar:
 1. 💻 Aplica la migración nueva: `npx supabase migration up` (no `db reset`). Detalle en §1b.5a.
-2. 💻 `pnpm --filter @project-flame/mobile test` → **81** tests en verde (Windows).
+2. 💻 `pnpm --filter @project-flame/mobile test` → **82** tests en verde (Windows).
 3. 💻 Reinicia la web (`npm run dev` en `apps/web`) y Metro con `-c`. No hace falta recompilar la app.
 **Correcciones 10-26 (volver a probar):**
 - [ ] Editar evento: fondo con el flyer difuminado arriba; "Acerca de" más alto y ya no se monta sobre Tiers (escribe 6+ líneas).
@@ -113,6 +113,7 @@ Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes). Antes de empezar:
 - [ ] Editar tier: un toque en un chip de pregunta conocida la agrega. Si no, describe qué pasa (¿al segundo toque? ¿con el teclado abierto?).
 - [ ] Manage → Equipo → Agregar: escribe un nombre → **una** sola línea `GET /api/organizer/people…` en la terminal de la web por cada pausa al escribir; aparecen sugerencias. Email completo de alguien fuera de tu organización (aunque tenga mayúsculas guardadas) → "Encontrado por e-mail".
 - [ ] Cambiar flyer (editar evento): si vuelve a fallar, copia **las líneas `[flyer] upload failed …` de Metro y lo que salga en la terminal de la web** en ese momento, y prueba el cambio de flyer de la app v1 (`EXPO_PUBLIC_ORGANIZER_V1=true`) en el mismo celular.
+- [ ] Manage → Equipo → ⚙ de un organizer → Asignar eventos: solo aparecen eventos **que aún no empiezan** (📱 y 🌐). Si ese organizer tenía asignado un evento pasado, sigue contándose en "N eventos asignados" y **no se pierde** al guardar (entra con esa cuenta: ve el evento pasado).
 - [ ] (💻) Cuentas de depósito: `select stripe_account_id, array_agg(name) from organizations where stripe_account_id is not null group by 1 having count(*) > 1;` → debería salir vacío. Si sale algo, esas organizaciones comparten saldo (ver sesión 10-26).
 4. 📱 Sigue el orden: §1b.5b Ajustes (rápido, valida sesión e idioma) → §1b.3 RSVPs → §1b.4 Crear/editar → §1b.5a Manage.
 Anota al lado de cada punto lo que falle (`//Ronda 3: …`) como en las rondas anteriores.
