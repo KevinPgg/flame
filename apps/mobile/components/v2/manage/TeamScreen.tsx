@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ASSIGNABLE_ROLES,
   assignableEvents,
+  assignmentsToSave,
   assignedEventIds,
   assignmentCounts,
   canManageMembers,
@@ -353,7 +354,8 @@ function AssignSheet({
   onSave: (eventIds: string[]) => Promise<void>;
 }) {
   const { t, locale } = useI18n();
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(initial));
+  // Only the offered (not started) events are listed and counted; past assignments are kept on save.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initial.filter((id) => events.some((e) => e.id === id))));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggle = (id: string) =>
@@ -367,7 +369,7 @@ function AssignSheet({
     setBusy(true);
     setError(null);
     try {
-      await onSave(events.map((e) => e.id).filter((id) => selected.has(id)));
+      await onSave(assignmentsToSave(selected, events, initial));
     } catch (e) {
       setError(apiErrorText(e, t("errors.generic")));
       setBusy(false);

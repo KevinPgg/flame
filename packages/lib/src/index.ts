@@ -400,6 +400,7 @@ export {
   assignedEventIds,
   editableRole,
   assignableEvents,
+  assignmentsToSave,
   memberHasActions,
 } from "./organizer/team";
 export type { TeamMember, TeamAssignment, AssignableRole, AssignableEvent } from "./organizer/team";

@@ -65,8 +65,10 @@ export interface AssignableEvent {
 }
 
 /**
- * Events an organizer can be scoped to: the organization's own and the ones it co-hosts
- * (organizer data shape), upcoming first then past, no duplicates.
+ * Events an organizer can be newly scoped to: the organization's own and the ones it co-hosts
+ * (organizer data shape) that **haven't started yet**, soonest first, no duplicates. Events
+ * already started or over aren't offered (Kevin, 2026-10-26: "solo eventos por iniciar").
+ * Undated events can't be placed in time and aren't offered either.
  */
 export function assignableEvents(
   data: {
@@ -84,10 +86,21 @@ export function assignableEvents(
   };
   for (const e of data.events ?? []) push(e, false);
   for (const c of data.cohost_events ?? []) push(c.event, true);
-  const t = (e: AssignableEvent) => (e.starts_at ? new Date(e.starts_at).getTime() : 0);
-  const upcoming = out.filter((e) => t(e) >= now.getTime()).sort((a, b) => t(a) - t(b));
-  const past = out.filter((e) => t(e) < now.getTime()).sort((a, b) => t(b) - t(a));
-  return [...upcoming, ...past];
+  const t = (e: AssignableEvent) => (e.starts_at ? new Date(e.starts_at).getTime() : Number.NaN);
+  return out.filter((e) => t(e) > now.getTime()).sort((a, b) => t(a) - t(b));
+}
+
+/**
+ * Event ids to send to PUT event-assignments (which REPLACES the person's whole list): what's
+ * checked among the offered events, plus their current assignments that aren't offered anymore
+ * (events already started or over) — hiding past events must not silently remove the access the
+ * organizer still needs to those events' sales and guests.
+ */
+export function assignmentsToSave(selected: Iterable<string>, offered: Array<{ id: string }>, current: string[]): string[] {
+  const offeredIds = new Set(offered.map((e) => e.id));
+  const picked = new Set(selected);
+  const keep = current.filter((id) => !offeredIds.has(id));
+  return [...offered.map((e) => e.id).filter((id) => picked.has(id)), ...keep.filter((id, i) => keep.indexOf(id) === i)];
 }
 
 /** Whether the member's row offers actions (owners can't be changed or removed from here). */

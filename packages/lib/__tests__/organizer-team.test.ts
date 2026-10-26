@@ -7,6 +7,7 @@ import {
   assignedEventIds,
   editableRole,
   assignableEvents,
+  assignmentsToSave,
   memberHasActions,
   type TeamMember,
 } from "../src";
@@ -52,7 +53,7 @@ describe("team helpers", () => {
     expect(memberHasActions({ role: "admin" })).toBe(true);
   });
 
-  it("assignable events: own + co-hosted, no duplicates, upcoming (soonest first) then past (latest first)", () => {
+  it("assignable events: own + co-hosted, no duplicates, only not started yet, soonest first", () => {
     const now = new Date("2026-11-01T00:00:00Z");
     const list = assignableEvents(
       {
@@ -73,9 +74,16 @@ describe("team helpers", () => {
       ["soon", false],
       ["co", true],
       ["far", false],
-      ["past2", true],
-      ["past1", false],
     ]);
     expect(assignableEvents({}, now)).toEqual([]);
+    // Started a minute ago (running) or undated → not offered.
+    expect(assignableEvents({ events: [{ id: "live", name: "Live", starts_at: "2026-10-31T23:59:00Z" }, { id: "nodate", name: "?", starts_at: null }] }, now)).toEqual([]);
+  });
+
+  it("saving keeps current assignments to events no longer offered (started or past)", () => {
+    const offered = [{ id: "soon" }, { id: "far" }];
+    expect(assignmentsToSave(["far"], offered, ["soon", "past1", "past2"])).toEqual(["far", "past1", "past2"]);
+    expect(assignmentsToSave([], offered, [])).toEqual([]);
+    expect(assignmentsToSave(new Set(["soon", "far"]), offered, ["past1", "past1"])).toEqual(["soon", "far", "past1"]);
   });
 });

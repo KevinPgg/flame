@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ASSIGNABLE_ROLES,
   assignableEvents,
+  assignmentsToSave,
   assignedEventIds,
   assignmentCounts,
   editableRole,
@@ -485,7 +486,8 @@ function AssignDialog({
   onSaved: () => Promise<void>;
 }) {
   const { t, locale } = useI18n();
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(initial));
+  // Only the offered (not started) events are listed and counted; past assignments are kept on save.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initial.filter((id) => events.some((e) => e.id === id))));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggle = (id: string) =>
@@ -501,7 +503,7 @@ function AssignDialog({
     const err = await send(
       `/api/organizations/${orgId}/event-assignments`,
       "PUT",
-      { userId: member.user_id, eventIds: events.map((e) => e.id).filter((id) => selected.has(id)) },
+      { userId: member.user_id, eventIds: assignmentsToSave(selected, events, initial) },
       t("errors.generic"),
     );
     if (err) {

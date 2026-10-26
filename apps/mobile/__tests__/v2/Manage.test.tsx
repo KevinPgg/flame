@@ -109,6 +109,25 @@ describe("team", () => {
     await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith("/api/organizations/members/remove", { orgId: "org-1", memberId: "m-2" }, expect.any(Function)));
   });
 
+  it("assign events: past events aren't offered and their assignments are kept on save", async () => {
+    const past = event("ev-old", "Viejo", -10);
+    mockApiGet.mockImplementation(async (url: string) => {
+      if (url.startsWith("/api/organizer/data")) return { organization: {}, events: [past, ...EVS], cohost_events: [] };
+      if (url.endsWith("/members")) return { members: MEMBERS };
+      if (url.endsWith("/event-assignments")) return { assignments: [{ user_id: "u-ana", event_id: "ev-1" }, { user_id: "u-ana", event_id: "ev-old" }] };
+      throw new Error(url);
+    });
+    await renderV2(<TeamScreen organization={org("owner")} />);
+    await fireEvent.press(await screen.findByLabelText("Options for Ana Ruiz"));
+    await fireEvent.press(screen.getByText("Assign events"));
+    expect(screen.queryByRole("checkbox", { name: "Viejo" })).toBeNull();
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Save"));
+    await waitFor(() =>
+      expect(mockApiClient).toHaveBeenCalledWith("/api/organizations/org-1/event-assignments", expect.objectContaining({ body: JSON.stringify({ userId: "u-ana", eventIds: ["ev-1", "ev-old"] }) })),
+    );
+  });
+
   it("organizer role: list only", async () => {
     await renderV2(<TeamScreen organization={org("organizer")} />);
     expect(await screen.findByText("ana@x.com")).toBeTruthy();

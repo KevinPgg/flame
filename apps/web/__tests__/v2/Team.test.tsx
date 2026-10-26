@@ -147,6 +147,25 @@ describe("Team v2", () => {
     expect(writes(fetchMock.calls)).toEqual([{ url: "/api/organizations/org1/event-assignments", method: "PUT", body: { userId: "u-m4", eventIds: ["e1", "e2"] } }]);
   });
 
+  it("assign events: only events not started yet are offered; saving keeps past assignments", async () => {
+    const past = { id: "e0", name: "Viejo", organization_id: "org1", starts_at: new Date(Date.now() - 10 * day).toISOString(), ends_at: new Date(Date.now() - 9.8 * day).toISOString(), ticket_tiers: [], purchases: [] };
+    const { user, fetchMock } = setup({
+      extra: [
+        { match: (u, i) => u === "/api/organizations/org1/event-assignments" && (i?.method ?? "GET") === "GET", body: { assignments: [{ event_id: "e2", user_id: "u-m4" }, { event_id: "e0", user_id: "u-m4" }] } },
+        { match: (u) => u.startsWith("/api/organizer/data"), body: { events: [past, ...EVENTS], cohost_events: [], owner_cohost_assignments: [] } },
+      ],
+    });
+    await user.click(await screen.findByRole("button", { name: "Options for Dani" }));
+    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Assign events" }));
+    const dialog = await screen.findByRole("dialog", { name: "Assign events" });
+    expect(within(dialog).queryByRole("checkbox", { name: /Viejo/ })).not.toBeInTheDocument();
+    expect(within(dialog).getByText("1 selected")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("checkbox", { name: /Salsa/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(writes(fetchMock.calls)).toEqual([{ url: "/api/organizations/org1/event-assignments", method: "PUT", body: { userId: "u-m4", eventIds: ["e1", "e2", "e0"] } }]);
+  });
+
   it("admins don't get 'Assign events' (they see every event)", async () => {
     const { user } = setup();
     await user.click(await screen.findByRole("button", { name: "Options for Carla" }));
