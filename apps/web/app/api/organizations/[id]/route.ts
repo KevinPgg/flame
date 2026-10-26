@@ -121,3 +121,46 @@ export async function PATCH(
     );
   }
 }
+
+/**
+ * GET /api/organizations/[id] — the organization's profile for its settings screen (fase 1b.5:
+ * the app reads through the API, never Supabase directly). Any member can read it; editing
+ * (PATCH above) stays owner/admin.
+ */
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: orgId } = await params;
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!supabaseAdmin) return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+
+    const { data: me } = await supabaseAdmin.from("users").select("id").eq("clerk_id", userId).maybeSingle();
+    if (!me) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const { data: membership } = await supabaseAdmin
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", orgId)
+      .eq("user_id", me.id)
+      .maybeSingle();
+    if (!membership) return NextResponse.json({ error: "Not a member of this organization" }, { status: 403 });
+
+    const { data: organization, error } = await supabaseAdmin
+      .from("organizations")
+      .select("id, name, slug, instagram_handle, city, description, logo_url")
+      .eq("id", orgId)
+      .maybeSingle();
+    if (error) {
+      console.error("[GET /api/organizations/[id]] lookup error", { orgId, error });
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+    if (!organization) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    return NextResponse.json({ organization, role: membership.role });
+  } catch (error) {
+    console.error("[GET /api/organizations/[id]] unexpected error", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
