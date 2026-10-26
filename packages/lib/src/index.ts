@@ -31,6 +31,12 @@ export type {
 } from "./types";
 
 export { validateQRCodeFormat, EventSchema, NON_DISMISSABLE_NOTIFICATION_TYPES } from "./types";
+export {
+  NOTIFICATION_PREFERENCE_ITEMS,
+  mergeNotificationPreferences,
+  notificationPreferencesUpdate,
+  type NotificationPreferences,
+} from "./utils/notification-preferences";
 
 // ============================================================================
 // EVENT LIMITS (organizer / ticketing)
