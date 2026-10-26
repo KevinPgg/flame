@@ -10,7 +10,7 @@ Lista viva: se amplía con cada entrega de la fase 1b. Mismo formato que la fase
 4. Solo si una entrega agrega un módulo nativo (lo diré): `npx expo run:android` para recompilar. Hasta ahora no hace falta.
 
 ## 0. Preparación · 💻 PC
-- [x] `pnpm --filter @project-flame/mobile test` en Windows: 13 tests en verde (base, marco, panel). Tras la 1b.2a deben ser 23.
+- [x] `pnpm --filter @project-flame/mobile test` en Windows: 13 tests en verde (base, marco, panel). Tras la 1b.2a deben ser 23; tras la 1b.5b, 77.
 - [x] App en el celular (build Android local) o `localhost:8081`, con la web corriendo (la app v2 lee todo de la API web: `EXPO_PUBLIC_API_URL`).
 
 ## Ronda 1 (2026-10-23) — volver a probar tras las correcciones · 📱 Celular
@@ -101,6 +101,14 @@ Mismo comportamiento que la web v2 (fase 1, §4 y §7c); compara con 🌐 la web
 - [x] Editar un tier con fin de venta propio → "×" para volver a "Cuando termina el evento" → Guardar → sin error.
 - [x] (Si alguna vez la API rechaza una fecha) el mensaje es "Revisa las fechas de venta…", no "Invalid input".
 
+## ▶ Ronda 3 de pruebas (desde 2026-10-26) — orden sugerido
+Entregas sin probar: 1b.3, 1b.4, 1b.5a, 1b.5b (Ajustes). Antes de empezar:
+1. 💻 Aplica la migración nueva: `npx supabase migration up` (no `db reset`). Detalle en §1b.5a.
+2. 💻 `pnpm --filter @project-flame/mobile test` → **77** tests en verde (Windows).
+3. 💻 Reinicia la web (`npm run dev` en `apps/web`) y Metro con `-c`. No hace falta recompilar la app.
+4. 📱 Sigue el orden: §1b.5b Ajustes (rápido, valida sesión e idioma) → §1b.3 RSVPs → §1b.4 Crear/editar → §1b.5a Manage.
+Anota al lado de cada punto lo que falle (`//Ronda 3: …`) como en las rondas anteriores.
+
 ## 1b.3 · RSVPs · 📱 Celular (+ 🌐 web para comparar y para pedir solicitudes)
 Para tener solicitudes: con **otra cuenta** (🌐 ventana privada) pide entrar a un evento RSVP tuyo, una gratis y otra de pago (Stripe test `4242 4242 4242 4242`). Reinicia Metro con `-c`.
 - [ ] Barra inferior → **RSVPs**: lista de tus eventos RSVP (no los normales) con flyer, fecha, lugar y el número de pendientes (rojo si hay). Actuales/Pasados con su número; la búsqueda encuentra "carnaval" ↔ "Carnával". Organizer asignado: solo sus eventos.
@@ -177,6 +185,19 @@ Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería
 - [ ] Logo: "Subir nuevo" → galería con recorte cuadrado → se sube y se ve en el panel y en la web. Una imagen de menos de 400×400 → aviso con su tamaño. "Quitar" pide confirmación.
 - [ ] Con rol organizer/viewer: todo de solo lectura, abajo "Solo dueños y admins pueden editar la organización".
 
+## 1b.5b · Ajustes únicos · 📱 Celular
+Un solo "Ajustes" para tu persona (las cosas de la organización están en Manage).
+- [ ] Engranaje del encabezado (lado asistente) → abre **Ajustes** nuevo (estilo 2.0). Perfil → la opción de cuenta también abre este mismo Ajustes.
+- [ ] Cuenta: tu foto (o iniciales), nombre y e-mail correctos. "Cambiar foto" → galería con recorte cuadrado → se actualiza; "Quitar foto" pide confirmación.
+- [ ] "Contraseña, correos y seguridad" → se abre el portal de cuenta de Flame (Clerk) en el navegador. **Anota la URL que abre** y si muestra tu cuenta (o pide iniciar sesión). Si no abre nada o da error, dímelo: se ajusta con `EXPO_PUBLIC_CLERK_ACCOUNT_URL`.
+- [ ] Idioma: cambiar a Español → los textos v2 cambian al momento; cierra y abre la app → sigue en Español; en 🌐 web → Mi cuenta también figura Español.
+- [ ] Notificaciones "Como asistente": interruptores; "Ticket recibido" siempre activa (no se apaga). Si eres miembro de una organización, aparece también "Como organizador". Apaga "Ventas de tickets" → sal y vuelve: sigue apagada. Con otra cuenta compra un ticket → **no** llega la notificación de venta (la campana del asistente); vuelve a encenderla.
+- [ ] Escanear tickets: con sesión abre la lista de eventos que puedes escanear; **sin sesión** (cierra sesión) abre el escáner con código.
+- [ ] Ayuda y legal: Soporte abre su pantalla; privacidad / términos / compra / cookies abren en el navegador (**www.flme.co**).
+- [ ] Cerrar sesión → vuelve al inicio sin sesión; Ajustes sin sesión muestra solo escanear, legal e "Iniciar sesión".
+- [ ] (Solo con una **cuenta de prueba**) Eliminar cuenta → "¿Eliminar tu cuenta de Flame?" → Continuar → "¿Estás completamente seguro?" → "Sí, eliminar para siempre" → sale al inicio sin sesión; esa cuenta ya no puede entrar.
+- [ ] Abajo se ve "Versión x.y.z".
+
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
 - [x] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event".
@@ -184,7 +205,7 @@ Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería
 - [x] Descubrir (`localhost:8081`): "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
 
 ## Cosas conocidas
-- Desde la 1b.5a ninguna pantalla del organizador abre v1 (solo con `EXPO_PUBLIC_ORGANIZER_V1=true`). Pendiente 1b.5b: ajustes de usuario únicos y la cola de aprobación de soporte del perfil.
+- Desde la 1b.5 ninguna pantalla del organizador ni los Ajustes abren v1 (solo con `EXPO_PUBLIC_ORGANIZER_V1=true`). Pendiente: cola de aprobación de soporte del perfil (estilo 2.0) y buscador restringido en Enviar tickets / Escáner.
 - "Mis organizadores" en la app sigue siendo la sección del Perfil (el rediseño del perfil es de la fase 2).
 - Errores del XLSX ("Export failed", "Sharing unavailable") salen en inglés: vienen del exportador v1 que se reutiliza.
 - `WARN [notifications] Permission not granted for push notifications` al levantar: el permiso de notificaciones del celular está denegado. Inofensivo; sin Firebase tampoco habría push en Android.

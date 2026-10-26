@@ -200,3 +200,14 @@ Kevin: "sigue, luego probamos; actualiza el checklist". La 1b.5 se parte: **1b.5
 
 **Verificado:** jest app 71/71 (+10 `Manage.test.tsx`; `ManageHub` actualizado; mutación: sin clave de idempotencia → falla 1); vitest API organizador 240/240 (+4), lib 374/374; tsc app 40 (sin nuevos), web 0. **No verificado:** la función SQL contra la base, Stripe real, galería/logo, aspecto en el celular.
 **Siguiente:** 1b.5b.
+
+## Entrega 1b.5b · Ajustes únicos (2026-10-26)
+Kevin: "termina ajustes y luego comienzo con las pruebas". De la 1b.5b se hizo **Ajustes**; quedan para después de la ronda de pruebas: cola de aprobación de soporte en estilo 2.0 y el buscador restringido en Enviar tickets / Escáner (web y app) y Equipo web.
+- **Un solo Ajustes** (`/v2/settings`, `components/v2/settings/UserSettings.tsx`), decisión 10-23: Cuenta (foto, nombre, e-mail de `GET /api/user/profile`; cambiar/quitar foto con `/api/upload-profile-image`; "Contraseña, correos y seguridad" → portal de cuenta de Clerk en el navegador), Idioma (en/es, se aplica al momento y se guarda), Notificaciones (como asistente; como organizador solo si perteneces a alguna organización; "Ticket recibido" siempre activa), Escanear tickets (con sesión → escáner por cuenta; sin sesión → con código), Ayuda y legal (Soporte v1, privacidad, términos, compra, cookies), Cerrar sesión, Eliminar cuenta (dos confirmaciones, Apple 5.1.1(v)), versión. Sin sesión: solo escanear con código, legal e "Iniciar sesión".
+- **Notificaciones por API** (antes la app escribía `users.notification_preferences` directo en Supabase): `GET/PUT /api/me/notification-preferences`; reglas en `packages/lib/src/utils/notification-preferences.ts` (faltante = activa, "ticket recibido" forzada, solo tipos conocidos con booleanos). Tests: lib 2, API 3.
+- **Portal de Clerk:** `lib/v2/clerk-portal.ts` deduce la URL desde la clave pública (`clerk.flme.co` → `https://accounts.flme.co/user`; dev `x.clerk.accounts.dev` → `https://x.accounts.dev/user`); `EXPO_PUBLIC_CLERK_ACCOUNT_URL` lo sobrescribe. [Probable] es la convención de Clerk; se confirma en la prueba real.
+- **Entradas v1 → v2** (con `EXPO_PUBLIC_ORGANIZER_V1=true` siguen v1): `/settings` (engranaje del encabezado) y `/notifications-settings` → `/v2/settings`; `/account` personal (Perfil) → `/v2/settings`; `/account?tab=organization|payouts&orgId=` → Ajustes / Pagos de esa organización en Manage.
+- Corrección encontrada por los tests: si cerrar sesión fallaba tras borrar la cuenta en el servidor, la pantalla decía "no pudimos eliminar" → ahora siempre sale (la cuenta ya no existe).
+- i18n nuevo `userSettings.*`.
+
+**Verificado:** jest app 77/77 (+6 `UserSettings.test.tsx`); vitest lib 376, API organizador 243; tsc app 40, web 0. **No verificado:** portal de Clerk, foto real, borrado real de cuenta (Kevin, con una cuenta de prueba).
