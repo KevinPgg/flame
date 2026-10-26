@@ -181,9 +181,8 @@ export function OrgSettingsScreen({ organization }: { organization: MyOrganizati
           placeholder={canEdit ? t("orgSettings.descriptionPlaceholder") : t("orgSettings.empty")}
           editable={canEdit && !saving}
           multiline
-          textAlignVertical="top"
           accessibilityLabel={t("orgSettings.description")}
-          className="h-auto min-h-[120px] py-3 leading-[20px]"
+          className="leading-[20px]"
         />
       </Section>
     </FormScreen>,

@@ -1,3 +1,1 @@
-update organizations
-set stripe_account_id = null, stripe_charges_enabled = false, stripe_payouts_enabled = false
-where slug = 'peluchin';
+select stripe_account_id, array_agg(name) from organizations where stripe_account_id is not null group by 1 having count(*) > 1;

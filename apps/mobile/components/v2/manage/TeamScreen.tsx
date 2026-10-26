@@ -354,7 +354,7 @@ function AssignSheet({
   onSave: (eventIds: string[]) => Promise<void>;
 }) {
   const { t, locale } = useI18n();
-  // Only the offered (not started) events are listed and counted; past assignments are kept on save.
+  // Only the offered (not ended) events are listed and counted; past assignments are kept on save.
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initial.filter((id) => events.some((e) => e.id === id))));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
