@@ -15,4 +15,9 @@ describe("organizer notification links", () => {
   it("new RSVP request → v1 path that redirects to v2 with the organization", () => {
     expect(resolveNotificationDeepLink("new_rsvp_request", "/(tabs)/rsvp", { eventId: "ev-1", orgId: "org-1" })).toBe("/rsvp-detail?eventId=ev-1&orgId=org-1");
   });
+  it("organization approved → its panel; not approved → stays in the panel (reason is in the text)", () => {
+    expect(resolveNotificationDeepLink("organization_approved", undefined, { orgId: "org-1" })).toBe("/organizer-admin?orgId=org-1");
+    expect(resolveNotificationDeepLink("organization_approved", undefined, {})).toBe("/profile");
+    expect(resolveNotificationDeepLink("organization_rejected", undefined, { orgId: "org-1" })).toBeNull();
+  });
 });

@@ -3,13 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "../../../../../lib/supabase/server";
 import { requireSupportAdmin } from "../../../_lib";
+import { notifyOrganizationReview } from "../../../../../lib/org-review-notification";
 
 /**
  * POST /api/admin/organizations/[id]/reject
  *
  * Support-only (W7-H1). Marks a pending org as rejected (audit cols + optional
  * reason); keeps `approved = false`. Idempotent — re-rejecting just refreshes
- * the timestamp/reason. No email (decision: approve-only).
+ * the timestamp/reason. No email (decision: approve-only); the owner gets an
+ * in-app notification + push with the reason (2026-10-27).
  */
 const bodySchema = z.object({
   reason: z.string().trim().max(500).optional(),
@@ -43,7 +45,7 @@ export async function POST(
 
     const { data: org, error: fetchError } = await supabaseAdmin
       .from("organizations")
-      .select("id, approved")
+      .select("id, name, approved, owner_user_id")
       .eq("id", orgId)
       .maybeSingle();
 
@@ -86,6 +88,14 @@ export async function POST(
         { status: 409 },
       );
     }
+
+    await notifyOrganizationReview({
+      ownerUserId: (org as { owner_user_id?: string | null }).owner_user_id,
+      organizationId: org.id,
+      organizationName: (org as { name?: string }).name ?? "",
+      decision: "rejected",
+      reason: reason && reason.length > 0 ? reason : null,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

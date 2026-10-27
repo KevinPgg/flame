@@ -14,6 +14,8 @@ const TYPE_CONFIG: Record<
   new_rsvp_request: { icon: "person-add-outline", color: "#4A90E2", iconBg: "rgba(74,144,226,0.15)" },
   ticket_sold: { icon: "cash-outline", color: "#5DDBB1", iconBg: "rgba(93,219,177,0.15)" },
   auth_expiry_warning: { icon: "warning-outline", color: "#FF6B35", iconBg: "rgba(255,107,53,0.15)" },
+  organization_approved: { icon: "checkmark-circle-outline", color: "#5DDBB1", iconBg: "rgba(93,219,177,0.15)" },
+  organization_rejected: { icon: "close-circle-outline", color: "#EA3370", iconBg: "rgba(234,51,112,0.15)" },
 };
 
 const DEFAULT_CONFIG = { icon: "notifications-outline" as const, color: "#9CA3AF", iconBg: "rgba(156,163,175,0.15)" };
@@ -67,7 +69,11 @@ export function NotificationCard({ item, onPress }: NotificationCardProps) {
             <View className="size-2 rounded-full bg-primary ml-2" />
           )}
         </View>
-        <Text className="text-xs leading-4 font-poppins text-white-80 mt-[2px]" numberOfLines={2}>
+        {/* A rejection carries support's reason and opens nothing else: show it whole. */}
+        <Text
+          className="text-xs leading-4 font-poppins text-white-80 mt-[2px]"
+          numberOfLines={item.type === "organization_rejected" ? undefined : 2}
+        >
           {item.body}
         </Text>
         <Text className="text-xs leading-4 font-poppins-light text-white-50 mt-1">

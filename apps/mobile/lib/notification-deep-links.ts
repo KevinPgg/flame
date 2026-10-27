@@ -22,7 +22,9 @@
  * event_date_changed    │ Ticket holders │ /event/[id]
  * event_reminder        │ Ticket holders │ /event/[id]
  * (org-admin targeting) │ Org members    │ /organizer-admin?orgId=Y  (via deepLink "/organizer-admin" + orgId)
- * ticket_sold           │ (not yet sent) │ —                       (deferred)
+ * ticket_sold           │ Owner/admin    │ v2 event → Purchases (or the org panel)
+ * organization_approved │ Org owner      │ /organizer-admin?orgId=Y (→ v2 panel)
+ * organization_rejected │ Org owner      │ — (reason in the text; the org is hidden)
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * Expo Router route groups (e.g. (tabs)) are invisible in paths, so
@@ -86,6 +88,12 @@ export function resolveNotificationDeepLink(
     if (eventId && orgId) return `/v2/organizer/event/${encodeURIComponent(eventId)}?orgId=${encodeURIComponent(orgId)}&tab=purchases`;
     return orgId ? withOrgId("/organizer-admin", orgId) : "/profile";
   }
+
+  // Answer to the organizer request (2026-10-27): approved → that organization's panel.
+  // Not approved: the text carries the reason and the organization is no longer listed
+  // (the API hides rejected ones), so there is nowhere to go.
+  if (type === "organization_approved") return orgId ? withOrgId("/organizer-admin", orgId) : "/profile";
+  if (type === "organization_rejected") return null;
 
   // User: RSVP rejected — send back to event page so they can retry
   if (type === "rsvp_rejected" && eventId) {

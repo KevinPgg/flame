@@ -11,8 +11,11 @@ export type NotificationType =
   | "new_rsvp_request"
   | "ticket_sold"
   | "ticket_received"
-  | "auth_expiry_warning";
+  | "auth_expiry_warning"
+  | "organization_approved"
+  | "organization_rejected";
 
 /** Notification types that cannot be disabled by the user in preferences. */
 export const NON_DISMISSABLE_NOTIFICATION_TYPES: ReadonlySet<NotificationType> =
-  new Set(["ticket_received"]);
+  // Organization review (2026-10-27): the answer to your own request — always delivered.
+  new Set(["ticket_received", "organization_approved", "organization_rejected"]);

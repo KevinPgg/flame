@@ -750,6 +750,8 @@ export const es: Messages = {
       new_rsvp_request: { title: "Nuevas solicitudes de RSVP", hint: "Cuando alguien pide asistir a tu evento" },
       ticket_sold: { title: "Ventas de tickets", hint: "Cuando se vende un ticket de tu evento" },
       auth_expiry_warning: { title: "Pago por vencer", hint: "Cuando la retención de tarjeta de un RSVP está por vencer" },
+      organization_approved: { title: "Organizador aprobado", hint: "Cuando Flame aprueba tu organización" },
+      organization_rejected: { title: "Organizador no aprobado", hint: "Cuando Flame no aprueba tu organización, con el motivo" },
     },
     scan: "Escanear tickets",
     scanHint: "Con tu cuenta o con el código de acceso de un evento.",
@@ -850,6 +852,18 @@ export const es: Messages = {
   languages: {
     en: "English",
     es: "Español",
+  },
+  inbox: {
+    title: "Notificaciones",
+    markAllRead: "Marcar todo como leído",
+    clearAll: "Borrar todo",
+    clearAllTitle: "¿Borrar todas las notificaciones?",
+    clearAllUnread: { one: "{count} sigue sin leer. No se puede deshacer.", other: "{count} siguen sin leer. No se puede deshacer." },
+    clearAllError: "No pudimos borrar tus notificaciones. Inténtalo de nuevo.",
+  },
+  pushes: {
+    organizationApproved: { title: "Ya estás aprobado", body: "{name} ya puede crear eventos en Flame." },
+    organizationRejected: { title: "Organizador no aprobado", body: "{name} no fue aprobada.", bodyReason: "{name} no fue aprobada. Motivo: {reason}" },
   },
   errors: {
     generic: "Algo salió mal. Inténtalo de nuevo.",

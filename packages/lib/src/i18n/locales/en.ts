@@ -752,6 +752,8 @@ export const en = {
       new_rsvp_request: { title: "New RSVP requests", hint: "When someone asks to attend your event" },
       ticket_sold: { title: "Ticket sales", hint: "When a ticket for your event is sold" },
       auth_expiry_warning: { title: "Payment expiring", hint: "When an RSVP card hold is about to expire" },
+      organization_approved: { title: "Organizer approved", hint: "When Flame approves your organization" },
+      organization_rejected: { title: "Organizer not approved", hint: "When Flame doesn’t approve your organization, with the reason" },
     },
     scan: "Scan tickets",
     scanHint: "With your account, or with an event access code.",
@@ -852,6 +854,20 @@ export const en = {
   languages: {
     en: "English",
     es: "Español",
+  },
+  /** The notifications panel (bell). */
+  inbox: {
+    title: "Notifications",
+    markAllRead: "Mark all read",
+    clearAll: "Clear all",
+    clearAllTitle: "Clear all notifications?",
+    clearAllUnread: { one: "{count} is still unread. This can’t be undone.", other: "{count} are still unread. This can’t be undone." },
+    clearAllError: "We couldn’t clear your notifications. Try again.",
+  },
+  /** Push / in-app notification texts, sent in the recipient's language (D4). */
+  pushes: {
+    organizationApproved: { title: "You’re approved", body: "{name} can now create events on Flame." },
+    organizationRejected: { title: "Organizer not approved", body: "{name} wasn’t approved.", bodyReason: "{name} wasn’t approved. Reason: {reason}" },
   },
   errors: {
     generic: "Something went wrong. Please try again.",

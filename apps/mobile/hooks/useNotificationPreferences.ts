@@ -22,6 +22,8 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   ticket_sold: true,
   ticket_received: true,
   auth_expiry_warning: true,
+  organization_approved: true,
+  organization_rejected: true,
 };
 
 export function useNotificationPreferences() {

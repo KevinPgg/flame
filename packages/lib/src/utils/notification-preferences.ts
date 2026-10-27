@@ -16,6 +16,10 @@ export const NOTIFICATION_PREFERENCE_ITEMS: ReadonlyArray<{ type: NotificationTy
   { type: "new_rsvp_request", organizer: true },
   { type: "ticket_sold", organizer: true },
   { type: "auth_expiry_warning", organizer: true },
+  // Answer to your organizer request: shown with the organizer ones (a pending organization
+  // already counts as membership) and always on.
+  { type: "organization_approved", organizer: true },
+  { type: "organization_rejected", organizer: true },
 ];
 
 export type NotificationPreferences = Record<NotificationType, boolean>;

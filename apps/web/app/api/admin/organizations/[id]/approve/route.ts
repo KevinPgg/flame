@@ -3,13 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabase/server";
 import { sendOrgApprovalEmail } from "../../../../../lib/email/org-notifications";
 import { requireSupportAdmin } from "../../../_lib";
+import { notifyOrganizationReview } from "../../../../../lib/org-review-notification";
 
 /**
  * POST /api/admin/organizations/[id]/approve
  *
  * Support-only (W7-H1). Sets `approved = true` (+ audit cols) and clears any
  * prior rejection. Idempotent — approving an already-approved org is a no-op.
- * Emails the owner on a fresh approval (fire-and-forget; failure never blocks).
+ * Emails the owner on a fresh approval and sends an in-app notification + push
+ * (fire-and-forget; failure never blocks).
  */
 type OwnerJoin =
   | { email: string | null; first_name: string | null; last_name: string | null }
@@ -36,7 +38,7 @@ export async function POST(
     const { data: org, error: fetchError } = await supabaseAdmin
       .from("organizations")
       .select(
-        `id, name, slug, approved,
+        `id, name, slug, approved, owner_user_id,
          owner:owner_user_id ( email, first_name, last_name )`,
       )
       .eq("id", orgId)
@@ -112,6 +114,13 @@ export async function POST(
         console.error("[POST approve] approval email failed", { orgId, error: err });
       });
     }
+
+    await notifyOrganizationReview({
+      ownerUserId: (org as { owner_user_id?: string | null }).owner_user_id,
+      organizationId: org.id,
+      organizationName: org.name,
+      decision: "approved",
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {
