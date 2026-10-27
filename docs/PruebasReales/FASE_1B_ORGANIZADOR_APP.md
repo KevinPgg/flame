@@ -184,15 +184,15 @@ Reinicia Metro con `-c`. No hace falta recompilar (selector de fechas y galería
 **Pagos** (owner/admin)
 - [x] Organización sin Stripe: tarjeta "Conecta Stripe para vender tickets", país (hoja), "Conectar con Stripe" → abre Stripe en el navegador. Al volver a la app, el estado se actualiza solo.
 - [x] Configuración incompleta: lista de cobros/pagos con ✓/⚠ y "Terminar configuración".
-- [ ] Conectada: "Disponible para retirar" (con borde rojo) y "Disponible pronto" con los mismos números que 🌐 web → Pagos; historial con estado de color; banco "•• 1234 · vía Stripe"; "Gestionar en Stripe" abre Stripe.
-- [ ] "Solicitar pago" pide confirmación con el monto y el banco → "Solicitaste $… · llegará a tu banco en unos días" (Stripe test). Pedir otro enseguida → "Ya hay un pago en camino…". Saldo bajo el mínimo → botón deshabilitado con el mínimo.
+- [x] Conectada: "Disponible para retirar" (con borde rojo) y "Disponible pronto" con los mismos números que 🌐 web → Pagos; historial con estado de color; banco "•• 1234 · vía Stripe"; "Gestionar en Stripe" abre Stripe. `//Aprobado por Kevin (10-27)`
+- [x] "Solicitar pago" pide confirmación con el monto y el banco → "Solicitaste $… · llegará a tu banco en unos días" (Stripe test). Pedir otro enseguida → "Ya hay un pago en camino…". Saldo bajo el mínimo → botón deshabilitado con el mínimo. `//Aprobado por Kevin (10-27)`
 
 **Ajustes de la organización**
 - [x] Se cargan Instagram, ciudad y descripción iguales a 🌐 web → Ajustes. Nombre fijo con su explicación.
 - [x] Cambiar ciudad → abajo "Cambios sin guardar" → "Guardar cambios" → "Todo guardado"; en la web aparece el cambio.
 - [x] Instagram con "@" o URL se limpia al salir del campo; uno inválido → error.
 - [x] Logo: "Subir nuevo" → galería con recorte cuadrado → se sube y se ve en el panel y en la web. Una imagen de menos de 400×400 → aviso con su tamaño. "Quitar" pide confirmación.
-- [ ] Con rol organizer/viewer: todo de solo lectura, abajo "Solo dueños y admins pueden editar la organización".
+- [x] Con rol organizer/viewer: todo de solo lectura, abajo "Solo dueños y admins pueden editar la organización". `//Aprobado por Kevin (10-27)`
 
 ## 1b.5b · Ajustes únicos · 📱 Celular
 Un solo "Ajustes" para tu persona (las cosas de la organización están en Manage).
@@ -217,8 +217,8 @@ Un solo "Ajustes" para tu persona (las cosas de la organización están en Manag
 **Cola de aprobación de soporte** (solo con una cuenta de soporte)
 - [x] 📱 Perfil → "Aprobación de organizadores · N esperando revisión" (con número rojo si hay) → pantalla 2.0 con Pendientes / Rechazadas.
 - [x] Aprobar pide confirmación → la organización sale de Pendientes y el dueño ya puede crear eventos (y recibe el e-mail).
-- [x] Rechazar → hoja con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación. `//Aparece como rechazo solo para el admin, el organizador no ve la razon del rechazo`
-- [ ] Con una cuenta normal, la entrada no aparece en el Perfil.
+- [x] Rechazar → hoja con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación. `//Aparece como rechazo solo para el admin, el organizador no ve la razon del rechazo` → resuelto 10-27 (notificación con el motivo)
+- [x] Con una cuenta normal, la entrada no aparece en el Perfil. `//Aprobado por Kevin (10-27)`
 
 **Notificaciones de organizador**
 - [x] Con otra cuenta compra un ticket de tu evento → en tu celular, campana → tocar "Ticket vendido" → abre **ese evento en la pestaña Compras (v2)**. (Las notificaciones viejas, de antes de este cambio, abren el panel de la organización.)
@@ -229,23 +229,23 @@ Un solo "Ajustes" para tu persona (las cosas de la organización están en Manag
 
 ## 10-27 · Arreglos antes de la fase 2 · 📱 Celular + 🌐 Web
 **Notificaciones — Borrar todo** (📱 campana)
-- [ ] Con todas leídas: "Borrar todo" las borra sin preguntar. Cerrar y abrir la campana (o reiniciar la app): **no vuelven**.
-- [ ] Con alguna sin leer: pregunta "¿Borrar todas las notificaciones? N siguen sin leer…". Cancelar → siguen ahí; confirmar → se borran y no vuelven.
-- [ ] Con la app en español, la campana dice "Notificaciones", "Marcar todo como leído", "Borrar todo".
+- [x] Con todas leídas: "Borrar todo" las borra sin preguntar. Cerrar y abrir la campana (o reiniciar la app): **no vuelven**.
+- [x] Con alguna sin leer: pregunta "¿Borrar todas las notificaciones? N siguen sin leer…". Cancelar → siguen ahí; confirmar → se borran y no vuelven.
+- [x] Con la app en español, la campana dice "Notificaciones", "Marcar todo como leído", "Borrar todo".
 
 **Aprobación de organizadores — recargar** (📱 cuenta de soporte)
-- [ ] Con otra cuenta, solicita una organización. En la cuenta de soporte, Perfil → desliza hacia abajo → "Aprobación de organizadores · N esperando revisión" sube sin salir de la pantalla.
-- [ ] Dentro de la pantalla de aprobaciones, deslizar hacia abajo también trae la nueva.
+- [x] Con otra cuenta, solicita una organización. En la cuenta de soporte, Perfil → desliza hacia abajo → "Aprobación de organizadores · N esperando revisión" sube sin salir de la pantalla.
+- [x] Dentro de la pantalla de aprobaciones, deslizar hacia abajo también trae la nueva.
 
 **Notificación de aprobado / no aprobado** (📱 la cuenta que solicitó; 💻 la terminal de la web)
-- [ ] Aprobar (desde 🌐 o 📱 soporte) → la cuenta dueña recibe "Ya estás aprobado · {Org} ya puede crear eventos en Flame." en la campana (y push si tiene el celular registrado). Tocarla abre el panel de esa organización.
-- [ ] Rechazar con motivo → recibe "Organizador no aprobado · {Org} no fue aprobada. Motivo: …" con el motivo completo; tocarla no navega. Sin motivo → solo "{Org} no fue aprobada."
-- [ ] Con la cuenta en inglés, los textos salen en inglés.
-- [ ] Ajustes → Notificaciones → "Como organizador": "Organizador aprobado" y "Organizador no aprobado" aparecen bloqueados ("Siempre activa"). Aparecen en cuanto tienes una organización pendiente.
+- [x] Aprobar (desde 🌐 o 📱 soporte) → la cuenta dueña recibe "Ya estás aprobado · {Org} ya puede crear eventos en Flame." en la campana (y push si tiene el celular registrado). Tocarla abre el panel de esa organización.
+- [x] Rechazar con motivo → recibe "Organizador no aprobado · {Org} no fue aprobada. Motivo: …" con el motivo completo; tocarla no navega. Sin motivo → solo "{Org} no fue aprobada."
+- [x] Con la cuenta en inglés, los textos salen en inglés.
+- [x] Ajustes → Notificaciones → "Como organizador": "Organizador aprobado" y "Organizador no aprobado" aparecen bloqueados ("Siempre activa"). Aparecen en cuanto tienes una organización pendiente.
 
 **Iniciar sesión con Google** (📱)
-- [ ] Cerrar sesión → "Continuar con Google" → elegir cuenta → vuelve a la app ya con sesión y **sin** la pantalla "Unmatched Route".
-- [ ] Repetir con la app cerrada del todo (si Android la reinicia al volver de Google): abre el inicio, sin error.
+- [x] Cerrar sesión → "Continuar con Google" → elegir cuenta → vuelve a la app ya con sesión y **sin** la pantalla "Unmatched Route".
+- [x] Repetir con la app cerrada del todo (si Android la reinicia al volver de Google): abre el inicio, sin error.
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.

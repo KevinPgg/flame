@@ -27,7 +27,7 @@ Barra inferior de 4: **Home · Explore · Tickets · You** (igual que la app hoy
 - **Fase 3 (pagos):** hoja de tickets por tier, códigos (acceso, promotor, descuento), checkout, confirmación, hoja de RSVP. En la fase 2 el bloque de tickets de la página de evento **se conserva tal cual por dentro** (mismos componentes y estado de `useCheckout`/`StripePurchaseFlow`), solo cambia lo que lo rodea.
 - **Fase 4 (BD):** guardar, seguir/seguidores, categorías, lineup, búsqueda de artistas y lugares, numeración de tickets. En la fase 2 **no se muestran** (como Finanzas en Manage), en vez de botones que no hacen nada.
 
-## Decisiones que necesito de Kevin antes de la 2.1
+## Decisiones planteadas (respondidas abajo)
 1. **Página de evento:** (a, recomendado) se rediseña en la fase 2 dejando dentro el bloque de compra actual, y la fase 3 lo reemplaza; o (b) toda la página de evento pasa a la fase 3 junto con el checkout (fase 2 más chica, pero el asistente convive más tiempo con la página vieja).
 2. **URLs públicas en la web:** (a, recomendado) la v2 se sirve en las **mismas URLs** (`/`, `/events/[slug]`, `/organizer/[slug]`) detrás de un interruptor, para no perder SEO ni enlaces compartidos; o (b) rutas `/v2/...` con redirección como en el organizador.
 3. **Home:** "flyer completo" o "cuadrado" (el prototipo deja comparar ambos).
@@ -35,7 +35,18 @@ Barra inferior de 4: **Home · Explore · Tickets · You** (igual que la app hoy
 5. **Bandeja en la web:** ¿se agrega la campana a la web (lectura por API) o queda solo en la app?
 6. **Ciudad elegida:** ¿se recuerda por dispositivo (sin BD) o en la cuenta (columna nueva = fase 4)?
 
-## Entregas propuestas (si se aceptan las recomendaciones)
+## Decisiones de Kevin (10-27)
+1. Página de evento: **(a)** se rediseña en la fase 2 con el bloque de compra actual dentro; la fase 3 lo reemplaza.
+2. Web pública: **mismas URLs** (`/`, `/events/[slug]`, `/organizer/[slug]`, `/discover`, `/account`, `/profile`) mostrando la v2 detrás de un interruptor. Nada de `/v2/` para el asistente.
+3. Home: **flyer completo** (Kevin, 10-27; no se hace la variante cuadrada).
+4. Datos en la app: **reutilizar los hooks que ya funcionan**.
+5. Bandeja en la web: **sí**, adaptada a PC (no copia de la app): panel desplegable desde la campana en pantallas anchas, página completa en el teléfono.
+6. Ciudad: **no se recuerda** (ni en el dispositivo ni en la cuenta). Es un filtro en memoria; la lista sale de las ciudades con eventos (no de Google Places, que era el autocompletado de crear evento). Al abrir se aplica la ciudad por defecto del catálogo como en v1 (Quito si tiene eventos, regla W0-Q3 de producción); si no, todas.
+
+Pruebas de la 1b (ronda 3), web Manage (ronda 3) y arreglos 10-27: **aprobadas por Kevin (10-27)**.
+
+## Entregas
+
 | Entrega | Contenido | Web | App |
 | --- | --- | --- | --- |
 | 2.0 | Este inventario y plan | — | — |
@@ -52,3 +63,50 @@ Mis tickets va antes que la página de evento a propósito: es lo que usa cada a
 **Riesgos:** [Probable] la página de evento es el punto más delicado (720 líneas con el checkout entrelazado en la app). [Seguro] el SEO de la web pública: la v2 debe seguir generando metadatos y vista previa al compartir. [Probable] el asistente es lo que ve el 100 % de los usuarios: cada entrega va detrás del interruptor hasta probarla.
 
 **Estimación [Adivinando]:** 3–4 semanas (plan del 10-08), más si se decide 4(b).
+
+## Entrega 2.1 (2026-10-27): marco del asistente + campana web
+**Cómo se sirve la v2 en las mismas URLs (web):** el middleware **reescribe** (no redirige: la dirección no cambia) cada URL pública que ya tiene pantalla v2 hacia `app/v2/attendee/…` (`app/lib/utils/attendee-v2-rewrite.ts`; cada entrega agrega sus rutas). Así la v2 conserva su carpeta, fuentes e idioma (`app/v2/layout.tsx`). `ATTENDEE_V1=true` lo apaga (las páginas que solo existen en v2 van al inicio). Ojo para la 2.2: `/v2(.*)` exige sesión en el middleware; las pantallas públicas (Home, evento, organizador) tendrán que quedar fuera de esa regla y con metadatos indexables (el layout v2 pone `noindex`).
+
+**App** (interruptor `EXPO_PUBLIC_ATTENDEE_V1=true` → v1)
+- `components/v2/attendee/AttendeeTabBar.tsx`: barra flotante del prototipo Inicio · Explorar · Tickets · Tú (mismas rutas de hoy; Tickets y Tú sin sesión → iniciar sesión; se oculta con el teclado; tocar Inicio estando en Inicio sube al principio).
+- `AttendeeTopBar.tsx`: logo; buscar (→ Explorar), campana con número de no leídas, Ajustes (se queda aquí hasta "Tú" en la 2.6). Mismo alto que la barra v1, para que las pantallas v1 de debajo no se muevan.
+- `RoleResolutionGate`: usa estas dos en vez de `Header`/`CustomTabBar` fuera de `/v2`.
+- Las pantallas siguen siendo v1 por dentro hasta su entrega (2.2–2.6).
+
+**Web**
+- `app/v2/attendee/AttendeeShell.tsx`: en PC, barra superior con las 4 secciones (en sus URLs públicas), buscar, campana y Ajustes; en teléfono, la barra flotante de la app. Sin sesión: "Iniciar sesión", y Tickets/Tú llevan a iniciar sesión.
+- **Campana adaptada a PC** (decisión 5): en pantalla ancha abre un **panel desplegable** bajo la campana (Esc, clic fuera o abrir una notificación lo cierran; "Ver todas" → página); en teléfono es un enlace a la página **`/notifications`** (nueva, reescrita a `/v2/attendee/notifications`). En PC cada notificación tiene su botón de borrar (la app desliza). Mismas reglas que la app: "Borrar todo" pregunta solo si hay no leídas. Miniatura del flyer cuando la notificación es de un evento. Se refresca cada minuto y al volver a la pestaña.
+- **API nueva `/api/me/notifications`** (GET últimas 50 con `href` y `image`; PATCH marcar leídas `{ids}|{all}`; DELETE `{ids}|{all}`), siempre sobre las filas propias. `app/lib/notifications/web-link.ts` decide adónde abre cada tipo en la web (organizador → pantallas v2 con `?org=slug`; asistente → Mis tickets o la página del evento; rechazo → nada).
+- La app sigue leyendo notificaciones directo de Supabase (decisión 4).
+
+**Tests:** app 113/113 (+9 `AttendeeShell`); web v2 204 + API organizador (incluye `me-notifications` 4, `attendee-lib` 7, `AttendeeShell` 11 nuevos); lib 377; tsc web 0, app 40 (heredados). **Causa de los renders vacíos en tests de la app** (10-27): en esta versión de Testing Library `fireEvent.press` es asíncrono; sin `await` los `act()` se solapan. Corregido en `Inbox` y `AttendeeShell` (sin reordenar tests). **No verificado:** aspecto real en navegador y celular.
+
+**Siguiente:** 2.2 Home (las dos variantes de tarjeta para comparar, hoja de ciudades sin recordar).
+
+## Ronda 2.1 de Kevin (10-27)
+- 📱 La campana del encabezado no se veía (el número la tapaba o no aparecía). [Adivinando] causa: las clases de posición negativas del número dentro del botón redondo en Android. Rehecho con estilos fijos como el encabezado v1 (ícono centrado, número de 18 px en la esquina con borde negro). **Pendiente de confirmar en el celular.**
+
+## Entrega 2.2 (2026-10-27): Home con flyer completo
+- **Reglas compartidas** (`packages/lib/src/utils/home-feed.ts`, 7 tests): `groupEventsByDay` (primero "Ahora mismo" = empezados sin terminar, luego Hoy / Mañana / fechas, en la zona horaria de cada evento), `cityCounts`, `priceSummary` (Gratis / precio / Desde / Agotado / Tickets pronto), `feedWhen` ("vie, 31 oct · 22:00") y `feedDayTitle`. `getLowestPrice` (texto v1 en inglés) ahora usa `lowestPriceInfo` sin cambiar su resultado.
+- **App:** `components/v2/attendee/home/` — `HomeFeed` (lista por día, refrescar deslizando, subir arriba con Inicio, vacío por ciudad con "Ver todas las ciudades", error con reintentar), `EventFeedCard` (organizador + compartir `flme.co/events/{slug}`; flyer 4:5 con degradado; título, fecha · hora y precio sobre el flyer; etiqueta RSVP), `CitySheet` (Todas + ciudades con su número). El botón de ciudad reemplaza al logo en el encabezado cuando estás en Inicio (`contexts/AttendeeCityContext.tsx`, en memoria). `useAppEvents` ahora trae el logo del organizador y devuelve también los eventos sin mapear (`rawEvents`); v1 igual. `(tabs)/index.tsx` muestra la v2 salvo `EXPO_PUBLIC_ATTENDEE_V1=true`.
+- **Web:** `/` se reescribe a `app/v2/attendee/home` (pública e indexable: los metadatos SEO de la home v1 pisan el `noindex` del layout v2). `app/lib/home-events.ts` (misma consulta que la home v1 + logo, sin tiers ocultos, caché 60 s). `HomeView`: mismas reglas; **adaptada a PC** con las tarjetas en cuadrícula (1 / 2 / 3 por fila); ciudad en un botón arriba que abre un selector; compartir con el menú del sistema o copiando el enlace ("Enlace copiado").
+- **Pie de página** en el marco web del asistente con los mismos enlaces legales y de contacto que el v1 (Privacidad, Términos, Términos de compra, Acuerdo de organizador, Cookies, FAQs, Contacto, reembolso). **Anotado para Kevin:** en el pie v1 el teléfono que se ve ("+593 (04) 2510 9060") no coincide con el enlace (`tel:+59342510906`); se copió igual, falta saber cuál es el correcto.
+- Fuera de la Home (como el prototipo): el buscador (está en Explorar) y guardar (fase 4). Agrupar ciudades por país necesita el país en los eventos (fase 4).
+
+**Tests:** app 120/120 (+7 `HomeFeed`); web v2 + API 473 (+5 `HomeView`, +1 pie, +1 reescritura); lib 384 (+7). tsc web 0, lib 0, app 40 (heredados). **No verificado:** aspecto real, flyers reales, compartir en el celular.
+
+**Siguiente:** 2.3 Mis tickets + ticket QR (deslizar entre tickets sin recargar).
+
+
+## Corrección 2.2 (ronda de Kevin, 10-27)
+- **Decisión 6 cambiada (Kevin):** la ciudad con la que abre Inicio **se configura en Ajustes y se guarda solo en el celular** (SecureStore; sin BD ni cuenta, no se comparte con la web ni entre teléfonos). Opciones: Automática (regla de Quito, por defecto), Todas las ciudades o una ciudad. Una ciudad guardada sin eventos próximos → Automática. Lo que se elige en la hoja de Inicio sigue valiendo solo para la sesión; guardar un valor nuevo en Ajustes lo aplica enseguida. La web no cambia (sigue la regla de Quito).
+  - `apps/mobile/lib/v2/default-city.ts` (leer/guardar + `resolveDefaultCity`), `AttendeeCityContext` (lee el valor al arrancar, `setDefaultPref`), `HomeFeed` (aplica el valor de Ajustes), bloque "Ciudad de inicio" en `UserSettings` (solo con la v2 del asistente; funciona sin sesión).
+- 📱 **Pin encima del nombre** en el botón de ciudad: la fila (pin · nombre · ▾) ahora es su propio `View` con estilos fijos, íconos en cajas de 16 px y el texto sin relleno de fuente. [Adivinando] causa: la fila dependía del estilo-función del `Pressable`; pendiente de confirmar en el celular.
+- 🌐 **Dos campanas en el teléfono:** la clase compartida del botón llevaba `inline-flex` y el botón del panel `hidden lg:inline-flex`; con Tailwind 4 ganaba `inline-flex` y se veían las dos. Cada campana pone ahora su propio display (test que lo cuida en `AttendeeShell`).
+- 🌐 **Selector de ciudad:** se cierra al hacer clic fuera. Opción nueva `closeOnBackdrop` en el `Modal` v2 (apagada por defecto: en los formularios del organizador un clic fuera perdería lo escrito).
+- **Degradado del flyer:** se probó un degradado más corto (.97 → .42 en 20 % → transparente en 60 %) y **Kevin pidió volver al anterior** (10-27): `to top` .97 en 0 %, .82 en 42 %, transparente en 100 %, capa del 60 % de alto, igual en web y app.
+
+**Verificación:** jest app 128/128 (+3 `default-city`, +3 `HomeFeed`, +2 `UserSettings`); vitest web v2 231/231 (+1 `HomeView` clic fuera, bell en `AttendeeShell`); web v2 + API 513/519 — los 6 que fallan son `api/purchase/create-payment-intent` (no tocado en esta ronda; [Probable] depende de variables de Stripe del entorno); lib 384/384; tsc web 0, app 40 (heredados, ninguno en archivos nuevos). **Cómo se verificó:** la VM de esta sesión no tenía espacio para la copia Linux (`/sessions` lleno); se empaquetó el código en `_to_delete/flme-src-verify.tgz` (puedes borrarlo) y se corrió en el contenedor en la nube con `node-linker=hoisted` (sin él, jest no transforma react-native).
+**No verificado:** aspecto real en el celular y el navegador, degradado con flyers reales.
+
+**Siguiente:** 2.3 Mis tickets + ticket QR (deslizar entre tickets sin recargar).

@@ -44,8 +44,8 @@ Correcciones de tu ronda 1. Marca cada una y, si pasa, marca también el caso or
 - [x] **Enviar tickets:** debajo de "Tickets gratis / Transferencias" ahora se explica qué hace cada modo.
 
 **Resultado ronda 2 (Kevin, 2026-10-21/22):** búsqueda del panel, resaltado del menú y explicación de Enviar tickets OK (10-22). interruptores, logo, badge RSVP, co-organizadores y código de tier OK; payout de prueba OK tras cambiar la cuenta bancaria de prueba a `110000000` / `000123456789` (la anterior simula `debit_not_authorized`). La búsqueda con tildes que fallaba era la de **Descubrir en la app** (Expo web), no la del panel.
-- [ ] **Descubrir (app, `localhost:8081`)**: buscar "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
-- [ ] **"Gestionar en Stripe" con error de país**: tras limpiar la organización que quedó con cuenta de Ecuador (ver "Cosas conocidas"), conectar de nuevo con United States funciona.
+- [x] **Descubrir (app, `localhost:8081`)**: buscar "carnaval" encuentra "Carnával" y al revés (también en el panel del organizador y RSVPs de la app actual).
+- [x] **"Gestionar en Stripe" con error de país**: tras limpiar la organización que quedó con cuenta de Ecuador (ver "Cosas conocidas"), conectar de nuevo con United States funciona.
 
 ## 0. Preparación
 - [x] **Build de producción:** `pnpm --filter web build` termina sin errores. Si falla en "prerendering page /404" con `Cannot read properties of null (reading 'useContext')`, es React duplicado por la instalación local (ver "Cosas conocidas"); avísame.
@@ -161,7 +161,7 @@ Web:
 - [x] Organizer asignado: gestiona cuentas pero en Código ve "Solo dueños y admins…" (sin ver el código). Viewer / organizer no asignado: solo explicaciones.
 App (celular, build Android):
 - [] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo. `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
-- [ ] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event". `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego`
+- [x] Con sesión de un miembro o de una persona agregada: escanea su evento; una persona agregada a otro evento → "You can't scan tickets for this event". `//Esto se valida con telefono app y aún no modificamos nada ahí, guardemos esta prueba para luego` `//Probado en la app (1b.6), aprobado 10-27`
 - [x] Expo web (navegador, `localhost:8081`): no aparece "Scan Tickets" en Ajustes ni "QR Scanner" en el panel; `/scanner` → inicio. 
 - [x] (Emergencia) `SCANNER_ACCESS_CODES=off` en `.env` y reinicio: el código deja de dar acceso (403). 
 
@@ -184,9 +184,9 @@ App (celular, build Android):
 - [x] Conectada: "Disponible para retirar" y "Disponible pronto" coinciden con el saldo de la cuenta conectada en el dashboard de Stripe (test). Historial y banco (••últimos 4) coinciden.
 - [x] Con saldo disponible (en test: pagar con la tarjeta `4000 0000 0000 0077`, que deja el saldo disponible al instante): "Solicitar pago" → confirmación con monto y banco → aviso "Solicitaste…"; el payout aparece en el historial y en Stripe; el saldo baja.
 - [x] Solicitar otra vez enseguida → "Ya hay un pago en camino". `//El modal bloquea un reintento inmediato (está bien)`
-- [ ] Saldo menor a $1 → botón deshabilitado con "El pago mínimo es $1.00".
-- [ ] "Gestionar en Stripe" abre el dashboard Express.
-- [ ] Si pruebas por ngrok u otro dominio que no sea `localhost:3000`, "Solicitar pago" responde "CSRF validation failed" salvo que `NEXT_PUBLIC_APP_URL` sea ese dominio (protección de la API, no es un fallo).
+- [x] Saldo menor a $1 → botón deshabilitado con "El pago mínimo es $1.00".
+- [x] "Gestionar en Stripe" abre el dashboard Express.
+- [x] Si pruebas por ngrok u otro dominio que no sea `localhost:3000`, "Solicitar pago" responde "CSRF validation failed" salvo que `NEXT_PUBLIC_APP_URL` sea ese dominio (protección de la API, no es un fallo).
 
 ## 8. RSVPs
 - [x] Lista de eventos con RSVP (propios y co-organizados), actuales/pasados, pendientes por evento.
