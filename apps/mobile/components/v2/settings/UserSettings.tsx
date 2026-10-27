@@ -16,6 +16,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as WebBrowser from "expo-web-browser";
 import * as Application from "expo-application";
 import {
+  cityCounts,
   NOTIFICATION_PREFERENCE_ITEMS,
   NON_DISMISSABLE_NOTIFICATION_TYPES,
   SUPPORTED_LANGUAGES,
@@ -32,6 +33,10 @@ import { deregisterPushToken } from "../../../lib/notifications";
 import { SCANNING_SUPPORTED } from "../../../lib/scanner-platform";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { useMyOrganizations } from "../../../hooks/v2/useOrganizerModel";
+import { useAppEvents } from "../../../hooks/useAppEvents";
+import { useOptionalAttendeeCity } from "../../../contexts/AttendeeCityContext";
+import { DEFAULT_CITY_ALL, DEFAULT_CITY_AUTO } from "../../../lib/v2/default-city";
+import { attendeeV2Enabled } from "../../../lib/v2/flags";
 import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, type IconName } from "../ui";
 import { Group, SelectRow, Toggle } from "../form/ui";
 import { Avatar } from "../people/PeoplePicker";
@@ -152,6 +157,8 @@ export function UserSettings() {
           </Block>
         )}
 
+        {attendeeV2Enabled() && <HomeCityBlock />}
+
         {signedIn && <NotificationsBlock />}
 
         {SCANNING_SUPPORTED && (
@@ -211,6 +218,42 @@ export function UserSettings() {
         onCancel={() => setDeleteStep(0)}
       />
     </View>
+  );
+}
+
+/**
+ * City the Home opens on (Kevin 2026-10-27), saved on this phone only — works signed out too.
+ * Options: Automatic (Quito when it has events), All cities, and the cities with events today
+ * (plus the saved one if it has none right now, so the setting never disappears).
+ */
+function HomeCityBlock() {
+  const ctx = useOptionalAttendeeCity();
+  if (!ctx || ctx.defaultPref === null) return null;
+  return <HomeCityRow pref={ctx.defaultPref} onChange={ctx.setDefaultPref} />;
+}
+
+function HomeCityRow({ pref, onChange }: { pref: string; onChange: (p: string) => void }) {
+  const { t } = useI18n();
+  const { data } = useAppEvents();
+  const raw = ((data as { rawEvents?: Array<{ city?: string | null }> } | undefined)?.rawEvents ?? []) as Array<{ city?: string | null }>;
+  const cities = cityCounts(raw).map((x) => x.city);
+  if (pref !== DEFAULT_CITY_AUTO && pref !== DEFAULT_CITY_ALL && !cities.includes(pref)) cities.push(pref);
+  return (
+    <Block title={t("userSettings.homeCity")}>
+      <Group>
+        <SelectRow
+          label={t("userSettings.homeCityLabel")}
+          value={pref}
+          options={[
+            { value: DEFAULT_CITY_AUTO, label: t("userSettings.homeCityAuto") },
+            { value: DEFAULT_CITY_ALL, label: t("common.allCities") },
+            ...cities.map((city) => ({ value: city, label: city })),
+          ]}
+          onChange={onChange}
+        />
+      </Group>
+      <Text className="mt-1.5 font-v2-ui text-[12.5px] text-v2-c50">{t("userSettings.homeCityHint")}</Text>
+    </Block>
   );
 }
 

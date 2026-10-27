@@ -11,8 +11,11 @@ export function Modal({
   onClose,
   children,
   footer,
+  closeOnBackdrop = false,
 }: {
   open: boolean;
+  /** Clicking outside the box closes it. Off by default: forms would lose what was typed. */
+  closeOnBackdrop?: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
@@ -34,6 +37,13 @@ export function Modal({
       onCancel={(e) => {
         e.preventDefault();
         onClose();
+      }}
+      onClick={(e) => {
+        // A click on the backdrop lands on the <dialog> itself, outside its box.
+        if (!closeOnBackdrop || e.target !== ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (!inside) onClose();
       }}
       className="m-auto flex max-h-[86dvh] w-[min(94vw,460px)] flex-col overflow-hidden rounded-v2-card bg-v2-ink2 p-0 text-v2-cream backdrop:bg-black/70"
     >

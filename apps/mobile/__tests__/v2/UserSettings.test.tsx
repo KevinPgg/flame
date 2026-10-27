@@ -6,6 +6,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { UserSettings } from "../../components/v2/settings/UserSettings";
 import { clerkAccountPortalUrl } from "../../lib/v2/clerk-portal";
 import { renderV2 } from "./helpers";
+import { AttendeeCityProvider } from "../../contexts/AttendeeCityContext";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -28,6 +29,15 @@ jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn(async () => ({}
 jest.mock("expo-application", () => ({ nativeApplicationVersion: "1.2.3" }));
 jest.mock("expo-image-picker", () => ({ requestMediaLibraryPermissionsAsync: jest.fn(), launchImageLibraryAsync: jest.fn() }));
 jest.mock("expo-image-manipulator", () => ({ manipulateAsync: jest.fn(), SaveFormat: { JPEG: "jpeg" } }));
+jest.mock("../../hooks/useAppEvents", () => ({
+  useAppEvents: () => ({ data: { rawEvents: [{ city: "Quito" }, { city: "Quito" }, { city: "Guayaquil" }] } }),
+}));
+const mockStore = new Map<string, string>();
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async (k: string) => mockStore.get(k) ?? null),
+  setItemAsync: jest.fn(async (k: string, v: string) => void mockStore.set(k, v)),
+  deleteItemAsync: jest.fn(async (k: string) => void mockStore.delete(k)),
+}));
 
 let orgs: unknown[] = [];
 beforeEach(() => {
@@ -95,6 +105,31 @@ describe("settings, signed in", () => {
     await fireEvent.press(screen.getByText("Sign out"));
     await waitFor(() => expect(mockAuth.signOut).toHaveBeenCalled());
     expect(mockReplace).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("home city (saved on this phone)", () => {
+  it("Automatic by default; choosing a city saves it on the phone; Automatic clears it; works signed out", async () => {
+    mockStore.clear();
+    mockAuth.isSignedIn = false;
+    await renderV2(
+      <AttendeeCityProvider>
+        <UserSettings />
+      </AttendeeCityProvider>,
+    );
+    const row = await screen.findByLabelText("Open Home on: Automatic");
+    await fireEvent.press(row);
+    expect(screen.getByRole("radio", { name: "All cities" })).toBeTruthy();
+    await fireEvent.press(screen.getByRole("radio", { name: "Guayaquil" }));
+    await waitFor(() => expect(mockStore.get("flme.v2.defaultCity")).toBe("Guayaquil"));
+    await fireEvent.press(screen.getByLabelText("Open Home on: Guayaquil"));
+    await fireEvent.press(screen.getByRole("radio", { name: "Automatic" }));
+    await waitFor(() => expect(mockStore.has("flme.v2.defaultCity")).toBe(false));
+  });
+
+  it("not shown outside the app frame (no city provider)", async () => {
+    await renderV2(<UserSettings />);
+    expect(screen.queryByText("Home city")).toBeNull();
   });
 });
 
