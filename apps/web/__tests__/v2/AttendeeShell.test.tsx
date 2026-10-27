@@ -50,14 +50,14 @@ function setup(ui: React.ReactElement, opts: { items?: unknown[]; routes?: Route
 }
 
 describe("attendee frame (web)", () => {
-  it("four sections at their public URLs, the current one marked; search, bell and Settings", async () => {
+  it("four sections at their public URLs, the current one marked; search and bell", async () => {
     nav.path = "/account";
     setup(<AttendeeShell><p>body</p></AttendeeShell>);
     const desk = screen.getAllByRole("navigation", { name: "Main" })[0];
     expect(within(desk).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["/", "/discover", "/account", "/profile"]);
     expect(within(desk).getByRole("link", { name: "Tickets" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/discover");
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/v2/account");
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument(); // inside "You" since 2.6
     expect(await screen.findByRole("button", { name: "Notifications, 1 unread" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Notifications, 1 unread" })).toHaveAttribute("href", "/notifications");
     // One bell per screen size: the panel bell must not carry a bare inline-flex next to hidden

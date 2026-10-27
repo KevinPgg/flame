@@ -8,9 +8,7 @@ import {
   DEFAULT_CATALOG_CITY,
   feedDayTitle,
   feedWhen,
-  formatCentsAsPrice,
   groupEventsByDay,
-  priceSummary,
   type FeedDay,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
@@ -19,21 +17,9 @@ import { OrgAvatar } from "../../components/OrgAvatar";
 import { ErrorBox } from "../../components/ErrorBox";
 import { Modal } from "../../components/Modal";
 import type { HomeEvent } from "../../../lib/home-events";
+import { usePriceLine } from "../usePriceLine";
 
 const capitalize = (s: string) => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
-
-function usePriceLine() {
-  const { t } = useI18n();
-  return (e: HomeEvent): string | null => {
-    const p = priceSummary(e.ticket_tiers);
-    if (!p) return null;
-    const money = (cents: number) => formatCentsAsPrice(cents, e.currency ?? "USD");
-    if (p.kind === "free") return t("common.free");
-    if (p.kind === "price") return money(p.cents);
-    if (p.kind === "from") return t("common.from", { price: money(p.cents) });
-    return p.kind === "soldOut" ? t("home.soldOut") : t("home.notYet");
-  };
-}
 
 /**
  * Home card, full flyer (fase 2.2; Kevin's choice): organizer + share, the flyer at 4:5 with

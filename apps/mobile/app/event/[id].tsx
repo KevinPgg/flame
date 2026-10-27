@@ -43,6 +43,9 @@ import { useCheckout } from "../../hooks/useCheckout";
 import { apiPost, ApiError } from "../../lib/api";
 import { useOptionalAuth } from "../../hooks/useOptionalAuth";
 import { useUserTickets } from "../../hooks/useUserTickets";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { EventHeader } from "../../components/v2/attendee/event/EventHeader";
+import { MoreFromOrganizer, useOrganizerFromFeed } from "../../components/v2/attendee/event/MoreFromOrganizer";
 import {
   getTabBarPaddingBottom,
   TAB_BAR_PILL_HEIGHT,
@@ -63,6 +66,9 @@ export default function EventDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { data: event, isLoading, error, refetch } = useEventDetails(id);
+  // Fase 2.4: Flame 2.0 surroundings (header + "More from") around the unchanged purchase block.
+  const v2 = attendeeV2Enabled();
+  const feedOrg = useOrganizerFromFeed(id);
 
   const { isSignedIn, isConfigured, getToken } = useOptionalAuth();
 
@@ -524,7 +530,7 @@ export default function EventDetailScreen() {
       : primaryOrgName;
 
   return (
-    <View className="flex-1 bg-background">
+    <View className={v2 ? "flex-1 bg-black" : "flex-1 bg-background"}>
       <ScrollView
         ref={scrollRef}
         onScroll={handleScrollEvent}
@@ -543,7 +549,8 @@ export default function EventDetailScreen() {
           />
         }
       >
-        {/* Background glow blobs */}
+        {/* Background glow blobs (v1 only) */}
+        {!v2 && (<>
         <GlowBlob
           top={100}
           left={-100}
@@ -558,8 +565,17 @@ export default function EventDetailScreen() {
           height={600}
           color="rgba(255, 10, 0, 0.05)"
         />
+        </>)}
 
         <View className="gap-[21px]">
+          {v2 ? (
+            <EventHeader
+              event={event}
+              organizer={organizerName ? { names: organizerName, slug: feedOrg?.slug ?? event.organizations?.slug ?? null, logoUrl: feedOrg?.logo_url ?? null } : null}
+              onShare={handleShare}
+            />
+          ) : (
+          <>
           {/* ─── Back Navigation ─── */}
           {/* Figma node 518:7762 — arrow-left + "Go Back" */}
           <Pressable
@@ -581,6 +597,9 @@ export default function EventDetailScreen() {
             isRsvp={!!isRsvp}
             onShare={handleShare}
           />
+
+          </>
+          )}
 
           {/* ─── Ticket Selection (onLayout captures scroll offset) ─── */}
           {/* W4-C3: Promoter + Access Code render via the `belowTitle` slot so
@@ -628,6 +647,13 @@ export default function EventDetailScreen() {
             />
           )}
         </View>
+        {v2 ? (
+          <MoreFromOrganizer
+            eventId={event.id}
+            organizerSlug={feedOrg?.slug ?? event.organizations?.slug ?? null}
+            organizerName={primaryOrgName ?? ""}
+          />
+        ) : null}
       </ScrollView>
 
       {/* ─── Floating CTA (above tab bar, matches tab bar dimensions) ─── */}

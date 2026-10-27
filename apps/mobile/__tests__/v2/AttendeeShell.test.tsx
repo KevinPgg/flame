@@ -69,15 +69,22 @@ describe("attendee tab bar", () => {
 });
 
 describe("attendee top bar", () => {
-  it("search, notifications with the unread count, settings", async () => {
+  it("search and notifications with the unread count; Settings lives in You when signed in (2.6)", async () => {
     const onBell = jest.fn();
     await renderV2(<AttendeeTopBar unreadCount={3} onNotificationPress={onBell} />);
     await fireEvent.press(screen.getByRole("button", { name: "Notifications, 3 unread" }));
     expect(onBell).toHaveBeenCalled();
     expect(screen.getByText("3")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Search" }));
+    expect(screen.queryByRole("button", { name: "Settings" })).toBeNull();
+    expect(mockNav.push.mock.calls.map((c) => c[0])).toEqual(["/discover"]);
+  });
+
+  it("signed out: Settings stays in the bar (scan with a code, legal)", async () => {
+    mockAuth.isSignedIn = false;
+    await renderV2(<AttendeeTopBar unreadCount={0} />);
     await fireEvent.press(screen.getByRole("button", { name: "Settings" }));
-    expect(mockNav.push.mock.calls.map((c) => c[0])).toEqual(["/discover", "/settings"]);
+    expect(mockNav.push).toHaveBeenCalledWith("/settings");
   });
 
   it("no unread → no number", async () => {

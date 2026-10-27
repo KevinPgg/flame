@@ -112,6 +112,7 @@ export {
   directionsUrl,
   walletDayTime,
 } from "./wallet";
+export { normalizeSearch, searchExplore, featuredFirst } from "./explore";
 export type { Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./wallet";
 export { lowestPriceInfo } from "./availability";
 export type { LowestPriceInfo, PriceableTier } from "./availability";

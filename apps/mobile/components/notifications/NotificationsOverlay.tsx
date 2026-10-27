@@ -26,6 +26,8 @@ import { colors, CustomRefreshControl } from "@project-flame/ui";
 import { resolveNotificationDeepLink } from "../../lib/notification-deep-links";
 import type { NotificationRecord } from "../../hooks/useNotifications";
 import { NotificationCard } from "./NotificationCard";
+import { InboxRow } from "../v2/attendee/InboxCard";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
 import { useI18n } from "../../lib/i18n";
 import { ConfirmDialog } from "../v2/ui";
 
@@ -156,7 +158,7 @@ function SwipeableNotificationRow({
           {/* Inner view reports its natural height via onLayout so measuredHeight
               stays accurate; the outer Animated.View drives the collapse animation. */}
           <View onLayout={handleLayout}>
-            <NotificationCard item={item} onPress={onPress} />
+            {attendeeV2Enabled() ? <InboxRow item={item} onPress={onPress} /> : <NotificationCard item={item} onPress={onPress} />}
           </View>
         </Animated.View>
       </GestureDetector>

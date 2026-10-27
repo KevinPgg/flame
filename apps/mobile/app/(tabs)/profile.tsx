@@ -27,19 +27,17 @@ import { useUserOrgs, type UserOrg } from "../../hooks/useUserOrgs";
 import { useMemberRoleContext } from "../../contexts/MemberRoleContext";
 import { SupportAdminSection } from "../../components/profile/SupportAdminSection";
 import { OrgApprovalsEntry } from "../../components/v2/support/OrgApprovals";
-import { organizerV2Enabled } from "../../lib/v2/flags";
+import { organizerV2Enabled, attendeeV2Enabled } from "../../lib/v2/flags";
+import { You } from "../../components/v2/attendee/you/You";
 import { PastItemsAccordion } from "../../components/shared/PastItemsAccordion";
 import { TicketSearchBar } from "../../components/dashboard/TicketSearchBar";
 
 /** Show a search bar once "My Organizers" reaches this many orgs. */
 const ORG_SEARCH_THRESHOLD = 8;
 
+/** "You": Flame 2.0 (fase 2.6) unless EXPO_PUBLIC_ATTENDEE_V1=true. */
 export default function ProfileScreen() {
-  return (
-    <RequireAuthGate>
-      <ProfileContent />
-    </RequireAuthGate>
-  );
+  return <RequireAuthGate>{attendeeV2Enabled() ? <You /> : <ProfileContent />}</RequireAuthGate>;
 }
 
 function ProfileContent() {

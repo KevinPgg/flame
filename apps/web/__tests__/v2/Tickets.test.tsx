@@ -100,6 +100,34 @@ describe("QR ticket (web)", () => {
     await waitFor(() => expect(vi.mocked(window.history.replaceState).mock.calls.at(-1)?.[2]).toBe("/account/ticket/t1"));
   });
 
+  it("jumping 1 → 3 doesn't flicker through 2 while the strip glides; a swipe afterwards still moves it", async () => {
+    const user = userEvent.setup({ delay: null });
+    renderV2(<TicketView id="t1" />);
+    const strip = screen.getByTestId("ticket-strip");
+    Object.defineProperty(strip, "clientWidth", { configurable: true, value: 100 });
+    strip.scrollTo = vi.fn();
+    const scrollTo = (x: number) => {
+      strip.scrollLeft = x;
+      fireEvent.scroll(strip);
+    };
+    await user.click(screen.getByRole("tab", { name: "Ticket 3" }));
+    expect(screen.getByText("Ticket 3 of 3")).toBeInTheDocument();
+    scrollTo(60); // passing over ticket 2
+    scrollTo(100);
+    expect(screen.getByText("Ticket 3 of 3")).toBeInTheDocument();
+    scrollTo(200); // arrived
+    expect(screen.getByText("Ticket 3 of 3")).toBeInTheDocument();
+    scrollTo(100); // the person swipes back
+    expect(screen.getByText("Ticket 2 of 3")).toBeInTheDocument();
+  });
+
+  it("the strips slide without a visible scrollbar", () => {
+    renderV2(<TicketView id="t1" />);
+    expect(screen.getByTestId("ticket-strip")).toHaveClass("v2-no-scrollbar");
+    expect(screen.getByTestId("ticket-strip").style.scrollbarWidth).toBe("none");
+    expect(screen.getByRole("tablist")).toHaveClass("v2-no-scrollbar");
+  });
+
   it("courtesy QR keeps v1's content; zoom opens on white and closes with a click or Esc", async () => {
     const user = userEvent.setup({ delay: null });
     renderV2(<TicketView id="promo" />);

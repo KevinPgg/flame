@@ -46,11 +46,25 @@ describe("attendeeV2Route", () => {
     expect(attendeeNeedsSignIn("/notifications/")).toBe(true);
     expect(attendeeNeedsSignIn("/")).toBe(false);
   });
+  it("event page and public organizer profile (2.4); the organizer's own screens stay out", () => {
+    expect(attendeeV2Route("/events/luna", false)).toEqual({ rewrite: "/v2/attendee/events/luna" });
+    expect(attendeeV2Route("/events/luna", true)).toBeNull();
+    expect(attendeeV2Route("/organizer/club-uno", false)).toEqual({ rewrite: "/v2/attendee/organizer/club-uno" });
+    for (const own of ["/organizer", "/organizer/settings", "/organizer/team", "/organizer/rsvps", "/organizer/event", "/organizer/event/abc", "/organizer/rsvps/abc"]) {
+      expect(attendeeV2Route(own, false)).toBeNull();
+    }
+    expect(attendeeNeedsSignIn("/events/luna")).toBe(false);
+    expect(attendeeNeedsSignIn("/organizer/club-uno")).toBe(false);
+  });
   it("leaves the rest alone (until their delivery adds them)", () => {
-    expect(attendeeV2Route("/events/luna", false)).toBeNull();
+    expect(attendeeV2Route("/events/luna/extra", false)).toBeNull();
   });
   it("ATTENDEE_V1: v2-only pages go home, the rest untouched", () => {
     expect(attendeeV2Route("/notifications", true)).toEqual({ redirect: "/" });
     expect(attendeeV2Route("/discover", true)).toBeNull();
+    expect(attendeeV2Route("/discover", false)).toEqual({ rewrite: "/v2/attendee/explore" });
+    expect(attendeeV2Route("/profile", false)).toEqual({ rewrite: "/v2/attendee/you" });
+    expect(attendeeNeedsSignIn("/profile")).toBe(true);
+    expect(attendeeNeedsSignIn("/discover")).toBe(false);
   });
 });

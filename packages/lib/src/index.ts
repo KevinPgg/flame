@@ -489,5 +489,6 @@ export {
   directionsUrl,
   walletDayTime,
 } from "./utils";
+export { normalizeSearch, searchExplore, featuredFirst } from "./utils";
 export type { Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./utils";
 export type { FeedDay, FeedEventTime, PriceSummary, LowestPriceInfo, PriceableTier } from "./utils";

@@ -8,11 +8,16 @@ const V2_SCREENS: Record<string, string> = {
   "/notifications": "/v2/attendee/notifications", // 2.1 (new: the web had no notifications page)
   "/": "/v2/attendee/home", // 2.2 (public, indexable)
   "/account": "/v2/attendee/tickets", // 2.3 My tickets
+  "/discover": "/v2/attendee/explore", // 2.5 Explore (public, indexable)
+  "/profile": "/v2/attendee/you", // 2.6 You
 };
 
 /** Paths with a parameter: [pattern, target builder]. */
 const V2_PATTERNS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^\/account\/ticket\/([^/]+)$/, (m) => `/v2/attendee/tickets/${m[1]}`], // 2.3 QR ticket
+  [/^\/events\/([^/]+)$/, (m) => `/v2/attendee/events/${m[1]}`], // 2.4 event page (public, indexable)
+  // 2.4 public organizer profile — not the organizer's own screens that live under /organizer/.
+  [/^\/organizer\/(?!(?:settings|team|rsvps|event)$)([^/]+)$/, (m) => `/v2/attendee/organizer/${m[1]}`],
 ];
 
 /** Paths that only exist in v2: with ATTENDEE_V1=true they go home instead of a 404. */
@@ -35,7 +40,7 @@ export function attendeeV2Route(pathname: string, v1: boolean): AttendeeRoute {
 }
 
 /** Public paths whose v2 screen needs a signed-in person (checked before rewriting). */
-export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account"]);
+export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account", "/profile"]);
 
 export function attendeeNeedsSignIn(pathname: string): boolean {
   const path = clean(pathname);

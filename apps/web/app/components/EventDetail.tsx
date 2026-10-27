@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, type ReactNode } from "react";
 import { useAuth, SignInButton } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
@@ -87,6 +87,14 @@ interface EventDetailEvent extends Pick<
 
 interface EventDetailProps {
   event: EventDetailEvent;
+  /**
+   * Flame 2.0 page (fase 2.4, decision 1a): the v2 page brings its own header (flyer, organizer,
+   * title, when, where, description) and what follows the tickets; the purchase block in between
+   * (tiers, codes, quantity, checkout, RSVP, modals) is this component, unchanged. Fase 3
+   * replaces it. Without these props the v1 page renders exactly as before.
+   */
+  header?: ReactNode;
+  footer?: ReactNode;
 }
 
 // Type aliases for strong typing
@@ -97,7 +105,8 @@ type TicketStage = NonNullable<TicketTier["ticket_stages"]>[number];
 export type RegistrationDataValue = string | number | boolean | string[] | null;
 export type RegistrationData = Record<string, RegistrationDataValue>;
 
-export default function EventDetail({ event }: EventDetailProps) {
+export default function EventDetail({ event, header, footer }: EventDetailProps) {
+  const v2Frame = header !== undefined;
   const { isSignedIn, userId } = useAuth();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -142,6 +151,17 @@ export default function EventDetail({ event }: EventDetailProps) {
   // "Buy Tickets" floating pill — visible initially, hides on scroll (matching mobile)
   const [showBuyTicketsPill, setShowBuyTicketsPill] = useState(true);
   useEffect(() => {
+    if (v2Frame) {
+      // Flame 2.0 frame scrolls inside its own container (not the window): hide the pill once
+      // the tickets are on screen.
+      const section = document.getElementById("ticket-section");
+      if (!section || typeof IntersectionObserver === "undefined") return;
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShowBuyTicketsPill(false);
+      });
+      io.observe(section);
+      return () => io.disconnect();
+    }
     const handleScroll = () => {
       if (showBuyTicketsPill && window.scrollY > window.innerHeight * 0.15) {
         setShowBuyTicketsPill(false);
@@ -149,7 +169,7 @@ export default function EventDetail({ event }: EventDetailProps) {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [showBuyTicketsPill]);
+  }, [showBuyTicketsPill, v2Frame]);
 
   // Capture promoter code from URL to preserve through checkout
   const promoterCode = searchParams?.get("promoter");
@@ -1020,7 +1040,7 @@ export default function EventDetail({ event }: EventDetailProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-8 pt-16">
+    <div className={v2Frame ? "pb-8" : "min-h-screen bg-background pb-8 pt-16"}>
       {/* ─── Modals (unchanged) ─── */}
       {event.registration_form_config &&
         (() => {
@@ -1110,6 +1130,8 @@ export default function EventDetail({ event }: EventDetailProps) {
 
       {/* ─── Main Content — max-w-[800px] matching all other pages ─── */}
       <div className="max-w-[800px] mx-auto px-4 pt-6 flex flex-col gap-[21px]">
+        {v2Frame ? header : (
+          <>
         {/* ─── Back Navigation (matching mobile) ─── */}
         <button
           onClick={() => router.back()}
@@ -1199,6 +1221,9 @@ export default function EventDetail({ event }: EventDetailProps) {
             </div>
           )}
         </div>
+
+          </>
+        )}
 
         {/* ─── Ticket Tiers — glass cards matching mobile TicketTierCard ─── */}
         <div id="ticket-section">
@@ -1710,10 +1735,12 @@ export default function EventDetail({ event }: EventDetailProps) {
         )}
       </div>
 
+      {footer}
+
       {/* ─── Floating "Buy Tickets" / "Request RSVP" pill (matching mobile) ─── */}
       {allTiers.length > 0 && (
         <div
-          className={`fixed bottom-6 left-6 right-6 z-50 max-w-[800px] mx-auto transition-opacity duration-200 ${
+          className={`fixed ${v2Frame ? "bottom-[92px] lg:bottom-6" : "bottom-6"} left-6 right-6 z-50 max-w-[800px] mx-auto transition-opacity duration-200 ${
             showBuyTicketsPill ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         >
@@ -1721,7 +1748,9 @@ export default function EventDetail({ event }: EventDetailProps) {
             onClick={() => {
               setShowBuyTicketsPill(false);
               const ticketSection = document.getElementById("ticket-section");
-              if (ticketSection) {
+              if (ticketSection && v2Frame) {
+                ticketSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              } else if (ticketSection) {
                 const NAVBAR_HEIGHT = 64; // h-16 fixed navbar
                 const top = ticketSection.getBoundingClientRect().top + window.scrollY - NAVBAR_HEIGHT - 16;
                 window.scrollTo({ top, behavior: "smooth" });

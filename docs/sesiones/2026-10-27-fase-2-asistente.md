@@ -125,4 +125,27 @@ Mis tickets va antes que la página de evento a propósito: es lo que usa cada a
 - 🌐 **Sin barra de desplazamiento** en la tira de tickets ni en los botones "Ticket N": clase `.v2-no-scrollbar` en `v2.css` (`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`) y `scrollbarWidth: none` en línea. [Probable] la clase arbitraria de Tailwind que había no se generaba.
 - Tests: web v2 240/240 (+2: salto sin parpadeo y tiras sin barra). tsc web 0.
 
-**Siguiente:** 2.4 Página de evento (sin el bloque de compra) + perfil de organizador.
+## Entregas 2.4–2.7 (2026-10-27, Kevin: "avancemos con lo que falta de la fase 2")
+**2.4 Página de evento + perfil de organizador**
+- Decisión 1a aplicada: **el bloque de compra es la v1 por dentro**. Web: `EventDetail` recibe `header` y `footer` opcionales; sin ellos es idéntico a la v1. Con ellos pinta la cabecera v2 en lugar de (volver · flyer · organizador · título · fecha/lugar) y deja intactos tiers, códigos, cantidad, checkout, RSVP y modales. Como el marco v2 desplaza un contenedor propio (no la ventana), la píldora "Buy Tickets" se esconde con un `IntersectionObserver` y lleva a los tickets con `scrollIntoView`; en el teléfono sube encima de la barra flotante. App: `app/event/[id].tsx` cambia solo la cabecera (`EventHeader` v2) y agrega "Más de…" con la v2; sin barra de arriba en `/event/` y `/organizer/` (traen su propia fila atrás/compartir).
+- Web: datos y metadatos del evento movidos tal cual a `app/lib/event-page.ts` (la v1 y la v2 los comparten; se agregó `logo_url` del organizador). `/events/[slug]` → `app/v2/attendee/events/[slug]` (indexable, JSON-LD igual). `/organizer/[slug]` → `app/v2/attendee/organizer/[slug]` con `app/lib/organizer-public.ts` (propios + co-organizados, como la v1); **la reescritura excluye** `/organizer/settings|team|rsvps|event` (pantallas del organizador).
+- "Cuándo" en una línea si el evento dura menos de 24 h (las noches que pasan de medianoche).
+- `EventTile` (tarjeta chica) en web y app: "Más de", perfil y Explorar.
+
+**2.5 Explorar**
+- `packages/lib/src/utils/explore.ts`: `searchExplore` (eventos por nombre, lugar, ciudad u organizador; organizadores por nombre o ciudad; sin tildes ni mayúsculas; todas las palabras), `featuredFirst`. Web `/discover` → `app/v2/attendee/explore` (organizadores en `app/lib/explore-data.ts`; `home-events` ahora trae `is_featured`). App `app/discover.tsx` → `Explore`.
+- "Organiza tus eventos": web con las mismas rutas que el `HostBanner` v1; app con la hoja `BecomeOrganizerSheet` v1 (oculta si ya tienes una organización aprobada, como la v1). Organización en revisión → mensaje en la tarjeta (antes la v1 mandaba a Mis tickets, donde estaba el aviso que la 2.3 quitó).
+- **Arreglo encontrado:** desde la 2.2 `/?onboarding=true` (adonde mandan `/onboarding`, `/organizer` sin organización, `HostBanner`…) ya no abría la ventana de crear organización porque `/` es la Home v2. `OnboardingFromUrl` en la Home v2 la abre con la misma ventana de la v1.
+- FAQs: el contenido compartido de la v1 (`faqs`, solo inglés).
+
+**2.6 Tú, bandeja y bienvenida**
+- Tú (web `/profile` → `app/v2/attendee/you`, app `(tabs)/profile` → `You`): foto, nombre, correo, Editar perfil y **Ajustes** (salen de la barra de arriba con sesión; en la app siguen arriba sin sesión), Eventos (asistidos) y Organizadores, Mis organizadores (Gestionar → misma ruta que la v1 / En revisión / Nuevo organizador), aprobación de organizadores para soporte, eventos pasados.
+- Bandeja en la app: `InboxCard` v2 dentro del mismo panel (mismas acciones); flyer del evento si está en memoria (lee la caché de eventos, no consulta), tiempo relativo traducido sin `Intl.RelativeTimeFormat` (Hermes). La web ya tenía su bandeja v2 (2.1).
+- Bienvenida: web `/sign-in` y `/sign-up` con `WelcomeFrame` (collage de flyers, frase en el idioma del navegador, Clerk en oscuro con `appearance`), `ATTENDEE_V1=true` → página blanca de siempre. App: collage + frase detrás del inicio de sesión existente (Apple/Google/correo sin cambios).
+
+**2.7 Cierre**
+- Interruptor revisado: app — cada pantalla mira `attendeeV2Enabled()` (Inicio, evento, organizador, Explorar, Mis tickets, ticket, Tú, inicio de sesión, bandeja, barras); web — `attendeeV2Route` no reescribe nada con `ATTENDEE_V1=true` (y `/notifications` → `/`), y las páginas de Clerk vuelven a la v1.
+- **Verificación:** jest app 152/152 (23 suites); vitest web v2 + API 537/543 (los 6 de `create-payment-intent` fallan por sus datos de prueba: "Hold missing reservation currency" — la ruta ahora exige moneda y el test no la manda; no se tocó); lib 397/397; tsc web 0, lib 0, app 40 (los mismos heredados). Verificado en el contenedor en la nube; los archivos se pasaron a la carpeta con `_to_delete/fase2-sync.tgz` (comprobado con md5).
+- **No verificado:** todo lo visual y los flujos reales (comprar desde la página nueva, iniciar sesión con Apple/Google sobre el fondo nuevo, Clerk en oscuro, escanear QR).
+
+**Siguiente:** pruebas reales de la fase 2 (`PruebasReales/FASE_2_ASISTENTE.md`, 2.2 a 2.7) y luego la fase 3 (pagos: hoja de tickets, códigos, checkout, RSVP).

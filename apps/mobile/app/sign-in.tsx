@@ -16,6 +16,8 @@ import { useOptionalAuth } from "../hooks/useOptionalAuth";
 import { useSignInHandlers } from "../hooks/useSignInHandlers";
 import { PillButton } from "@project-flame/ui";
 import * as WebBrowser from "expo-web-browser";
+import { attendeeV2Enabled } from "../lib/v2/flags";
+import { WelcomeBackdrop, WelcomeHeadline } from "../components/v2/attendee/WelcomeBackdrop";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -89,6 +91,7 @@ function SignInContent() {
       <SignInBackButton />
 
       <BrandingHeader mode={mode} />
+      {attendeeV2Enabled() && mode === "sign-in" ? <WelcomeHeadline /> : null}
 
       {/* Apple App Store Guideline 4.8 — Sign in with Apple must be offered
           as an equivalent login option. Rendered first per Apple HIG
@@ -170,9 +173,10 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-background"
+      className={attendeeV2Enabled() ? "flex-1 bg-black" : "flex-1 bg-background"}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {attendeeV2Enabled() ? <WelcomeBackdrop /> : null}
       <SignInContent />
     </KeyboardAvoidingView>
   );

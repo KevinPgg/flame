@@ -56,6 +56,8 @@ export function RoleResolutionGate({
   const attendeeV2 = attendeeV2Enabled();
   // The 2.0 QR ticket (2.3) is full screen like the prototype: no top bar, no tab bar.
   const v2 = pathname.startsWith("/v2") || (attendeeV2 && pathname.startsWith("/ticket/"));
+  // Event page and organizer profile (2.4) bring their own back / share row: no top bar there.
+  const ownTopRow = attendeeV2 && (pathname.startsWith("/event/") || pathname.startsWith("/organizer/"));
 
   return (
     <AttendeeCityProvider>
@@ -72,6 +74,7 @@ export function RoleResolutionGate({
           </View>
         )}
         {!v2 &&
+          !ownTopRow &&
           (attendeeV2 ? (
             <AttendeeTopBar onNotificationPress={onNotificationOpen} unreadCount={notificationsState.unreadCount} />
           ) : (

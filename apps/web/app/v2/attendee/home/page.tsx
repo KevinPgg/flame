@@ -3,6 +3,8 @@ import { generateMetadata as generateSEOMetadata } from "../../../lib/seo-config
 import { getHomeEvents, type HomeEvent } from "../../../lib/home-events";
 import { AttendeeShell } from "../AttendeeShell";
 import HomeView from "./HomeView";
+import { Suspense } from "react";
+import { OnboardingFromUrl } from "../OnboardingFromUrl";
 
 /**
  * Flame 2.0 Home (fase 2.2), served at `/` by the middleware rewrite (decision 2026-10-27:
@@ -28,6 +30,9 @@ export default async function HomePage() {
   return (
     <AttendeeShell active="home">
       <HomeView events={events} failed={failed} />
+      <Suspense fallback={null}>
+        <OnboardingFromUrl />
+      </Suspense>
     </AttendeeShell>
   );
 }

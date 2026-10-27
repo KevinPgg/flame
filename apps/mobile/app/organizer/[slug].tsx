@@ -43,8 +43,17 @@ import { useOrganizations } from "../../hooks/useOrganizations";
 import { usePastOrgEvents } from "../../hooks/usePastOrgEvents";
 import { useOrgCohostEventIds } from "../../hooks/useOrgCohostEventIds";
 import { filterEventsByOrganizer } from "@project-flame/lib";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { OrganizerProfile } from "../../components/v2/attendee/organizer/OrganizerProfile";
 
-export default function OrganizerEventsScreen() {
+/** Public organizer profile: Flame 2.0 (fase 2.4) unless EXPO_PUBLIC_ATTENDEE_V1=true. */
+export default function OrganizerScreen() {
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const clean = (typeof slug === "string" ? slug : Array.isArray(slug) ? slug[0] : "")?.trim() ?? "";
+  return attendeeV2Enabled() ? <OrganizerProfile slug={clean} /> : <OrganizerEventsScreen />;
+}
+
+function OrganizerEventsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { slug } = useLocalSearchParams<{ slug: string }>();

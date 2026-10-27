@@ -32,7 +32,7 @@ const circle =
 
 /**
  * Flame 2.0 attendee frame for the web (fase 2.1). A computer gets a top bar with the four
- * sections, search, the bell (panel) and Settings; a phone gets the app's floating bottom bar
+ * sections, search and the bell (panel) — Settings moved into "You" in 2.6; a phone gets the app's floating bottom bar
  * and the bell opens the full notifications page. Signed out: Tickets / You lead to sign in,
  * and the bell gives way to "Sign in".
  */
@@ -107,12 +107,8 @@ export function AttendeeShell({ children, active }: { children: ReactNode; activ
               <Icon name="search" size={19} />
             </Link>
             {isLoaded && isSignedIn ? (
-              <>
-                <NotificationBell />
-                <Link href="/v2/account" aria-label={t("userSettings.title")} className={circle}>
-                  <Icon name="settings" size={19} />
-                </Link>
-              </>
+              // Settings lives inside "You" since 2.6 (prototype), not in the bar.
+              <NotificationBell />
             ) : isLoaded ? (
               <Link
                 href={signInHref(pathname)}

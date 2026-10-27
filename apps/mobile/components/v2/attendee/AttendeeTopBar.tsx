@@ -13,6 +13,7 @@ import { useI18n } from "../../../lib/i18n";
 import { FlameLogo } from "../../FlameLogo";
 import { Icon, type IconName } from "../ui";
 import { useOptionalAttendeeCity } from "../../../contexts/AttendeeCityContext";
+import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 
 /** Same height as the v1 Header so the v1 screens underneath keep their layout. */
 export const ATTENDEE_TOPBAR_HEIGHT = 60;
@@ -84,6 +85,7 @@ export function AttendeeTopBar({ unreadCount = 0, onNotificationPress }: { unrea
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const cityCtx = useOptionalAttendeeCity();
+  const signedIn = useOptionalAuth().isSignedIn === true;
   const onHome = (pathname === "/" || pathname === "/index") && !!cityCtx;
   const cityName = cityCtx?.city ?? t("common.allCities");
   const bellLabel = unreadCount > 0 ? `${t("inbox.title")}, ${t("inbox.unread", { count: unreadCount })}` : t("inbox.title");
@@ -119,7 +121,8 @@ export function AttendeeTopBar({ unreadCount = 0, onNotificationPress }: { unrea
       <View className="flex-row items-center gap-2">
         <Circle icon="search" label={t("common.search")} onPress={() => router.push("/discover" as Href)} />
         <Circle icon="bell" label={bellLabel} onPress={() => onNotificationPress?.()} badge={unreadCount} />
-        <Circle icon="settings" label={t("userSettings.title")} onPress={() => router.push("/settings" as Href)} />
+        {/* Settings moved into "You" (2.6); signed out there's no "You", so it stays here. */}
+        {!signedIn ? <Circle icon="settings" label={t("userSettings.title")} onPress={() => router.push("/settings" as Href)} /> : null}
       </View>
     </View>
   );

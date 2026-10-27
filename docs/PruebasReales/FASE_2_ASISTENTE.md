@@ -1,6 +1,6 @@
 # Fase 2 — Asistente (web + app) · pruebas reales
 
-Lista viva: se amplía con cada entrega de la fase 2 (última actualización 2026-10-27, 2.3).
+Lista viva: se amplía con cada entrega de la fase 2 (última actualización 2026-10-27, 2.4–2.7: fase 2 completa).
 Marca `[x]` lo que pase; si algo falla, anota debajo (`//…`): pantalla, qué hiciste, qué esperabas, qué pasó y el error de consola.
 
 ## 0. Preparación · 💻 PC
@@ -96,7 +96,54 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 - [ ] Después del salto, deslizar con el dedo (o el trackpad) sigue moviendo el selector al ticket que queda.
 - [ ] No se ve barra de desplazamiento ni bajo los tickets ni bajo los botones "Ticket N" (Chrome, Edge, Safari y Firefox si los tienes).
 
+## 2.4 · Página de evento y perfil de organizador
+**App · 📱 Celular**
+- [ ] Abrir un evento desde Inicio: sin la barra de arriba; atrás y compartir en círculos; flyer grande sobre sus colores difuminados; logo y nombre del organizador (y co-organizadores "A & B") → toca y abre su perfil; título grande.
+- [ ] "Cuándo" en una línea para eventos de una noche ("vie, 30 oct · 22:00 – 03:00"); "Lugar" con botón **Cómo llegar** (abre Maps); si pide RSVP, la línea "Requiere RSVP…".
+- [ ] Descripción en 3 líneas con **Más / Menos**; los enlaces y @instagram siguen tocables.
+- [ ] **El bloque de compra es el de siempre** (tiers, códigos de acceso y promotor, cantidad, checkout, RSVP, pago) y funciona igual: compra uno gratis y uno pagado de prueba, y un RSVP. La píldora "Buy Tickets" lleva a los tickets.
+- [ ] Debajo, "Más de {organizador}" con sus otros eventos (deslizar a los lados); tocar abre ese evento.
+- [ ] Perfil de organizador: portada (o el logo difuminado si no tiene), logo grande, nombre, ciudad, @instagram (abre Instagram), "N eventos próximos", descripción, compartir; Próximos en 2 columnas (incluye los co-organizados); Pasados. Sin seguidores ni "Seguir" (fase 4).
+- [ ] Interruptor `EXPO_PUBLIC_ATTENDEE_V1=true`: vuelven la página de evento y el perfil de siempre.
+
+**Web · 🌐 PC y teléfono**
+- [ ] `/events/<slug>` (con y sin sesión): misma dirección, página nueva dentro del marco del asistente; el bloque de compra de siempre funciona (comprar, RSVP, códigos). En el teléfono la píldora "Buy Tickets" queda **encima** de la barra flotante.
+- [ ] Ctrl+U en `/events/<slug>`: `<title>` y descripción del evento, `og:image` del flyer, el JSON-LD del evento, y **sin** `noindex`.
+- [ ] "Más de {organizador}" en cuadrícula. Compartir: menú del sistema o "Enlace copiado".
+- [ ] `/organizer/<slug>`: perfil nuevo (como la app); Ctrl+U sin `noindex`. **Las pantallas del organizador** `/organizer`, `/organizer/settings`, `/organizer/team`, `/organizer/rsvps`, `/organizer/event/…` siguen funcionando como antes.
+- [ ] `ATTENDEE_V1=true` → página de evento y perfil de siempre.
+
+## 2.5 · Explorar
+**App · 📱 Celular** (pestaña Explorar o la lupa)
+- [ ] "Explorar", buscador; abajo: Eventos destacados (los marcados como destacados primero), Organizadores destacados (portada + logo → perfil), tarjeta "Organiza tus eventos" y Preguntas frecuentes (la primera abierta) + "Ver todas las preguntas".
+- [ ] Buscar por nombre de evento, lugar, ciudad u organizador; sin importar tildes ("cumbia" encuentra "Cúmbia"); también encuentra organizadores. Sin resultados → mensaje y "Borrar búsqueda".
+- [ ] "Postular como organizador": sin sesión → iniciar sesión; con sesión → la hoja de solicitud de siempre. Con una organización en revisión → "Tu organización está en revisión…". Con una aprobada → la tarjeta no aparece (como la v1).
+
+**Web · 🌐 PC y teléfono** (`/discover` o la lupa)
+- [ ] Lo mismo adaptado a PC (resultados en cuadrícula). Ctrl+U: metadatos de Discover y sin `noindex`.
+- [ ] "Postular como organizador": sin sesión → iniciar sesión y luego la creación de organización; con sesión sin organización → **se abre la ventana de crear organización**; aprobada → "Crear un evento" (va al panel del organizador); en revisión → mensaje.
+- [ ] **Arreglo importante (venía roto desde la 2.2):** `http://localhost:3000/?onboarding=true` con sesión abre otra vez la ventana de crear organización (es adonde mandan `/onboarding`, `/organizer` sin organización, etc.).
+
+## 2.6 · Tú, bandeja y bienvenida
+**App · 📱 Celular**
+- [ ] Pestaña Tú: foto, nombre y correo; "Eventos" (a los que asististe) y "Organizadores"; **Editar perfil** y **Ajustes** (Ajustes ya no está arriba con sesión; sin sesión sigue arriba).
+- [ ] Mis organizadores: aprobada → "Gestionar" abre su panel (como antes); en revisión → "En revisión"; "Nuevo organizador" abre la hoja de solicitud. Si eres soporte de Flame, la entrada "Aprobación de organizadores".
+- [ ] Eventos pasados (5) → abren su ticket; "Historial" → Mis tickets.
+- [ ] Campana: cada notificación de un evento próximo muestra su flyer a la izquierda (si no, un ícono); "Hace 5 min", "Ayer"… en tu idioma; punto rojo si no está leída; tocar, deslizar para borrar y "Borrar todo" como antes.
+- [ ] Iniciar sesión: detrás, collage de flyers reales que se funde a negro, y "Todas las noches que valen la pena…". **Apple, Google y correo funcionan igual** (iniciar sesión y crear cuenta).
+
+**Web · 🌐 PC y teléfono**
+- [ ] `/profile`: lo mismo que la app (Ajustes → `/v2/account`; organizador aprobado → su panel; "Nuevo organizador" abre la ventana de crear organización). Sin sesión → iniciar sesión.
+- [ ] El engranaje ya no está en la barra de arriba (está dentro de Tú).
+- [ ] `/sign-in` y `/sign-up`: fondo negro con el collage, logo, la frase (en el idioma del navegador) y el formulario de Clerk en oscuro. Iniciar sesión, crear cuenta, Google, "¿olvidaste tu contraseña?" y el código por correo funcionan. El inicio de sesión en ventana emergente (botón "Iniciar sesión" de la v1) sigue igual.
+
+## 2.7 · Cierre de la fase 2
+- [ ] Recorrido completo en el celular: Inicio → evento → comprar → Mis tickets → QR → Tú → Ajustes → Explorar → organizador.
+- [ ] Recorrido completo en la web (PC y teléfono) con y sin sesión.
+- [ ] Interruptor completo: con `EXPO_PUBLIC_ATTENDEE_V1=true` (app) y `ATTENDEE_V1=true` (web) **todo** el asistente vuelve a la v1 (Inicio, evento, organizador, Explorar/Discover, Mis tickets, ticket, Tú/Profile, iniciar sesión) y `/notifications` lleva al inicio.
+
 ## Cosas conocidas
-- Las pantallas del asistente siguen siendo las actuales hasta su entrega: evento y organizador (2.4), Explorar (2.5), Tú y bienvenida (2.6). En la web, el marco nuevo se ve en `/`, `/notifications` y `/account`.
-- La Home no tiene buscador (está en Explorar, la lupa) ni guardar (fase 4). Las ciudades no se agrupan por país: los eventos no guardan el país todavía.
-- El engranaje de Ajustes sigue arriba hasta que "Tú" (2.6) lo lleve dentro, como el prototipo.
+- El bloque de compra de la página de evento (tiers, códigos, checkout, RSVP) es el de la v1 por dentro, con su estilo y en inglés: lo reemplaza la fase 3.
+- La Home no tiene buscador (está en Explorar) ni guardar (fase 4). Sin seguidores, "Seguir", guardados, categorías, line-up ni búsqueda de artistas (fase 4). Las ciudades no se agrupan por país.
+- Las preguntas frecuentes de Explorar están solo en inglés (es el contenido que ya existía, compartido con la v1).
+- La pantalla de Tú y Explorar en la web reutilizan la ventana de "crear organización" de la v1 (su estilo es el de siempre).

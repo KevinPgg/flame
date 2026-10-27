@@ -20,6 +20,8 @@ export type FeedEvent = {
   ends_at: string;
   timezone?: string | null;
   city?: string | null;
+  venue?: string | null;
+  organization_id?: string | null;
   requires_rsvp?: boolean | null;
   currency?: string | null;
   organizations?: { name: string; slug: string; logo_url?: string | null } | null;

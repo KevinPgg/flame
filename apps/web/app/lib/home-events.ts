@@ -18,6 +18,7 @@ export type HomeEvent = {
   venue: string | null;
   city: string | null;
   requires_rsvp: boolean | null;
+  is_featured?: boolean | null;
   currency: string | null;
   timezone: string | null;
   organizations: { name: string; slug: string; logo_url: string | null } | null;
@@ -39,7 +40,7 @@ async function fetchHomeEvents(): Promise<HomeEvent[]> {
   let q = supabaseAdmin
     .from("events")
     .select(
-      `id, name, slug, image_url, starts_at, ends_at, venue, city, requires_rsvp, currency, timezone,
+      `id, name, slug, image_url, starts_at, ends_at, venue, city, requires_rsvp, is_featured, currency, timezone,
        organizations ( name, slug, logo_url ),
        ticket_tiers ( id, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, is_hidden,
          ticket_stages ( id, price_cents, quantity, sold_quantity, order_index ) )`
@@ -59,4 +60,4 @@ async function fetchHomeEvents(): Promise<HomeEvent[]> {
   });
 }
 
-export const getHomeEvents = unstable_cache(fetchHomeEvents, ["home-events-v2"], { revalidate: 60 });
+export const getHomeEvents = unstable_cache(fetchHomeEvents, ["home-events-v2.5"], { revalidate: 60 });
