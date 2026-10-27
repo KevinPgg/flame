@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 import React from "react";
+import { configure } from "@testing-library/react";
+
+// The VM/CI runs with 2 CPUs: the default 1s for findBy/waitFor made v2 tests
+// (Payouts, Team...) fail at random. Waiting longer only delays real failures.
+configure({ asyncUtilTimeout: 4000 });
 
 // Mock Next.js router - will be overridden in individual tests
 vi.mock("next/navigation", () => ({
