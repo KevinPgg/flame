@@ -17,11 +17,15 @@ export const routes = {
   /** Tier editor; `tierId` = "new" for a new tier. */
   tier: (eventId: string, slug: string, tierId: string) =>
     `/v2/organizer/event/${eventId}/tiers/${encodeURIComponent(tierId)}?${q(slug)}`,
+  /** Organization hub (prototype "Manage organization"): team, payouts, settings. */
+  manage: (slug: string) => `/v2/organizer/manage?${q(slug)}`,
   team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
   payouts: (slug: string) => `/v2/organizer/payouts?${q(slug)}`,
   settings: (slug: string) => `/v2/organizer/settings?${q(slug)}`,
-  /** The person's own settings (language, sign out); not tied to an organization. */
+  /** The person's one Settings (account, language, notifications…); not tied to an organization. */
   account: () => "/v2/account",
+  /** Organizer approvals for Flame support. */
+  supportQueue: () => "/v2/support/organizations",
   // attendee side (v1 for now)
   attendeeHome: () => "/",
   discover: () => "/discover",

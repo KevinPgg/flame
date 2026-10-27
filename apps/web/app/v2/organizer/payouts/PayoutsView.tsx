@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  canAccessOrgSettings,
   DEFAULT_CONNECT_COUNTRY,
   STRIPE_CONNECT_COUNTRIES,
   balanceRows,
@@ -119,10 +120,10 @@ export default function PayoutsView({
       pastEvents={model?.past ?? []}
       section="payouts"
       title={t("payouts.title")}
-      backHref={routes.dashboard(organization.slug)}
+      backHref={canAccessOrgSettings(role) ? routes.manage(organization.slug) : routes.dashboard(organization.slug)}
       crumbs={[
-        { label: t("organizer.myOrganizers"), href: routes.organizers() },
         { label: organization.name, href: routes.dashboard(organization.slug) },
+        ...(canAccessOrgSettings(role) ? [{ label: t("manage.title"), href: routes.manage(organization.slug) }] : []),
         { label: t("payouts.title") },
       ]}
       me={me}

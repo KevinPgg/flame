@@ -68,10 +68,10 @@ export default function SettingsView({
       pastEvents={model?.past ?? []}
       section="settings"
       title={t("orgSettings.title")}
-      backHref={routes.dashboard(organization.slug)}
+      backHref={canAccessOrgSettings(role) ? routes.manage(organization.slug) : routes.dashboard(organization.slug)}
       crumbs={[
-        { label: t("organizer.myOrganizers"), href: routes.organizers() },
         { label: organization.name, href: routes.dashboard(organization.slug) },
+        ...(canAccessOrgSettings(role) ? [{ label: t("manage.title"), href: routes.manage(organization.slug) }] : []),
         { label: t("orgSettings.title") },
       ]}
       me={me}

@@ -4,7 +4,7 @@ import { loadMe } from "../lib/organizer-context";
 import AccountView from "./AccountView";
 
 /**
- * /v2/account — the signed-in person's own settings (account, language, sign out). Kept apart
+ * /v2/account — the person's one Settings (account, language, notifications, sign out, delete). Kept apart
  * from organization settings (decision 2026-10-20). Phase 2 folds it into the attendee profile.
  */
 export const dynamic = "force-dynamic";

@@ -64,9 +64,10 @@ describe("OrganizerShell (prototype layout)", () => {
     setup();
     const side = screen.getByRole("complementary", { name: "Menu" });
     expect(within(side).getByRole("link", { name: /RSVPs/ })).toHaveTextContent("3");
-    expect(within(side).getByRole("link", { name: "Team" })).toBeInTheDocument();
-    expect(within(side).getByRole("link", { name: "Settings" })).toBeInTheDocument();
-    expect(within(side).getByRole("link", { name: "Payouts" })).toHaveAttribute("href", "/v2/organizer/payouts?org=kora");
+    // Team, Payouts and org Settings live inside the Manage hub (same as the app).
+    expect(within(side).getByRole("link", { name: "Manage" })).toHaveAttribute("href", "/v2/organizer/manage?org=kora");
+    expect(within(side).queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
+    expect(within(side).queryByRole("link", { name: "Payouts" })).not.toBeInTheDocument();
     expect(within(side).queryByRole("link", { name: "Scan" })).not.toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Create event" })).toHaveAttribute("href", "/v2/organizer/create?org=kora");
     expect(within(side).getByText("Upcoming")).toBeInTheDocument();
@@ -74,19 +75,24 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(within(side).getByText("Past")).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: /Event old/ })).toBeInTheDocument();
     expect(within(side).getByRole("link", { name: "Discover" })).toHaveAttribute("href", "/discover");
-    expect(within(side).getByRole("link", { name: "My account" })).toHaveAttribute("href", "/v2/account");
+    expect(within(side).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/v2/account");
     expect(within(side).getByRole("link", { name: "My tickets" })).toHaveAttribute("href", "/account");
     expect(await within(side).findByText("Stripe connected", {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it("viewer: no team, payouts, settings, create event or Stripe status", async () => {
+  it("viewer: no Manage, create event or Stripe status; personal Settings stays", async () => {
     const { fetchMock } = setup({ role: "viewer" });
     const side = screen.getByRole("complementary", { name: "Menu" });
-    expect(within(side).queryByRole("link", { name: "Team" })).not.toBeInTheDocument();
-    expect(within(side).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
-    expect(within(side).queryByRole("link", { name: "Payouts" })).not.toBeInTheDocument();
+    expect(within(side).queryByRole("link", { name: "Manage" })).not.toBeInTheDocument();
+    expect(within(side).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/v2/account");
     expect(within(side).queryByRole("link", { name: "Create event" })).not.toBeInTheDocument();
     expect(fetchMock.calls.some((c) => c.url.includes("/api/stripe/"))).toBe(false);
+  });
+
+  it("Manage is active on its sub-pages", () => {
+    setup({ section: "payouts" });
+    const side = screen.getByRole("complementary", { name: "Menu" });
+    expect(within(side).getByRole("link", { name: "Manage" })).toHaveAttribute("aria-current", "page");
   });
 
   it("Stripe not finished → link to payouts", async () => {

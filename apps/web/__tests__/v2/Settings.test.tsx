@@ -14,8 +14,11 @@ vi.mock("next/navigation", () => ({
     throw new Error(`REDIRECT ${url}`);
   }),
 }));
-const clerk = vi.hoisted(() => ({ signOut: vi.fn(async () => {}) }));
-vi.mock("@clerk/nextjs", () => ({ useClerk: () => clerk }));
+const clerk = vi.hoisted(() => ({ signOut: vi.fn(async () => {}), openUserProfile: vi.fn() }));
+vi.mock("@clerk/nextjs", () => ({
+  useClerk: () => clerk,
+  useUser: () => ({ isSignedIn: true, isLoaded: true, user: { id: "u1" } }),
+}));
 vi.mock("../../app/contexts/MemberRoleContext", () => ({ useMemberRoleContext: () => ({ setSelectedOrgId: vi.fn() }) }));
 // Canvas isn't available in jsdom: the browser-side resize/re-encode is replaced by a fake.
 const prep = vi.hoisted(() => ({ next: null as null | { ok: boolean; reason?: string; width?: number; height?: number } }));
@@ -33,6 +36,7 @@ beforeEach(() => {
   nav.refresh.mockReset();
   nav.push.mockReset();
   clerk.signOut.mockClear();
+  clerk.openUserProfile.mockClear();
   prep.next = null;
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -42,9 +46,29 @@ const LOGO = "https://x.supabase.co/storage/v1/object/public/organization-images
 const details = { name: "Kora Experiences", instagram_handle: "kora.gye", city: "Guayaquil", description: "Salsa nights", logo_url: LOGO };
 const me = { name: "Ana Pérez", imageUrl: null, email: "ana@x.com" };
 
-function setup(opts: { role?: string; account?: boolean; routes?: Route[]; language?: "en" | "es"; logo?: string | null } = {}) {
+const PREFS = {
+  rsvp_pending: true,
+  rsvp_approved: true,
+  rsvp_rejected: true,
+  ticket_received: true,
+  event_date_changed: true,
+  event_reminder: true,
+  new_rsvp_request: true,
+  ticket_sold: true,
+  auth_expiry_warning: true,
+};
+
+function setup(
+  opts: { role?: string; account?: boolean; routes?: Route[]; language?: "en" | "es"; logo?: string | null; orgs?: unknown[]; admin?: boolean; pendingOrgs?: unknown[] } = {}
+) {
   const f = mockFetch([
     ...(opts.routes ?? []),
+    { match: (u, i) => u === "/api/me/notification-preferences" && !i?.method, body: { preferences: PREFS } },
+    { match: (u, i) => u === "/api/me/notification-preferences" && i?.method === "PUT", body: { preferences: { ...PREFS, event_reminder: false } } },
+    { match: (u) => u === "/api/organizations", body: { organizations: opts.orgs ?? [] } },
+    { match: (u) => u === "/api/admin/status", body: { isAdmin: opts.admin ?? false } },
+    { match: (u) => u.startsWith("/api/admin/organizations?status=pending"), body: { organizations: opts.pendingOrgs ?? [] } },
+    { match: (u, i) => u === "/api/user/delete" && i?.method === "DELETE", body: { success: true } },
     { match: (u) => u.startsWith("/api/organizer/data"), body: { events: [], cohost_events: [], owner_cohost_assignments: [] } },
     { match: (u) => u.startsWith("/api/stripe/"), body: { connected: true, chargesEnabled: true, payoutsEnabled: true } },
     { match: (u, i) => u === "/api/organizations/org1" && i?.method === "PATCH", body: { success: true } },
@@ -183,9 +207,11 @@ describe("My account v2 (separate from organization settings)", () => {
     expect(screen.queryByLabelText("Language")).not.toBeInTheDocument();
   });
 
-  it("account from Clerk (read-only), link back to my organizers, sign out", async () => {
+  it("account from Clerk (read-only), Clerk's own profile, link back to my organizers, sign out", async () => {
     const { user } = setup({ account: true });
-    expect(screen.getByRole("heading", { name: "My account" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Password, e-mails and security/ }));
+    expect(clerk.openUserProfile).toHaveBeenCalled();
     expect(screen.getByLabelText("Full name")).toHaveValue("Ana Pérez");
     expect(screen.getByLabelText("Email")).toHaveValue("ana@x.com");
     expect(screen.getByRole("link", { name: "My organizers" })).toHaveAttribute("href", "/v2/organizer");
@@ -199,7 +225,7 @@ describe("My account v2 (separate from organization settings)", () => {
     await user.selectOptions(screen.getByLabelText("Language"), "es");
     expect(await screen.findByLabelText("Idioma")).toHaveValue("es");
     expect(f.posts().find((p) => p.url === "/api/me/language")!.body).toEqual({ language: "es" });
-    expect(screen.getByRole("heading", { name: "Mi cuenta" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Ajustes" })).toBeInTheDocument();
   });
 
   it("language save failure → back to English with an error", async () => {
@@ -207,5 +233,62 @@ describe("My account v2 (separate from organization settings)", () => {
     await user.selectOptions(screen.getByLabelText("Language"), "es");
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t save your language");
     expect(screen.getByLabelText("Language")).toHaveValue("en");
+  });
+
+  it("notifications: guest group only for non-organizers; a toggle saves just that type", async () => {
+    const { f, user } = setup({ account: true });
+    const reminder = await screen.findByRole("switch", { name: /Event reminders/ });
+    expect(reminder).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByRole("switch", { name: /Ticket sales/ })).not.toBeInTheDocument();
+    await user.click(reminder);
+    await waitFor(() => expect(f.posts().find((p) => p.url === "/api/me/notification-preferences")!.body).toEqual({ event_reminder: false }));
+    await waitFor(() => expect(reminder).toHaveAttribute("aria-checked", "false"));
+  });
+
+  it("notifications: organizers also see the organizer group; a failed save rolls back", async () => {
+    const { user } = setup({
+      account: true,
+      orgs: [{ id: "org1" }],
+      routes: [{ match: (u, i) => u === "/api/me/notification-preferences" && i?.method === "PUT", status: 500, body: {} }],
+    });
+    const sales = await screen.findByRole("switch", { name: /Ticket sales/ });
+    await user.click(sales);
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t save that change");
+    expect(sales).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("delete account: two confirmations, then DELETE, sign out and home", async () => {
+    const { f, user } = setup({ account: true });
+    await user.click(screen.getByRole("button", { name: "Delete account" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(f.posts().some((p) => p.url === "/api/user/delete")).toBe(false);
+    await user.click(await screen.findByRole("button", { name: "Yes, delete forever" }));
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/"));
+    expect(f.posts().filter((p) => p.url === "/api/user/delete")).toHaveLength(1);
+    expect(clerk.signOut).toHaveBeenCalled();
+  });
+
+  it("delete account failure keeps the session and explains", async () => {
+    const { user } = setup({ account: true, routes: [{ match: (u) => u === "/api/user/delete", status: 500, body: {} }] });
+    await user.click(screen.getByRole("button", { name: "Delete account" }));
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    await user.click(await screen.findByRole("button", { name: "Yes, delete forever" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn’t delete your account");
+    expect(clerk.signOut).not.toHaveBeenCalled();
+    expect(nav.push).not.toHaveBeenCalled();
+  });
+
+  it("organizer approvals entry only for Flame support, with the pending count", async () => {
+    setup({ account: true, admin: true, pendingOrgs: [{ id: "o1" }, { id: "o2" }] });
+    const entry = await screen.findByRole("link", { name: /Organizer approvals/ });
+    expect(entry).toHaveAttribute("href", "/v2/support/organizations");
+    await waitFor(() => expect(entry).toHaveTextContent("2 waiting for review"));
+  });
+
+  it("no approvals entry for everyone else", async () => {
+    const { f } = setup({ account: true });
+    await waitFor(() => expect(f.calls.some((c) => c.url === "/api/admin/status")).toBe(true));
+    expect(screen.queryByRole("link", { name: /Organizer approvals/ })).not.toBeInTheDocument();
+    expect(f.calls.some((c) => c.url.startsWith("/api/admin/organizations"))).toBe(false);
   });
 });

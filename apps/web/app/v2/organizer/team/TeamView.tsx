@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  canAccessOrgSettings,
   ASSIGNABLE_ROLES,
   assignableEvents,
   assignmentsToSave,
@@ -117,10 +118,10 @@ export default function TeamView({
       pastEvents={model?.past ?? []}
       section="team"
       title={t("team.title")}
-      backHref={routes.dashboard(organization.slug)}
+      backHref={canAccessOrgSettings(role) ? routes.manage(organization.slug) : routes.dashboard(organization.slug)}
       crumbs={[
-        { label: t("organizer.myOrganizers"), href: routes.organizers() },
         { label: organization.name, href: routes.dashboard(organization.slug) },
+        ...(canAccessOrgSettings(role) ? [{ label: t("manage.title"), href: routes.manage(organization.slug) }] : []),
         { label: t("team.title") },
       ]}
       actions={

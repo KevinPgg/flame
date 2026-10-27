@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   canAccessOrgSettings,
   canCreateEvents,
-  canManageMembers,
   canManagePayouts,
   formatEventDateTime,
   type OrgMemberRole,
@@ -62,8 +61,8 @@ export function OrganizerShell({
   currentEvents: OrganizerEvent[];
   pastEvents?: OrganizerEvent[];
   activeEventId?: string;
-  /** Highlighted entry of the menu. */
-  section?: "events" | "rsvps" | "team" | "payouts" | "settings";
+  /** Highlighted entry of the menu (team / payouts / settings live in Manage). */
+  section?: "events" | "rsvps" | "manage" | "team" | "payouts" | "settings";
   /** Title of the sticky top bar. */
   title: string;
   crumbs?: Crumb[];
@@ -85,17 +84,13 @@ export function OrganizerShell({
   }, [drawer]);
 
   type NavItem = { key: string; icon: IconName; label: string; href: string; active?: boolean; badge?: number };
+  const inManage = section === "manage" || section === "team" || section === "payouts" || section === "settings";
   const nav: NavItem[] = [
     { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: section === "events" },
     { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending, active: section === "rsvps" },
-    ...(canManageMembers(role)
-      ? [{ key: "team", icon: "users" as IconName, label: t("tabs.team"), href: routes.team(organization.slug), active: section === "team" }]
-      : []),
-    ...(canManagePayouts(role)
-      ? [{ key: "payouts", icon: "bank" as IconName, label: t("tabs.payouts"), href: routes.payouts(organization.slug), active: section === "payouts" }]
-      : []),
+    // One hub instead of a growing menu (prototype; same as the app — decision 2026-10-23).
     ...(canAccessOrgSettings(role)
-      ? [{ key: "settings", icon: "settings" as IconName, label: t("tabs.settings"), href: routes.settings(organization.slug), active: section === "settings" }]
+      ? [{ key: "manage", icon: "grid" as IconName, label: t("tabs.manage"), href: routes.manage(organization.slug), active: inManage }]
       : []),
   ];
   const short = (e: OrganizerEvent) => formatEventDateTime(e.starts_at, e.timezone, locale).date;
@@ -200,8 +195,8 @@ export function OrganizerShell({
             {t("organizer.myTickets")}
           </Link>
           <Link href={routes.account()} className="flex items-center gap-2.5 rounded-v2-sm px-2.5 py-[9px] text-[14px] font-v2-ui-medium text-v2-c70 hover:bg-v2-c06 hover:text-v2-cream">
-            <Icon name="user" size={18} />
-            {t("organizer.myAccount")}
+            <Icon name="settings" size={18} />
+            {t("userSettings.title")}
           </Link>
           {me && (
             <Link href={routes.profile()} className="mt-1.5 flex items-center gap-2.5 rounded-v2-md p-2 hover:bg-v2-c06">
@@ -262,7 +257,7 @@ export function OrganizerShell({
           <div className="flex shrink-0 items-center gap-2">
             {actions}
             {me && (
-              <Link href={routes.account()} aria-label={`${t("organizer.myAccount")} · ${me.name}`} className="hidden sm:block">
+              <Link href={routes.account()} aria-label={`${t("userSettings.title")} · ${me.name}`} className="hidden sm:block">
                 <UserAvatar me={me} size={36} />
               </Link>
             )}
