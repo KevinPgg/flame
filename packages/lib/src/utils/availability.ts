@@ -197,7 +197,7 @@ export function enrichTicketStagesWithWaterfall<
 }
 
 /** Minimal tier shape needed by getLowestPrice */
-interface PriceableTier {
+export interface PriceableTier {
   price_cents: number;
   quantity_total: number;
   quantity_sold?: number | null;
@@ -215,23 +215,15 @@ interface PriceableTier {
   }>;
 }
 
-/**
- * Compute the lowest (or range) price display string for event cards.
- *
- * Uses findFirstAvailableStage when stages have availability fields so sold-out
- * stages don't incorrectly lower the displayed minimum. Falls back to iterating
- * all stage prices when stages lack quantity/sold_quantity (legacy data).
- *
- * Returns:
- * - null if no tiers
- * - "Not available yet" / "Sold Out" string
- * - Formatted price string ("$10.00") or range ("$10.00 - $25.00")
- */
-export function getLowestPrice(
-  ticketTiers: PriceableTier[],
-  currency = "USD",
-): string | null {
-  if (!ticketTiers || ticketTiers.length === 0) return null;
+/** Lowest / highest price on sale now, or why there is none (Flame 2.0, 2026-10-27). */
+export type LowestPriceInfo =
+  | { status: "none" }
+  | { status: "notYet" }
+  | { status: "soldOut" }
+  | { status: "ok"; lowCents: number; highCents: number };
+
+export function lowestPriceInfo(ticketTiers: PriceableTier[]): LowestPriceInfo {
+  if (!ticketTiers || ticketTiers.length === 0) return { status: "none" };
 
   const toAvailability = (t: PriceableTier): TicketTierAvailability => ({
     sales_start: t.sales_start as string | null | undefined,
@@ -249,9 +241,7 @@ export function getLowestPrice(
   );
 
   if (availableTiers.length === 0) {
-    return hasNotStartedTiers(ticketTiers.map(toAvailability))
-      ? "Not available yet"
-      : "Sold Out";
+    return hasNotStartedTiers(ticketTiers.map(toAvailability)) ? { status: "notYet" } : { status: "soldOut" };
   }
 
   const prices: number[] = [];
@@ -294,17 +284,32 @@ export function getLowestPrice(
   });
 
   if (prices.length === 0) {
-    return hasNotStartedTiers(ticketTiers.map(toAvailability))
-      ? "Not available yet"
-      : "Sold Out";
+    return hasNotStartedTiers(ticketTiers.map(toAvailability)) ? { status: "notYet" } : { status: "soldOut" };
   }
 
-  const lowestPrice = Math.min(...prices);
-  const highestPrice = Math.max(...prices);
+  return { status: "ok", lowCents: Math.min(...prices), highCents: Math.max(...prices) };
+}
 
-  if (lowestPrice === highestPrice) {
-    return formatCentsAsPrice(lowestPrice, currency);
-  }
-
-  return `${formatCentsAsPrice(lowestPrice, currency)} - ${formatCentsAsPrice(highestPrice, currency)}`;
+/**
+ * Compute the lowest (or range) price display string for event cards.
+ *
+ * Uses findFirstAvailableStage when stages have availability fields so sold-out
+ * stages don't incorrectly lower the displayed minimum. Falls back to iterating
+ * all stage prices when stages lack quantity/sold_quantity (legacy data).
+ *
+ * Returns:
+ * - null if no tiers
+ * - "Not available yet" / "Sold Out" string
+ * - Formatted price string ("$10.00") or range ("$10.00 - $25.00")
+ */
+export function getLowestPrice(
+  ticketTiers: PriceableTier[],
+  currency = "USD",
+): string | null {
+  const info = lowestPriceInfo(ticketTiers);
+  if (info.status === "none") return null;
+  if (info.status === "notYet") return "Not available yet";
+  if (info.status === "soldOut") return "Sold Out";
+  if (info.lowCents === info.highCents) return formatCentsAsPrice(info.lowCents, currency);
+  return `${formatCentsAsPrice(info.lowCents, currency)} - ${formatCentsAsPrice(info.highCents, currency)}`;
 }
