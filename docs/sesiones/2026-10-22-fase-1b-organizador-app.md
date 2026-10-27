@@ -253,3 +253,5 @@ Kevin eligió **cerrar la 1b** antes de abrir otra fase.
 
 **Verificado:** jest app 89/89; vitest API organizador + compra 301, web v2 (SendTab, ScannersTab, Team, EventAdminTabs, V2Boundaries, Rsvps) verdes; tsc app 40, web 0.
 **Estado:** el código de la fase 1b está completo. Falta la **ronda 3 de pruebas reales** (1b.3–1b.7) para cerrarla.
+
+**10-26 · Cerrada por decisión de Kevin.** La ronda 3 de pruebas reales sigue en `PruebasReales/FASE_1B_ORGANIZADOR_APP.md` (1b.7 casi completa; hallazgo: el organizador no ve el rechazo, ver `2026-10-26-manage-web-v2.md`). Lo pendiente de la web (Manage, Ajustes únicos, cola de soporte) se hizo en esa sesión.

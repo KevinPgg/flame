@@ -1,9 +1,34 @@
 # Fase 1 — Organizador web v2 · pruebas reales
 
-Lista viva: se amplía con cada entrega de la fase 1 (última actualización 2026-10-20, ronda 2).
+Lista viva: se amplía con cada entrega de la fase 1 (última actualización 2026-10-26, ronda 3: Manage, Ajustes y soporte en la web).
 Prueba en tu PC con datos reales de desarrollo (Supabase local, Clerk test, Stripe test).
 
 Marca cada punto con [x] cuando pase. Si algo falla: anota la pantalla, qué hiciste, qué esperabas y qué pasó (y el error de la consola del navegador / terminal si hay).
+
+## Ronda 3 (2026-10-26) · Manage, Ajustes y cola de soporte en la web · 🌐 Web
+Reutiliza el diseño de la app (1b.5). Prueba con un owner, un admin, un organizer y una cuenta de soporte.
+
+**Menú y hub Manage**
+- [x] Owner/admin: el menú lateral muestra Eventos · RSVPs · **Manage** (ya no Equipo, Pagos ni Ajustes sueltos). Al pie: **Ajustes** (→ `/v2/account`).
+- [x] Manage → filas Equipo ("N miembros"), Pagos ("$X disponibles" o "Conecta Stripe para cobrar") y Ajustes. Cada una abre su pantalla; Manage sigue resaltado en el menú.
+- [x] Desde Equipo, Pagos o Ajustes de organización, ← y la miga "Manage" vuelven al hub.
+- [x] Organizer / viewer: no ven Manage; abriendo `/v2/organizer/manage?org=…` a mano vuelven a Eventos.
+- [x] Teléfono (ventana angosta): el cajón del menú muestra lo mismo.
+
+**Ajustes (tu cuenta)** — `/v2/account`
+- [x] Título "Ajustes"; nombre y e-mail de solo lectura; "Contraseña, correos y seguridad" abre el perfil de Clerk.
+- [x] Idioma cambia al instante y persiste tras recargar (también en la app con la misma cuenta).
+- [x] Notificaciones: una cuenta sin organizaciones ve solo "Como asistente"; un organizador ve también "Como organizador". Apagar una → recargar → sigue apagada; en la app (Ajustes) aparece igual. Las obligatorias se ven bloqueadas ("Siempre activa").
+- [x] Eliminar cuenta (con una cuenta de prueba desechable): pide dos confirmaciones → cierra sesión y va al inicio; esa cuenta ya no puede entrar. Cancelar en cualquiera de los dos pasos no borra nada.
+- [x] Cerrar sesión → inicio.
+
+**Cola de soporte 2.0** — `/v2/support/organizations`
+- [x] Cuenta de soporte: Ajustes → "Aprobación de organizadores · N esperando revisión" → pantalla con Pendientes / Rechazadas y sus números.
+- [x] Aprobar pide confirmación → sale de Pendientes; el dueño ya puede crear eventos (y recibe el e-mail).
+- [x] Rechazar → ventana con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación.
+- [x] Con más de 4 organizaciones aparece el buscador (nombre o e-mail, sin importar tildes).
+- [x] Cuenta normal: no ve la entrada en Ajustes; abriendo la URL a mano ve "Esta pantalla es solo para el soporte de Flame".
+- Al rechazar, el dueño recibe una notificación con el motivo (10-27; casos en `FASE_1B_ORGANIZADOR_APP.md` → "10-27"). La organización rechazada deja de aparecer en sus listas.
 
 ## Ronda 2 (2026-10-20) — volver a probar tras las correcciones
 Correcciones de tu ronda 1. Marca cada una y, si pasa, marca también el caso original de más abajo.
@@ -191,7 +216,7 @@ App (celular, build Android):
 - La app móvil actual tiene 40 errores de tipos heredados (`tsc` en `apps/mobile`); ninguno de los cambios de esta fase. Se atienden en la fase 1b.
 - El escaneo vive solo en la app (la actual; la v2 llega en fase 2).
 - Payouts no muestra las transferencias bancarias cobradas directamente (sí están en el prototipo).
-- El hub "Manage" del prototipo no existe (Payouts y Ajustes son entradas del menú).
+- ~~El hub "Manage" del prototipo no existe~~ **Hecho el 10-26** (ronda 3).
 - Fallo pendiente (fase 3): la reducción forzada también rechaza RSVPs **aprobados** (ya cobrados) sin reembolso. No lo pruebes con dinero real.
 
 ## Cierre (2026-10-22): lo que queda abierto

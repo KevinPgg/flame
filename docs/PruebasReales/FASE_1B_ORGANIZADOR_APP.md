@@ -209,23 +209,43 @@ Un solo "Ajustes" para tu persona (las cosas de la organización están en Manag
 
 ## 1b.7 · Cierre de la fase 1b · 📱 Celular + 🌐 Web
 **Buscador restringido en todas partes** (mismo comportamiento que en Equipo)
-- [ ] 📱 Evento → Enviar tickets (gratis): escribe 2–3 letras de alguien que ya compró o pidió RSVP en tus eventos → sugerencia → eligiendo sigue el flujo de siempre. Email completo de alguien sin cuenta → "Crear orden sin cuenta Flame" (Transferencias) / "Enviar sin cuenta Flame" (gratis).
-- [ ] 📱 Evento → Escáner → Cuentas: escribe y elige de las sugerencias → se agrega; repetido → "ya puede escanear". Email completo sin cuenta → "No hay una cuenta de Flame con ese e-mail…".
-- [ ] 🌐 Lo mismo en la web: Equipo → Agregar miembro, Enviar tickets y Escáner usan "Nombre o e-mail" con sugerencias (ya no hay botón Buscar).
-- [ ] 💻 En la terminal de la web, una sola llamada `GET /api/organizer/people…` por cada pausa al escribir.
+- [x] 📱 Evento → Enviar tickets (gratis): escribe 2–3 letras de alguien que ya compró o pidió RSVP en tus eventos → sugerencia → eligiendo sigue el flujo de siempre. Email completo de alguien sin cuenta → "Crear orden sin cuenta Flame" (Transferencias) / "Enviar sin cuenta Flame" (gratis).
+- [x] 📱 Evento → Escáner → Cuentas: escribe y elige de las sugerencias → se agrega; repetido → "ya puede escanear". Email completo sin cuenta → "No hay una cuenta de Flame con ese e-mail…".
+- [x] 🌐 Lo mismo en la web: Equipo → Agregar miembro, Enviar tickets y Escáner usan "Nombre o e-mail" con sugerencias (ya no hay botón Buscar).
+- [x] 💻 En la terminal de la web, una sola llamada `GET /api/organizer/people…` por cada pausa al escribir.
 
 **Cola de aprobación de soporte** (solo con una cuenta de soporte)
-- [ ] 📱 Perfil → "Aprobación de organizadores · N esperando revisión" (con número rojo si hay) → pantalla 2.0 con Pendientes / Rechazadas.
-- [ ] Aprobar pide confirmación → la organización sale de Pendientes y el dueño ya puede crear eventos (y recibe el e-mail).
-- [ ] Rechazar → hoja con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación.
+- [x] 📱 Perfil → "Aprobación de organizadores · N esperando revisión" (con número rojo si hay) → pantalla 2.0 con Pendientes / Rechazadas.
+- [x] Aprobar pide confirmación → la organización sale de Pendientes y el dueño ya puede crear eventos (y recibe el e-mail).
+- [x] Rechazar → hoja con motivo opcional → aparece en Rechazadas con "Motivo: …". Eliminar pide confirmación. `//Aparece como rechazo solo para el admin, el organizador no ve la razon del rechazo`
 - [ ] Con una cuenta normal, la entrada no aparece en el Perfil.
 
 **Notificaciones de organizador**
-- [ ] Con otra cuenta compra un ticket de tu evento → en tu celular, campana → tocar "Ticket vendido" → abre **ese evento en la pestaña Compras (v2)**. (Las notificaciones viejas, de antes de este cambio, abren el panel de la organización.)
-- [ ] Nueva solicitud de RSVP → abre las solicitudes v2 de ese evento.
+- [x] Con otra cuenta compra un ticket de tu evento → en tu celular, campana → tocar "Ticket vendido" → abre **ese evento en la pestaña Compras (v2)**. (Las notificaciones viejas, de antes de este cambio, abren el panel de la organización.)
+- [x] Nueva solicitud de RSVP → abre las solicitudes v2 de ese evento.
 
 **Interruptor de emergencia** (al final)
-- [ ] `EXPO_PUBLIC_ORGANIZER_V1=true` en `apps/mobile/.env` + Metro `-c`: Perfil → organización abre el panel **v1**; engranaje → Ajustes **v1**; RSVPs, editar evento y la cola de soporte v1. Quitarlo y volver a `-c`: todo v2.
+- [x] `EXPO_PUBLIC_ORGANIZER_V1=true` en `apps/mobile/.env` + Metro `-c`: Perfil → organización abre el panel **v1**; engranaje → Ajustes **v1**; RSVPs, editar evento y la cola de soporte v1. Quitarlo y volver a `-c`: todo v2.
+
+## 10-27 · Arreglos antes de la fase 2 · 📱 Celular + 🌐 Web
+**Notificaciones — Borrar todo** (📱 campana)
+- [ ] Con todas leídas: "Borrar todo" las borra sin preguntar. Cerrar y abrir la campana (o reiniciar la app): **no vuelven**.
+- [ ] Con alguna sin leer: pregunta "¿Borrar todas las notificaciones? N siguen sin leer…". Cancelar → siguen ahí; confirmar → se borran y no vuelven.
+- [ ] Con la app en español, la campana dice "Notificaciones", "Marcar todo como leído", "Borrar todo".
+
+**Aprobación de organizadores — recargar** (📱 cuenta de soporte)
+- [ ] Con otra cuenta, solicita una organización. En la cuenta de soporte, Perfil → desliza hacia abajo → "Aprobación de organizadores · N esperando revisión" sube sin salir de la pantalla.
+- [ ] Dentro de la pantalla de aprobaciones, deslizar hacia abajo también trae la nueva.
+
+**Notificación de aprobado / no aprobado** (📱 la cuenta que solicitó; 💻 la terminal de la web)
+- [ ] Aprobar (desde 🌐 o 📱 soporte) → la cuenta dueña recibe "Ya estás aprobado · {Org} ya puede crear eventos en Flame." en la campana (y push si tiene el celular registrado). Tocarla abre el panel de esa organización.
+- [ ] Rechazar con motivo → recibe "Organizador no aprobado · {Org} no fue aprobada. Motivo: …" con el motivo completo; tocarla no navega. Sin motivo → solo "{Org} no fue aprobada."
+- [ ] Con la cuenta en inglés, los textos salen en inglés.
+- [ ] Ajustes → Notificaciones → "Como organizador": "Organizador aprobado" y "Organizador no aprobado" aparecen bloqueados ("Siempre activa"). Aparecen en cuanto tienes una organización pendiente.
+
+**Iniciar sesión con Google** (📱)
+- [ ] Cerrar sesión → "Continuar con Google" → elegir cuenta → vuelve a la app ya con sesión y **sin** la pantalla "Unmatched Route".
+- [ ] Repetir con la app cerrada del todo (si Android la reinicia al volver de Google): abre el inicio, sin error.
 
 ## Heredado de la fase 1 (necesita la app) · 📱 Celular
 - [x] Ajustes → Scan Tickets → código del evento → escanea ese evento sin cuenta. Tras "Nuevo código" en la web, el código viejo deja de funcionar al siguiente escaneo.
