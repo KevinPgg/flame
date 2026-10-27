@@ -42,6 +42,8 @@ const ICONS = {
   up: "chevron-up",
   clock: "time-outline",
   camera: "camera-outline",
+  home: "home-outline",
+  bell: "notifications-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 

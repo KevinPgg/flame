@@ -15,9 +15,10 @@ import { useEventFilters } from "../../hooks/useEventFilters";
 import { useHomeRefresh } from "../../hooks/useHomeRefresh";
 import { useScrollRegistration } from "../../hooks/useScrollRegistration";
 import { useAuthRedirect } from "../../contexts/AuthRedirectContext";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { HomeFeed } from "../../components/v2/attendee/home/HomeFeed";
 
 export default function HomeScreen() {
-  const router = useRouter();
   const { setAuthRedirecting } = useAuthRedirect();
 
   useFocusEffect(
@@ -25,6 +26,12 @@ export default function HomeScreen() {
       setAuthRedirecting(false);
     }, [setAuthRedirecting])
   );
+  // Flame 2.0 Home (fase 2.2); EXPO_PUBLIC_ATTENDEE_V1=true keeps the v1 feed.
+  return attendeeV2Enabled() ? <HomeFeed /> : <HomeV1 />;
+}
+
+function HomeV1() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [filterVisible, setFilterVisible] = useState(false);
 

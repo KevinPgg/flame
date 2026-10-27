@@ -117,7 +117,7 @@ export const useAppEvents = () => {
           .from("events")
           .select(`
             *,
-            organizations(name, slug),
+            organizations(name, slug, logo_url),
             ticket_tiers(
               id, price_cents, quantity_total, quantity_sold,
               per_user_limit, sales_start, sales_end,
@@ -189,6 +189,9 @@ export const useAppEvents = () => {
         const spotlightEvent = spotlightSource ? mapEventToSpotlightData(spotlightSource) : null;
 
         return {
+          // Flame 2.0 Home (fase 2.2) works on the events themselves (flyer, organizer logo,
+          // zone, tiers) with the shared rules in packages/lib; v1 keeps the mapped cards.
+          rawEvents,
           allEvents,
           featuredEvents,
           upcomingEvents,

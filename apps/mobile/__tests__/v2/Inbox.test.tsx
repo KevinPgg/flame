@@ -39,7 +39,7 @@ describe("Clear all", () => {
   it("all read → clears right away, no question", async () => {
     const s = state([n("a", true), n("b", true)]);
     await open(s);
-    fireEvent.press(screen.getByText("Clear all"));
+    await fireEvent.press(screen.getByText("Clear all"));
     await waitFor(() => expect(s.dismissAll).toHaveBeenCalledTimes(1));
     expect(screen.queryByText("Clear all notifications?")).toBeNull();
   });
@@ -47,30 +47,29 @@ describe("Clear all", () => {
   it("a failed clear says so", async () => {
     const s = state([n("a", true)], { dismissAll: jest.fn(async () => Promise.reject(new Error("rls"))) });
     await open(s);
-    fireEvent.press(screen.getByText("Clear all"));
+    await fireEvent.press(screen.getByText("Clear all"));
     expect(await screen.findByText("We couldn’t clear your notifications. Try again.")).toBeTruthy();
   });
 
   it("Spanish", async () => {
     await open(state([n("a", false)]), "es");
     expect(screen.getByText("Notificaciones")).toBeTruthy();
-    fireEvent.press(screen.getByText("Borrar todo"));
+    await fireEvent.press(screen.getByText("Borrar todo"));
     expect(await screen.findByText("¿Borrar todas las notificaciones?")).toBeTruthy();
   });
-  // Last: the RN Modal of the dialog leaks between tests in jest (a later render stays empty).
   it("with unread → asks first; cancel keeps them, confirm clears", async () => {
     const s = state([n("a", false), n("b", true)]);
     await open(s);
-    fireEvent.press(screen.getByText("Clear all"));
+    await fireEvent.press(screen.getByText("Clear all"));
     expect(await screen.findByText("Clear all notifications?")).toBeTruthy();
     expect(screen.getByText("1 is still unread. This can’t be undone.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Cancel"));
+    await fireEvent.press(screen.getByText("Cancel"));
     expect(s.dismissAll).not.toHaveBeenCalled();
     // [0] = the header button, last = the dialog's confirm button.
-    fireEvent.press(screen.getAllByText("Clear all")[0]);
+    await fireEvent.press(screen.getAllByText("Clear all")[0]);
     const buttons = await screen.findAllByText("Clear all");
     expect(buttons.length).toBe(2);
-    fireEvent.press(buttons[1]);
+    await fireEvent.press(buttons[1]);
     await waitFor(() => expect(s.dismissAll).toHaveBeenCalledTimes(1));
   });
 

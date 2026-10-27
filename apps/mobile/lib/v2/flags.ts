@@ -6,3 +6,11 @@
 export function organizerV2Enabled(): boolean {
   return process.env.EXPO_PUBLIC_ORGANIZER_V1 !== "true";
 }
+
+/**
+ * Flame 2.0 attendee side (fase 2): on by default; `EXPO_PUBLIC_ATTENDEE_V1=true` brings back the
+ * v1 header, tab bar and attendee screens (same emergency switch idea).
+ */
+export function attendeeV2Enabled(): boolean {
+  return process.env.EXPO_PUBLIC_ATTENDEE_V1 !== "true";
+}

@@ -21,6 +21,10 @@ import { Header } from "../home/Header";
 import { CustomTabBar } from "./CustomTabBar";
 import { NotificationsOverlay } from "../notifications/NotificationsOverlay";
 import { FlameLogo } from "../FlameLogo";
+import { AttendeeTopBar } from "../v2/attendee/AttendeeTopBar";
+import { AttendeeTabBar } from "../v2/attendee/AttendeeTabBar";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { AttendeeCityProvider } from "../../contexts/AttendeeCityContext";
 import { colors } from "@project-flame/ui";
 import type { NotificationsOverlayState } from "../notifications/NotificationsOverlay";
 
@@ -48,8 +52,11 @@ export function RoleResolutionGate({
   const { isAuthRedirecting } = useAuthRedirect();
   // Flame 2.0 organizer screens (/v2/…) bring their own top bar and bottom bar (OrganizerShell).
   const v2 = usePathname().startsWith("/v2");
+  // Fase 2: the attendee side gets the 2.0 top bar and tab bar (EXPO_PUBLIC_ATTENDEE_V1=true → v1).
+  const attendeeV2 = attendeeV2Enabled();
 
   return (
+    <AttendeeCityProvider>
     <ScrollToTopProvider>
       <View style={{ flex: 1 }} className="bg-background">
         <StatusBar style="light" />
@@ -62,12 +69,12 @@ export function RoleResolutionGate({
             <ActivityIndicator size="large" color="#FFFFFF" style={{ marginTop: 24 }} />
           </View>
         )}
-        {!v2 && (
-          <Header
-            onNotificationPress={onNotificationOpen}
-            unreadCount={notificationsState.unreadCount}
-          />
-        )}
+        {!v2 &&
+          (attendeeV2 ? (
+            <AttendeeTopBar onNotificationPress={onNotificationOpen} unreadCount={notificationsState.unreadCount} />
+          ) : (
+            <Header onNotificationPress={onNotificationOpen} unreadCount={notificationsState.unreadCount} />
+          ))}
         <View style={{ flex: 1 }}>
           <Stack
             screenOptions={{
@@ -99,7 +106,7 @@ export function RoleResolutionGate({
               />
             ))}
           </Stack>
-          {!v2 && <CustomTabBar />}
+          {!v2 && (attendeeV2 ? <AttendeeTabBar /> : <CustomTabBar />)}
         </View>
         <NotificationsOverlay
           visible={notificationsOpen}
@@ -108,5 +115,6 @@ export function RoleResolutionGate({
         />
       </View>
     </ScrollToTopProvider>
+    </AttendeeCityProvider>
   );
 }
