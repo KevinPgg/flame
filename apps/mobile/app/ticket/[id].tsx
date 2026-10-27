@@ -27,6 +27,8 @@ import { getTabBarPaddingBottom } from "../../components/navigation/CustomTabBar
 import { DashboardBar } from "../../components/dashboard/DashboardBar";
 import { useUserTickets } from "../../hooks/useUserTickets";
 import { RequireAuthGate } from "../../hooks/useRequireAuth";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { TicketPager } from "../../components/v2/attendee/tickets/TicketPager";
 
 const QR_SIZE = 200;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -74,12 +76,10 @@ function getTicketPriceLabel(
   return "";
 }
 
+/** QR ticket: Flame 2.0 pager (fase 2.3) unless EXPO_PUBLIC_ATTENDEE_V1=true. */
 export default function TicketDetailScreen() {
-  return (
-    <RequireAuthGate>
-      <TicketDetailContent />
-    </RequireAuthGate>
-  );
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <RequireAuthGate>{attendeeV2Enabled() ? <TicketPager id={String(id ?? "")} /> : <TicketDetailContent />}</RequireAuthGate>;
 }
 
 function TicketDetailContent() {

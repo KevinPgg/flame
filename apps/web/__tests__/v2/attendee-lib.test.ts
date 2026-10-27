@@ -1,7 +1,7 @@
 /** Fase 2.1: where notifications open on the web, and which public URLs show v2. */
 import { describe, it, expect } from "vitest";
 import { notificationWebHref } from "../../app/lib/notifications/web-link";
-import { attendeeV2Route } from "../../app/lib/utils/attendee-v2-rewrite";
+import { attendeeV2Route, attendeeNeedsSignIn } from "../../app/lib/utils/attendee-v2-rewrite";
 
 describe("notificationWebHref", () => {
   const org = { org: "kora", event: null };
@@ -35,6 +35,16 @@ describe("attendeeV2Route", () => {
   it("Home (2.2) is served by v2 at /", () => {
     expect(attendeeV2Route("/", false)).toEqual({ rewrite: "/v2/attendee/home" });
     expect(attendeeV2Route("/", true)).toBeNull();
+  });
+  it("My tickets and the QR ticket (2.3) at /account and /account/ticket/[id], signed in", () => {
+    expect(attendeeV2Route("/account", false)).toEqual({ rewrite: "/v2/attendee/tickets" });
+    expect(attendeeV2Route("/account/ticket/abc-123", false)).toEqual({ rewrite: "/v2/attendee/tickets/abc-123" });
+    expect(attendeeV2Route("/account/ticket/abc/extra", false)).toBeNull();
+    expect(attendeeV2Route("/account/ticket/abc-123", true)).toBeNull();
+    expect(attendeeNeedsSignIn("/account")).toBe(true);
+    expect(attendeeNeedsSignIn("/account/ticket/x")).toBe(true);
+    expect(attendeeNeedsSignIn("/notifications/")).toBe(true);
+    expect(attendeeNeedsSignIn("/")).toBe(false);
   });
   it("leaves the rest alone (until their delivery adds them)", () => {
     expect(attendeeV2Route("/events/luna", false)).toBeNull();

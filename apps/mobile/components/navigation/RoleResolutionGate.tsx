@@ -51,9 +51,11 @@ export function RoleResolutionGate({
 }: RoleResolutionGateProps) {
   const { isAuthRedirecting } = useAuthRedirect();
   // Flame 2.0 organizer screens (/v2/…) bring their own top bar and bottom bar (OrganizerShell).
-  const v2 = usePathname().startsWith("/v2");
+  const pathname = usePathname();
   // Fase 2: the attendee side gets the 2.0 top bar and tab bar (EXPO_PUBLIC_ATTENDEE_V1=true → v1).
   const attendeeV2 = attendeeV2Enabled();
+  // The 2.0 QR ticket (2.3) is full screen like the prototype: no top bar, no tab bar.
+  const v2 = pathname.startsWith("/v2") || (attendeeV2 && pathname.startsWith("/ticket/"));
 
   return (
     <AttendeeCityProvider>

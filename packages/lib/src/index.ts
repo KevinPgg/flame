@@ -477,4 +477,17 @@ export { attendance } from "./organizer/attendance";
 export type { AttendanceOrigin, AttendanceRow, AttendanceSale, AttendanceTransfer, AttendanceComp } from "./organizer/attendance";
 // Flame 2.0 Home (fase 2.2)
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle, lowestPriceInfo } from "./utils";
+export {
+  buildWallet,
+  walletWhen,
+  eventTicketSlides,
+  ticketPrice,
+  ticketStage,
+  ticketQr,
+  isDoorTicket,
+  walletOrganizer,
+  directionsUrl,
+  walletDayTime,
+} from "./utils";
+export type { Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./utils";
 export type { FeedDay, FeedEventTime, PriceSummary, LowestPriceInfo, PriceableTier } from "./utils";

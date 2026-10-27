@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { organizerV2Redirect } from "./app/lib/utils/organizer-v2-redirect";
-import { attendeeV2Route, ATTENDEE_SIGNED_IN } from "./app/lib/utils/attendee-v2-rewrite";
+import { attendeeV2Route, attendeeNeedsSignIn } from "./app/lib/utils/attendee-v2-rewrite";
 
 // Define protected routes that require authentication.
 // NOTE: /organizer/[slug] (public org page) is intentionally NOT matched here
@@ -77,7 +77,7 @@ export default clerkMiddleware(async (auth, req) => {
   const attendee = attendeeV2Route(req.nextUrl.pathname, process.env.ATTENDEE_V1 === "true");
   if (attendee) {
     if ("redirect" in attendee) return NextResponse.redirect(new URL(attendee.redirect, req.url));
-    if (ATTENDEE_SIGNED_IN.has(req.nextUrl.pathname.replace(/\/+$/, "") || "/")) await auth.protect();
+    if (attendeeNeedsSignIn(req.nextUrl.pathname)) await auth.protect();
     const url = req.nextUrl.clone();
     url.pathname = attendee.rewrite;
     return NextResponse.rewrite(url);

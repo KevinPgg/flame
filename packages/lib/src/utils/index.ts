@@ -100,5 +100,18 @@ export {
 } from "./registration-form";
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle } from "./home-feed";
 export type { FeedDay, FeedEventTime, PriceSummary } from "./home-feed";
+export {
+  buildWallet,
+  walletWhen,
+  eventTicketSlides,
+  ticketPrice,
+  ticketStage,
+  ticketQr,
+  isDoorTicket,
+  walletOrganizer,
+  directionsUrl,
+  walletDayTime,
+} from "./wallet";
+export type { Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./wallet";
 export { lowestPriceInfo } from "./availability";
 export type { LowestPriceInfo, PriceableTier } from "./availability";

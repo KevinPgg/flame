@@ -24,14 +24,17 @@ import {
   getFirstTicketIdForGroup,
 } from "../../lib/user-ticket-mappers";
 import { PastItemsAccordion } from "../../components/shared/PastItemsAccordion";
+import { attendeeV2Enabled } from "../../lib/v2/flags";
+import { Wallet } from "../../components/v2/attendee/tickets/Wallet";
 
+/** My tickets: Flame 2.0 (fase 2.3) unless EXPO_PUBLIC_ATTENDEE_V1=true. */
 export default function DashboardScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
     <RequireAuthGate>
-      <DashboardContent router={router} insets={insets} />
+      {attendeeV2Enabled() ? <Wallet /> : <DashboardContent router={router} insets={insets} />}
     </RequireAuthGate>
   );
 }
