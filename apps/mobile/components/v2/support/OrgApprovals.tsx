@@ -60,7 +60,13 @@ export function OrgApprovals() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: insets.bottom + 32 }}
-          refreshControl={<RefreshControl refreshing={current.isRefetching} onRefresh={() => void current.refetch()} tintColor={c.cream} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={current.isRefetching}
+              onRefresh={() => void Promise.all([pending.refetch(), rejected.refetch()])}
+              tintColor={c.cream}
+            />
+          }
         >
           <Text className="font-v2-ui text-[14px] leading-[20px] text-v2-c70">{t("supportQueue.lede")}</Text>
           <View className="flex-row gap-2" accessibilityRole="tablist">

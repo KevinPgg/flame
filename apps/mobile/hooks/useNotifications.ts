@@ -27,6 +27,9 @@ export function useNotifications() {
   const tokenFailCount = useRef(0);
   const lastTokenFailTime = useRef(0);
   const dismissedIds = useRef(new Set<string>());
+  // Latest list for actions that need it synchronously (a setState updater runs later).
+  const latestNotifications = useRef<NotificationRecord[]>([]);
+  latestNotifications.current = notifications;
 
   const visibleNotifications = useMemo(
     () => notifications.filter((n) => !dismissedIds.current.has(n.id)),
@@ -203,17 +206,24 @@ export function useNotifications() {
     [isSignedIn, getToken, userId],
   );
 
+  /**
+   * Delete every notification on screen. Fix 2026-10-27: the ids were collected inside a
+   * setState updater, which React runs later — the list was always empty at the check, so
+   * nothing was deleted and everything came back on the next load. On failure the list is
+   * restored and the error is thrown for the screen to show.
+   */
   const dismissAll = useCallback(async () => {
     if (!isSignedIn || !userId) return;
-    let idsToDelete: string[] = [];
-    setNotifications((prev) => {
-      idsToDelete = prev.map((n) => n.id);
-      return [];
-    });
-    idsToDelete.forEach((id) => {
-      dismissedIds.current.add(id);
-    });
+    const idsToDelete = latestNotifications.current
+      .filter((n) => !dismissedIds.current.has(n.id))
+      .map((n) => n.id);
     if (idsToDelete.length === 0) return;
+    idsToDelete.forEach((id) => dismissedIds.current.add(id));
+    setNotifications((prev) => prev.filter((n) => !idsToDelete.includes(n.id)));
+    const restore = () => {
+      idsToDelete.forEach((id) => dismissedIds.current.delete(id));
+      void fetchNotifications();
+    };
     try {
       const supabase = await getAuthenticatedClient(getToken);
       const { data: user, error: userError } = await supabase
@@ -222,7 +232,7 @@ export function useNotifications() {
         .eq("clerk_id", userId)
         .single();
 
-      if (userError || !user) return;
+      if (userError || !user) throw userError ?? new Error("user not found");
 
       // Mark all as read first — RLS policy may restrict deletion to read notifications
       const { error: markReadError } = await supabase
@@ -245,13 +255,13 @@ export function useNotifications() {
         .eq("user_id", user.id)
         .in("id", idsToDelete);
 
-      if (error) {
-        console.error("[useNotifications] dismissAll failed:", error);
-      }
+      if (error) throw error;
     } catch (err) {
       console.error("[useNotifications] dismissAll failed:", err);
+      restore();
+      throw err;
     }
-  }, [isSignedIn, getToken, userId]);
+  }, [isSignedIn, getToken, userId, fetchNotifications]);
 
   useEffect(() => {
     fetchNotifications();

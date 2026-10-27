@@ -15,6 +15,7 @@ import {
   Pressable,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { FlameImage, colors, CustomRefreshControl, Skeleton } from "@project-flame/ui";
@@ -57,6 +58,7 @@ function ProfileContent() {
   const orgsError = orgsQuery.error;
   const refetchOrgs = orgsQuery.refetch;
   const { setSelectedOrgId } = useMemberRoleContext();
+  const queryClient = useQueryClient();
 
   const [becomeOrgVisible, setBecomeOrgVisible] = useState(false);
   const [orgSearch, setOrgSearch] = useState("");
@@ -72,9 +74,15 @@ function ProfileContent() {
         )
       : orgs ?? [];
 
+  // Pull to refresh also reloads support's "Organizer approvals" entry (2026-10-27: a new
+  // request didn't show until the cache went stale). ["admin"] = status + both lists.
   const onRefresh = useCallback(async () => {
-    await Promise.all([refetchProfile(), refetchOrgs()]);
-  }, [refetchProfile, refetchOrgs]);
+    await Promise.all([
+      refetchProfile(),
+      refetchOrgs(),
+      queryClient.refetchQueries({ queryKey: ["admin"], type: "active" }),
+    ]);
+  }, [refetchProfile, refetchOrgs, queryClient]);
 
   const handleOrgPress = useCallback(
     (org: UserOrg) => {

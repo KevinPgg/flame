@@ -26,6 +26,8 @@ import { colors, CustomRefreshControl } from "@project-flame/ui";
 import { resolveNotificationDeepLink } from "../../lib/notification-deep-links";
 import type { NotificationRecord } from "../../hooks/useNotifications";
 import { NotificationCard } from "./NotificationCard";
+import { useI18n } from "../../lib/i18n";
+import { ConfirmDialog } from "../v2/ui";
 
 export interface NotificationsOverlayState {
   notifications: NotificationRecord[];
@@ -172,7 +174,10 @@ export function NotificationsOverlay({
   const progress = useSharedValue(0);
   const [shouldRender, setShouldRender] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearError, setClearError] = useState(false);
   const router = useRouter();
+  const { t } = useI18n();
 
   const {
     notifications,
@@ -244,6 +249,22 @@ export function NotificationsOverlay({
     [markAsRead, onClose, router],
   );
 
+  // Clear all (2026-10-27): read ones go right away; with unread ones, ask first.
+  const clearAll = useCallback(async () => {
+    setConfirmClear(false);
+    setClearError(false);
+    try {
+      await dismissAll();
+    } catch (err) {
+      if (__DEV__) console.error("[NotificationsOverlay] dismissAll", err);
+      setClearError(true);
+    }
+  }, [dismissAll]);
+  const onClearAll = useCallback(() => {
+    if (unreadCount > 0) setConfirmClear(true);
+    else void clearAll();
+  }, [unreadCount, clearAll]);
+
   const handleDismiss = useCallback(
     (id: string): Promise<void> => dismiss(id),
     [dismiss],
@@ -265,20 +286,13 @@ export function NotificationsOverlay({
       >
         <View className="flex-row items-center justify-between px-4 pb-4">
           <Text className="text-white-100 text-lg font-poppins-semibold">
-            Notifications
+            {t("inbox.title")}
           </Text>
           <View className="flex-row items-center gap-3">
             {notifications.length > 0 && (
-              <Pressable
-                onPress={() =>
-                  dismissAll().catch(err => {
-                    if (__DEV__) console.error("[NotificationsOverlay] dismissAll", err);
-                  })
-                }
-                hitSlop={10}
-              >
+              <Pressable onPress={onClearAll} hitSlop={10} accessibilityRole="button">
                 <Text className="text-white-50 text-xs font-poppins-medium">
-                  Clear all
+                  {t("inbox.clearAll")}
                 </Text>
               </Pressable>
             )}
@@ -292,7 +306,7 @@ export function NotificationsOverlay({
                 hitSlop={10}
               >
                 <Text className="text-white-100 text-xs font-poppins-medium">
-                  Mark all read
+                  {t("inbox.markAllRead")}
                 </Text>
               </Pressable>
             )}
@@ -301,6 +315,19 @@ export function NotificationsOverlay({
             </Pressable>
           </View>
         </View>
+        {clearError ? (
+          <Text accessibilityRole="alert" className="px-4 pb-3 text-xs font-poppins text-primary">
+            {t("inbox.clearAllError")}
+          </Text>
+        ) : null}
+        <ConfirmDialog
+          open={confirmClear}
+          message={t("inbox.clearAllTitle")}
+          detail={t("inbox.clearAllUnread", { count: unreadCount })}
+          confirmLabel={t("inbox.clearAll")}
+          onConfirm={() => void clearAll()}
+          onCancel={() => setConfirmClear(false)}
+        />
 
         {isInitialLoad && notifications.length === 0 ? (
           <View className="flex-1 items-center justify-center">
