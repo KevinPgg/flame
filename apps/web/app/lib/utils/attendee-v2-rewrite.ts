@@ -1,0 +1,25 @@
+/**
+ * Attendee web → Flame 2.0 at the SAME public URLs (decision 2026-10-27: no /v2 prefix for the
+ * attendee side — search engines and shared links keep working). The middleware *rewrites*
+ * (the address bar doesn't change) each public path that already has a v2 screen to it under
+ * /v2/attendee. Each fase-2 delivery adds its paths here. Escape hatch: ATTENDEE_V1=true.
+ */
+const V2_SCREENS: Record<string, string> = {
+  "/notifications": "/v2/attendee/notifications", // 2.1 (new: the web had no notifications page)
+  "/": "/v2/attendee/home", // 2.2 (public, indexable)
+};
+
+/** Paths that only exist in v2: with ATTENDEE_V1=true they go home instead of a 404. */
+const V2_ONLY = new Set(["/notifications"]);
+
+export type AttendeeRoute = { rewrite: string } | { redirect: string } | null;
+
+export function attendeeV2Route(pathname: string, v1: boolean): AttendeeRoute {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (v1) return V2_ONLY.has(path) ? { redirect: "/" } : null;
+  const target = V2_SCREENS[path];
+  return target ? { rewrite: target } : null;
+}
+
+/** Public paths whose v2 screen needs a signed-in person (checked before rewriting). */
+export const ATTENDEE_SIGNED_IN = new Set(["/notifications"]);

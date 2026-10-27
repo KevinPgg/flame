@@ -26,8 +26,9 @@ export const routes = {
   account: () => "/v2/account",
   /** Organizer approvals for Flame support. */
   supportQueue: () => "/v2/support/organizations",
-  // attendee side (v1 for now)
+  // attendee side: public URLs (fase 2 rewrites them to v2 screens)
   attendeeHome: () => "/",
+  inbox: () => "/notifications",
   discover: () => "/discover",
   myTickets: () => "/account",
   profile: () => "/profile",
