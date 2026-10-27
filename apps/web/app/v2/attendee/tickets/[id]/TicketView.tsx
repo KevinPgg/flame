@@ -114,11 +114,19 @@ export default function TicketView({ id }: { id: string }) {
   const found = useMemo(() => eventTicketSlides(rows, id), [rows, id]);
   const slides = useMemo(() => found?.slides ?? [], [found]);
   const [index, setIndex] = useState<number | null>(null);
+  const ticketCount = slides.length;
   const current = Math.min(index ?? found?.index ?? 0, Math.max(0, slides.length - 1));
   const [zoom, setZoom] = useState(false);
   const [copied, setCopied] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
   const placed = useRef(false);
+  /**
+   * Ticket a chip / arrow / key asked for while the strip glides there. Until it arrives, the
+   * scroll positions in between (2 → 3 → 4 → 5) must not move the selector (Kevin 2026-10-27:
+   * it flickered through every ticket on the way).
+   */
+  const target = useRef<number | null>(null);
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Open on the requested ticket (once the strip exists), without animation.
   useEffect(() => {
@@ -144,15 +152,44 @@ export default function TicketView({ id }: { id: string }) {
     return () => void lock?.release().catch(() => {});
   }, []);
 
+  // Where the strip actually rests → selected ticket.
+  const syncFromPosition = useCallback(() => {
+    const el = strip.current;
+    if (!el || !el.clientWidth) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (i >= 0 && i < slides.length) setIndex(i);
+  }, [slides.length]);
+
+  // Browsers that report the end of a scroll settle the selector right away.
+  useEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const onEnd = () => {
+      target.current = null;
+      syncFromPosition();
+    };
+    el.addEventListener("scrollend", onEnd);
+    return () => el.removeEventListener("scrollend", onEnd);
+  }, [syncFromPosition, ticketCount]);
+
   const goTo = useCallback(
     (i: number) => {
       if (i < 0 || i >= slides.length) return;
       setIndex(i);
       const el = strip.current;
-      if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+      if (!el) return;
+      target.current = i;
+      if (settle.current) clearTimeout(settle.current);
+      // Safety net if the browser never reports reaching the spot (interrupted by a swipe).
+      settle.current = setTimeout(() => {
+        target.current = null;
+        syncFromPosition();
+      }, 1000);
+      el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
     },
-    [slides.length],
+    [slides.length, syncFromPosition],
   );
+  useEffect(() => () => void (settle.current && clearTimeout(settle.current)), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,7 +207,13 @@ export default function TicketView({ id }: { id: string }) {
   const onScroll = () => {
     const el = strip.current;
     if (!el || !el.clientWidth) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
+    const exact = el.scrollLeft / el.clientWidth;
+    const i = Math.round(exact);
+    if (target.current !== null) {
+      // Gliding to a chosen ticket: only "arrived" counts.
+      if (i === target.current && Math.abs(exact - i) < 0.02) target.current = null;
+      return;
+    }
     if (i >= 0 && i < slides.length && i !== current) setIndex(i);
   };
 
@@ -251,7 +294,8 @@ export default function TicketView({ id }: { id: string }) {
       <main className="relative z-[1] mx-auto max-w-[520px] pb-12">
         {many && (
           <div className="mb-3.5 flex flex-col items-center gap-2 px-4">
-            <div role="tablist" aria-label={t("ticket.title")} className="flex max-w-full gap-1 overflow-x-auto rounded-v2-pill bg-[#1A1A1A] p-1">
+            <div role="tablist" aria-label={t("ticket.title")} className="v2-no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-v2-pill bg-[#1A1A1A] p-1"
+              style={{ scrollbarWidth: "none" }}>
               {slides.map((s, i) => (
                 <button
                   key={s.id}
@@ -276,7 +320,8 @@ export default function TicketView({ id }: { id: string }) {
             ref={strip}
             onScroll={onScroll}
             data-testid="ticket-strip"
-            className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="v2-no-scrollbar flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+            style={{ scrollbarWidth: "none" }}
           >
             {slides.map((s) => (
               <div key={s.id} className="w-full shrink-0 snap-center px-5" aria-hidden={s.id !== ticket.id}>

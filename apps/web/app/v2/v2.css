@@ -10,3 +10,12 @@
 .font-v2-display { font-weight: 600; }
 .font-v2-display-bold { font-weight: 700; }
 .font-v2-display-extrabold { font-weight: 800; }
+
+/* Horizontal strips that slide without showing a scrollbar (QR ticket, 2.3). */
+.v2-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.v2-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

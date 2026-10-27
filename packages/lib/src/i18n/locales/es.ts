@@ -129,7 +129,7 @@ export const es: Messages = {
     enlarge: "Agrandar QR",
     closeHint: "Toca en cualquier parte para cerrar",
     noQr: "Este ticket no se puede usar en la puerta.",
-    checkedIn: "Ya se usó en la puerta",
+    checkedIn: " Entrada ya escaneada",
     directions: "Cómo llegar",
     help: "Ayuda",
     price: "Precio",

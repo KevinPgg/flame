@@ -55,40 +55,46 @@ Marca `[x]` lo que pase; si algo falla, anota debajo (`//…`): pantalla, qué h
 
 ## Corrección 2.2 (ronda de Kevin, 10-27)
 **App · 📱 Celular**
-- [ ] Botón de ciudad en Inicio: 📍, nombre y ▾ en una sola línea, centrados en la píldora (el pin ya no queda encima del nombre). Probar con "Quito" y con "Todas las ciudades".
-- [ ] Ajustes (engranaje) → bloque **"Ciudad de inicio"** → "Abrir Inicio en": Automática (por defecto), Todas las ciudades y cada ciudad con eventos. Se ve **con y sin sesión**.
-- [ ] Elegir Guayaquil → volver a Inicio: ya muestra Guayaquil (aunque antes hayas elegido otra en la hoja).
-- [ ] Cerrar la app del todo y abrir: Inicio abre en Guayaquil. Elegir otra ciudad en la hoja vale solo hasta cerrar la app.
-- [ ] Ajustes → Todas las ciudades → cerrar y abrir: Inicio abre en "Todas las ciudades". Automática → vuelve la regla de Quito.
-- [ ] (Si puedes) una ciudad guardada que hoy no tiene eventos: Inicio usa Automática; en Ajustes sigue apareciendo la ciudad guardada.
+- [x] Botón de ciudad en Inicio: 📍, nombre y ▾ en una sola línea, centrados en la píldora (el pin ya no queda encima del nombre). Probar con "Quito" y con "Todas las ciudades".
+- [x] Ajustes (engranaje) → bloque **"Ciudad de inicio"** → "Abrir Inicio en": Automática (por defecto), Todas las ciudades y cada ciudad con eventos. Se ve **con y sin sesión**.
+- [x] Elegir Guayaquil → volver a Inicio: ya muestra Guayaquil (aunque antes hayas elegido otra en la hoja).
+- [x] Cerrar la app del todo y abrir: Inicio abre en Guayaquil. Elegir otra ciudad en la hoja vale solo hasta cerrar la app.
+- [x] Ajustes → Todas las ciudades → cerrar y abrir: Inicio abre en "Todas las ciudades". Automática → vuelve la regla de Quito.
+- [ ] (Si puedes) una ciudad guardada que hoy no tiene eventos: Inicio usa Automática; en Ajustes sigue apareciendo la ciudad guardada. `//Si la ciudad no tiene eventos entonces no se muestra en el listado`
 
 **Web · 🌐 Teléfono (o ventana estrecha) y PC**
-- [ ] Teléfono, con sesión: **una sola campana** arriba; lleva a `/notifications`. En PC una sola campana que abre el panel.
-- [ ] Selector de ciudad: se cierra con la ✕, con Esc y **tocando fuera de la ventana**; tocar dentro (el texto, el espacio entre opciones) no lo cierra.
+- [x] Teléfono, con sesión: **una sola campana** arriba; lleva a `/notifications`. En PC una sola campana que abre el panel.
+- [x] Selector de ciudad: se cierra con la ✕, con Esc y **tocando fuera de la ventana**; tocar dentro (el texto, el espacio entre opciones) no lo cierra.
 
 ## 2.3 · Mis tickets y ticket QR
 Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si son de dos tiers distintos o incluyen una cortesía), un RSVP pendiente y un evento pasado con ticket escaneado.
 
 **App · 📱 Celular**
-- [ ] Pestaña Tickets: título "Mis tickets", contadores Total · Comprados · Pendientes (mismos números que la v1), selector Próximos / Pasados.
-- [ ] Próximos: una tarjeta por evento con flyer, cuándo ("En 3 días", "Hoy", "Mañana", "Ahora mismo" o la fecha), hora · lugar, "3 tickets · GA, VIP" y botón QR blanco. Los RSVP aparecen con su estado ("RSVP · pendiente" y una línea que lo explica) y "Ver evento".
-- [ ] Pasados: eventos que ya terminaron, con "Asististe" si escaneaste. Sin tickets → "Aún no tienes tickets" + "Buscar eventos". Deslizar hacia abajo recarga.
-- [ ] Tocar una tarjeta abre el ticket **a pantalla completa** (sin barra de arriba ni de abajo), sobre los colores del flyer: ticket blanco con flyer, fecha, hora, entrada (tier · etapa) y titular, y el QR.
-- [ ] **Deslizar a los lados cambia de ticket sin recargar** (sin pantalla de carga ni parpadeo); "Ticket 2 de 3" y los botones "Ticket 1/2/3" arriba se mueven con él; tocar un botón también cambia.
-- [ ] Debajo, el precio, el lugar y el organizador cambian con el ticket que se ve (una cortesía dice "Cortesía").
-- [ ] Tocar el QR → QR grande sobre blanco con el nombre del evento; tocar en cualquier parte lo cierra. **Escanéalo con el escáner** (un ticket comprado y una cortesía): debe validar igual que antes.
-- [ ] "Cómo llegar" abre Maps con el lugar; "Ayuda" abre soporte; compartir manda `https://flme.co/events/…`. Atrás vuelve a Mis tickets.
-- [ ] Un ticket ya escaneado dice "Ya se usó en la puerta" (y sigue mostrando el QR, como la v1).
+- [x] Pestaña Tickets: título "Mis tickets", contadores Total · Comprados · Pendientes (mismos números que la v1), selector Próximos / Pasados.
+- [x] Próximos: una tarjeta por evento con flyer, cuándo ("En 3 días", "Hoy", "Mañana", "Ahora mismo" o la fecha), hora · lugar, "3 tickets · GA, VIP" y botón QR blanco. Los RSVP aparecen con su estado ("RSVP · pendiente" y una línea que lo explica) y "Ver evento".
+- [x] Pasados: eventos que ya terminaron, con "Asististe" si escaneaste. Sin tickets → "Aún no tienes tickets" + "Buscar eventos". Deslizar hacia abajo recarga.
+- [x] Tocar una tarjeta abre el ticket **a pantalla completa** (sin barra de arriba ni de abajo), sobre los colores del flyer: ticket blanco con flyer, fecha, hora, entrada (tier · etapa) y titular, y el QR.
+- [x] **Deslizar a los lados cambia de ticket sin recargar** (sin pantalla de carga ni parpadeo); "Ticket 2 de 3" y los botones "Ticket 1/2/3" arriba se mueven con él; tocar un botón también cambia.
+- [x] Debajo, el precio, el lugar y el organizador cambian con el ticket que se ve (una cortesía dice "Cortesía").
+- [x] Tocar el QR → QR grande sobre blanco con el nombre del evento; tocar en cualquier parte lo cierra. **Escanéalo con el escáner** (un ticket comprado y una cortesía): debe validar igual que antes.
+- [x] "Cómo llegar" abre Maps con el lugar; "Ayuda" abre soporte; compartir manda `https://flme.co/events/…`. Atrás vuelve a Mis tickets.
+- [x] Un ticket ya escaneado dice "Ya se usó en la puerta" (y sigue mostrando el QR, como la v1).
 - [ ] Interruptor `EXPO_PUBLIC_ATTENDEE_V1=true`: vuelven Mis tickets y el ticket de siempre.
 
 **Web · 🌐 PC y teléfono**
-- [ ] `http://localhost:3000/account` (con sesión): la dirección sigue siendo `/account`; se ve Mis tickets nuevo dentro de la barra del asistente (en PC tarjetas de 2 en 2). Sin sesión → iniciar sesión.
-- [ ] Tarjeta → `/account/ticket/<id>`, a página completa sobre los colores del flyer.
-- [ ] Teléfono: deslizar a los lados cambia de ticket. PC: flechas a los costados, botones "Ticket N" y teclas ← →. **La página no recarga**, y la dirección cambia al ticket que se ve: recargar (F5) abre ese mismo ticket.
-- [ ] Clic en el QR → QR grande sobre blanco; se cierra con clic o Esc. Escanear una cortesía desde la pantalla: valida.
-- [ ] "Cómo llegar" abre Google Maps en otra pestaña; "Ayuda" → `/contact`; compartir abre el menú del sistema (teléfono) o copia el enlace (PC).
-- [ ] (Teléfono, si el navegador lo permite) la pantalla no se apaga mientras está abierto el ticket.
+- [x] `http://localhost:3000/account` (con sesión): la dirección sigue siendo `/account`; se ve Mis tickets nuevo dentro de la barra del asistente (en PC tarjetas de 2 en 2). Sin sesión → iniciar sesión.
+- [x] Tarjeta → `/account/ticket/<id>`, a página completa sobre los colores del flyer.
+- [x] Teléfono: deslizar a los lados cambia de ticket. PC: flechas a los costados, botones "Ticket N" y teclas ← →. **La página no recarga**, y la dirección cambia al ticket que se ve: recargar (F5) abre ese mismo ticket.
+- [x] Clic en el QR → QR grande sobre blanco; se cierra con clic o Esc. Escanear una cortesía desde la pantalla: valida.
+- [x] "Cómo llegar" abre Google Maps en otra pestaña; "Ayuda" → `/contact`; compartir abre el menú del sistema (teléfono) o copia el enlace (PC).
+- [x] (Teléfono, si el navegador lo permite) la pantalla no se apaga mientras está abierto el ticket.
 - [ ] `ATTENDEE_V1=true` → `/account` y `/account/ticket/…` vuelven a ser los de siempre.
+
+## Corrección 2.3 (ronda de Kevin, 10-27)
+**Web · 🌐 PC y teléfono** (`/account/ticket/<id>` de un evento con 3 o más tickets)
+- [ ] Saltar con los botones de Ticket 2 a Ticket 5: el selector pasa directo a 5, sin parpadear por 3 y 4. Lo mismo con las flechas y las teclas ← →.
+- [ ] Después del salto, deslizar con el dedo (o el trackpad) sigue moviendo el selector al ticket que queda.
+- [ ] No se ve barra de desplazamiento ni bajo los tickets ni bajo los botones "Ticket N" (Chrome, Edge, Safari y Firefox si los tienes).
 
 ## Cosas conocidas
 - Las pantallas del asistente siguen siendo las actuales hasta su entrega: evento y organizador (2.4), Explorar (2.5), Tú y bienvenida (2.6). En la web, el marco nuevo se ve en `/`, `/notifications` y `/account`.
