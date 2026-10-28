@@ -26,6 +26,9 @@ export function TierCard(p: {
   max: number;
   onSelect: () => void;
   onQuantity: (n: number) => void;
+  /** Selected card: the button next to the price that opens the checkout (Kevin 2026-10-28). */
+  onCheckout: () => void;
+  checkoutDisabled?: boolean;
 }) {
   const { t } = useI18n();
   const on = p.state === "on";
@@ -40,6 +43,7 @@ export function TierCard(p: {
         p.selected ? "border-v2-cream bg-[#0f0f0f]" : on ? "border-v2-c10 bg-[#0f0f0f] hover:border-v2-c30" : "border-v2-c06 opacity-60"
       }`}
     >
+      <div className="flex items-center gap-3">
       <button
         type="button"
         disabled={!on}
@@ -48,7 +52,7 @@ export function TierCard(p: {
         onClick={() => {
           if (on && !p.selected) p.onSelect();
         }}
-        className="flex w-full items-center gap-3 text-left disabled:cursor-not-allowed"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
       >
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
@@ -74,6 +78,17 @@ export function TierCard(p: {
           </span>
         )}
       </button>
+      {p.selected && (
+        <button
+          type="button"
+          onClick={p.onCheckout}
+          disabled={p.checkoutDisabled}
+          className="inline-flex h-9 shrink-0 items-center rounded-v2-pill bg-v2-cream px-4 text-[14px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-50"
+        >
+          {p.isRsvp ? t("event.request") : t("event.toCheckout")}
+        </button>
+      )}
+      </div>
       {p.desc && <p className={`mt-2 whitespace-pre-wrap text-[13px] leading-[1.4] text-v2-c50 ${p.selected ? "" : "line-clamp-2"}`}>{p.desc}</p>}
       {p.selected && (
         <div className="mt-3 flex items-center justify-between border-t border-v2-c10 pt-3">

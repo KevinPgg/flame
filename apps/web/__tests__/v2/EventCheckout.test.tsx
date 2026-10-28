@@ -195,6 +195,24 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(within(screen.getByRole("dialog", { name: "Checkout" })).getByText("3 × General · before fees")).toBeInTheDocument();
   });
 
+  it("Get tickets picks the cheapest tier on sale; the card's Checkout button opens the sheet", async () => {
+    const user = userEvent.setup({ delay: null });
+    mockFetch([]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const vip = { ...EVENT.ticket_tiers[0], id: "t2", name: "VIP", price_cents: 4000 };
+    renderV2(
+      <QueryClientProvider client={client}>
+        <EventDetail event={{ ...EVENT, ticket_tiers: [vip, EVENT.ticket_tiers[0]] } as never} header={<h1>header</h1>} footer={null} />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Checkout" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Get tickets" }));
+    expect(screen.getByText("1 × General · before fees")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Checkout" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Checkout" }));
+    expect(within(screen.getByRole("dialog", { name: "Checkout" })).getByText("1 × General · before fees")).toBeInTheDocument();
+  });
+
   it("with tickets for this event the bar says You're going · View N tickets", () => {
     st.tickets = [
       { id: "tk1", type: "ticket", status: "issued", created_at: "2026-10-01T00:00:00Z", ticket_tier: { id: "t1", name: "General", event: { ...EVENT, organization: { name: "Hush" } } } },

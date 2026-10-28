@@ -1053,6 +1053,38 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         )
       : null;
 
+  // Flame 2.0: the selected card's button and the bottom bar both open the checkout sheet
+  // (signed out → sign in, back to this event).
+  const signInUrlV2 = `/events/${event.slug}${promoterInput.trim() ? `?promoter=${encodeURIComponent(promoterInput.trim())}` : ""}`;
+  const checkoutBusyV2 = creatingHold || rsvpMutation.isPending || isLoadingUserTickets;
+  const openCheckoutV2 = () => {
+    if (!isSignedIn) {
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(signInUrlV2)}`);
+      return;
+    }
+    setCheckoutOpen(true);
+  };
+  // "Get tickets" (Kevin 2026-10-28): picks the cheapest tier (or stage) on sale.
+  const selectCheapestV2 = () => {
+    let best: { tier: UnlockedTier; stageId: string; cents: number } | null = null;
+    for (const tier of allTiers) {
+      if (!isTierAvailable(tier)) continue;
+      const stages = getStageDisplayData(tier);
+      if (stages && stages.length > 0) {
+        const cur = stages.find((st) => st.isCurrentStage && !st.isSoldOut);
+        if (cur && (!best || cur.price_cents < best.cents)) best = { tier, stageId: cur.id, cents: cur.price_cents };
+      } else if (!best || tier.price_cents < best.cents) {
+        best = { tier, stageId: "", cents: tier.price_cents };
+      }
+    }
+    if (!best) return;
+    const isUnlocked = unlockedTiers.some((u) => u.id === best!.tier.id) && accessCodeInput.trim().length > 0;
+    setSelectedTier(best.tier.id);
+    setSelectedStageId(best.stageId);
+    setSelectedQuantity(1);
+    setVerifiedSecretCode(isUnlocked ? normalizeTicketTierSecretCode(accessCodeInput.trim()) : null);
+  };
+
   if (isConfigError) {
     return (
       <div className="p-4 text-red-500">
@@ -1125,7 +1157,10 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           <button
             type="button"
             disabled={!anyOn}
-            onClick={() => document.getElementById("ticket-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onClick={() => {
+              selectCheapestV2();
+              document.getElementById("ticket-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
             className={buyBtn(anyOn ? "white" : "dark")}
           >
             {!anyOn ? tv2("event.soldOut") : isRsvp ? tv2("event.requestToJoin") : tv2("event.getTickets")}
@@ -1570,6 +1605,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                               setSelectedQuantity(n);
                               setDiscount(null);
                             }}
+                            onCheckout={openCheckoutV2}
+                            checkoutDisabled={checkoutBusyV2}
                           />
                         );
                       }
@@ -1686,6 +1723,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                           setSelectedQuantity(n);
                           setDiscount(null);
                         }}
+                        onCheckout={openCheckoutV2}
+                        checkoutDisabled={checkoutBusyV2}
                       />
                     );
                   }
