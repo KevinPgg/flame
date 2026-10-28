@@ -189,6 +189,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // B4 (fase 3.1): the hold RPC deletes this user's other active holds of the same tier (so
+    // someone who closed the app mid-checkout isn't locked out). That must not happen to a hold
+    // whose payment is already running (marked by /api/holds/start-payment, B3): paying it would
+    // then find no hold → charge + automatic refund, no tickets. Abandoned holds are still
+    // replaced as before; the mark is cleared after 20 min by cleanup_abandoned_payments.
+    const { data: paying, error: payingError } = await supabaseAdmin
+      .from("holds")
+      .select("id")
+      .eq("user_id", supabaseUser.id)
+      .eq("tier_id", ticket_tier_id)
+      .is("order_id", null)
+      .eq("payment_in_progress", true)
+      .gt("payment_started_at", new Date(Date.now() - 20 * 60_000).toISOString())
+      .limit(1);
+    if (payingError) {
+      // Don't block buying on a failed lookup: behave as before (the RPC replaces the hold).
+      console.error("[HOLD_CREATE] payment-in-progress lookup failed:", payingError);
+    } else if (paying && paying.length > 0) {
+      return NextResponse.json(
+        {
+          error: "You already have a payment in progress for this ticket. Wait a few minutes or finish it.",
+          code: "PAYMENT_IN_PROGRESS",
+        },
+        { status: 409 }
+      );
+    }
+
     // Cleanup expired holds BEFORE creating a new one
     // This ensures we have the most accurate availability data
     console.log("[HOLD_CREATE] Cleaning up expired holds before validation");
