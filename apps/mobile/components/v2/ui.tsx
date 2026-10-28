@@ -47,6 +47,7 @@ const ICONS = {
   map: "navigate-outline",
   help: "help-circle-outline",
   share: "share-outline",
+  lock: "lock-closed-outline",
 } as const;
 export type IconName = keyof typeof ICONS;
 

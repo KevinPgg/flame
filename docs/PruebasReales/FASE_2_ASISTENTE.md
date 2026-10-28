@@ -92,9 +92,9 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 
 ## Corrección 2.3 (ronda de Kevin, 10-27)
 **Web · 🌐 PC y teléfono** (`/account/ticket/<id>` de un evento con 3 o más tickets)
-- [ ] Saltar con los botones de Ticket 2 a Ticket 5: el selector pasa directo a 5, sin parpadear por 3 y 4. Lo mismo con las flechas y las teclas ← →.
-- [ ] Después del salto, deslizar con el dedo (o el trackpad) sigue moviendo el selector al ticket que queda.
-- [ ] No se ve barra de desplazamiento ni bajo los tickets ni bajo los botones "Ticket N" (Chrome, Edge, Safari y Firefox si los tienes).
+- [x] Saltar con los botones de Ticket 2 a Ticket 5: el selector pasa directo a 5, sin parpadear por 3 y 4. Lo mismo con las flechas y las teclas ← →.
+- [x] Después del salto, deslizar con el dedo (o el trackpad) sigue moviendo el selector al ticket que queda.
+- [x] No se ve barra de desplazamiento ni bajo los tickets ni bajo los botones "Ticket N" (Chrome, Edge, Safari y Firefox si los tienes).
 
 ## 2.4 · Página de evento y perfil de organizador
 **App · 📱 Celular**
@@ -142,8 +142,25 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 - [ ] Recorrido completo en la web (PC y teléfono) con y sin sesión.
 - [ ] Interruptor completo: con `EXPO_PUBLIC_ATTENDEE_V1=true` (app) y `ATTENDEE_V1=true` (web) **todo** el asistente vuelve a la v1 (Inicio, evento, organizador, Explorar/Discover, Mis tickets, ticket, Tú/Profile, iniciar sesión) y `/notifications` lleva al inicio.
 
+## Corrección 2.4 · Compra en la página de evento (ronda de Kevin, 10-27)
+**App · 📱 Celular**
+- [ ] En la página de evento solo se ven los tiers (sin campos de promotor ni de código de acceso).
+- [ ] Debajo de los tiers, "¿Tienes un código de acceso?" → hoja "Código de acceso" con el campo y **Desbloquear**. Código bueno: la hoja se cierra, aparece el tier privado y una etiqueta "Código X aplicado" con ✕ para quitarlo. Código malo: el error dentro de la hoja.
+- [ ] Elegir tier → continuar → la hoja de checkout de siempre tiene **código de descuento** y **promotor**. Comprar con un promotor y comprobar en el panel del organizador que la venta quedó atribuida.
+- [ ] Un enlace con `?promoter=CODIGO` llega con el promotor ya aplicado en el checkout.
+
+**Web · 🌐 PC y teléfono** (`/events/<slug>`)
+- [ ] Solo los tiers; sin campos de promotor/código ni la fila de cantidad. Debajo, "¿Tienes un código de acceso?" → hoja (abajo en teléfono, centrada en PC) con Desbloquear; se cierra al aceptar y queda la etiqueta con ✕.
+- [ ] Elegir tier → **Continuar** → hoja de checkout: evento, tier con −/+ (respeta el máximo por persona), "Código de promotor (opcional)" + Agregar, "Código de descuento (opcional)" + Aplicar (solo tickets pagados, no RSVP), aviso de 30 min, total "antes de comisiones". Esc o clic fuera la cierran.
+- [ ] Promotor malo → mensaje; bueno → "Promotor X". Descuento bueno → "CÓDIGO · −$X" y el total baja; malo → el mensaje del servidor.
+- [ ] **Pagado:** Continuar → `/purchase` con el descuento **ya aplicado** (mira el desglose) y el promotor mostrado; pagar con tarjeta de prueba y comprobar en el panel que la venta tiene el promotor y el descuento.
+- [ ] **Gratis:** Continuar → se obtiene el ticket (con el promotor si lo pusiste).
+- [ ] **RSVP:** Continuar → el formulario / la autorización de pago de siempre; el descuento se pone en ese paso de pago. El RSVP queda con el promotor.
+- [ ] En `/purchase` el promotor ya no se puede escribir (antes ese campo no llegaba al pedido): solo se ve el que viene de la página de evento.
+- [ ] `ATTENDEE_V1=true`: la página de evento de siempre con sus campos en línea.
+
 ## Cosas conocidas
-- El bloque de compra de la página de evento (tiers, códigos, checkout, RSVP) es el de la v1 por dentro, con su estilo y en inglés: lo reemplaza la fase 3.
+- El bloque de compra de la página de evento es el de la v1 por dentro (tarjetas de tiers, formularios de RSVP, autorización de pago, `/purchase`), con su estilo y en inglés; desde la corrección 2.4 los códigos van en hojas v2. El resto lo reemplaza la fase 3.
 - La Home no tiene buscador (está en Explorar) ni guardar (fase 4). Sin seguidores, "Seguir", guardados, categorías, line-up ni búsqueda de artistas (fase 4). Las ciudades no se agrupan por país.
 - Las preguntas frecuentes de Explorar están solo en inglés (es el contenido que ya existía, compartido con la v1).
 - La pantalla de Tú y Explorar en la web reutilizan la ventana de "crear organización" de la v1 (su estilo es el de siempre).

@@ -82,57 +82,6 @@ export default function StripePurchaseFlow() {
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
   const [promotionalCodeId, setPromotionalCodeId] = useState<string | null>(null);
 
-  // Promoter Code State (matching mobile CheckoutMainSheet)
-  const [promoterInput, setPromoterInput] = useState("");
-  const [promoterStatus, setPromoterStatus] = useState<
-    "idle" | "validating" | "valid" | "invalid"
-  >("idle");
-  const promoterValidateRef = useRef(0);
-
-  // Sync promoter from loaded purchaseDetails (pre-validated during hold creation)
-  useEffect(() => {
-    if (purchaseDetails?.promoter_code) {
-      setPromoterInput(purchaseDetails.promoter_code);
-      setPromoterStatus("valid");
-    }
-  }, [purchaseDetails?.promoter_code]);
-
-  const validatePromoterCode = useCallback(
-    async (code: string) => {
-      const trimmed = code.trim().toUpperCase();
-      if (!trimmed || trimmed.length < 3) {
-        setPromoterStatus(trimmed ? "invalid" : "idle");
-        return;
-      }
-      if (!purchaseDetails) return;
-      const reqToken = ++promoterValidateRef.current;
-      setPromoterStatus("validating");
-      try {
-        const res = await fetch(
-          `/api/promoter-validate?event_id=${encodeURIComponent(purchaseDetails.event.id)}&code=${encodeURIComponent(trimmed)}`
-        );
-        if (reqToken !== promoterValidateRef.current) return;
-        if (!res.ok) { setPromoterStatus("idle"); return; }
-        const data = await res.json();
-        if (reqToken !== promoterValidateRef.current) return;
-        if (data.valid) {
-          setPromoterInput(trimmed);
-          setPromoterStatus("valid");
-        } else {
-          setPromoterStatus("invalid");
-        }
-      } catch {
-        if (reqToken === promoterValidateRef.current) setPromoterStatus("idle");
-      }
-    },
-    [purchaseDetails]
-  );
-
-  const clearPromoter = useCallback(() => {
-    setPromoterInput("");
-    setPromoterStatus("idle");
-  }, []);
-
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const stripePromise = useMemo(() => getStripe(), []);
@@ -283,8 +232,9 @@ export default function StripePurchaseFlow() {
     fetchPurchaseDetails();
   }, [token, holdSessionId, fetchPurchaseDetails]);
 
-  const handleApplyPromoCode = async () => {
-    if (!promoCode.trim() || !purchaseDetails) return;
+  const handleApplyPromoCode = async (codeOverride?: string) => {
+    const code = (typeof codeOverride === "string" ? codeOverride : promoCode).trim();
+    if (!code || !purchaseDetails) return;
 
     setIsApplyingPromo(true);
     setPromoError(null);
@@ -306,7 +256,7 @@ export default function StripePurchaseFlow() {
           ...(typeof holdSessionId === "string" ? { holdId: holdSessionId } : {}),
           ...(purchaseDetails.stage_id && { stageId: purchaseDetails.stage_id }),
           promoterCode: purchaseDetails.promoter_code,
-          promoCode: promoCode.trim(), // Send the promo code
+          promoCode: code, // Send the promo code
           oldPaymentIntentId: paymentIntentId, // Send old PI ID to cancel it
         }),
       });
@@ -338,7 +288,7 @@ export default function StripePurchaseFlow() {
         setIsFreePurchase(false);
       }
 
-      setAppliedPromo(promoCode.trim());
+      setAppliedPromo(code);
       setPromoCode(""); // Clear input
 
     } catch (err) {
@@ -348,6 +298,17 @@ export default function StripePurchaseFlow() {
       setIsApplyingPromo(false);
     }
   };
+
+  // Flame 2.0 event-page sheet (2026-10-27): the discount already checked there arrives as
+  // ?promo=CODE and is applied here once, as if typed (same create-payment-intent call).
+  const urlPromo = searchParams.get("promo");
+  const autoPromoTried = useRef(false);
+  useEffect(() => {
+    if (!urlPromo || autoPromoTried.current || !purchaseDetails || !paymentIntentId || appliedPromo) return;
+    autoPromoTried.current = true;
+    void handleApplyPromoCode(urlPromo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when the payment is ready
+  }, [urlPromo, purchaseDetails, paymentIntentId, appliedPromo]);
 
   const handleRemovePromoCode = async () => {
     if (!purchaseDetails) return;
@@ -730,7 +691,7 @@ export default function StripePurchaseFlow() {
                     className="flex-1 bg-white-5 border border-white-20 rounded-card px-4 py-3 text-white-100 text-sm font-poppins placeholder:text-white-30 focus:outline-none focus:border-white-50 transition-colors"
                   />
                   <button
-                    onClick={handleApplyPromoCode}
+                    onClick={() => handleApplyPromoCode()}
                     disabled={!promoCode.trim() || isApplyingPromo}
                     className="bg-white-10 border border-white-20 rounded-card px-4 py-3 text-white-100 text-sm font-poppins-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors hover:bg-white-20"
                     type="button"
@@ -772,67 +733,17 @@ export default function StripePurchaseFlow() {
             )}
           </div>
 
-          {/* Promoter Code Section */}
-          <div className="pt-4 border-t border-white-10">
-            <p className="text-white-70 text-xs font-poppins-medium uppercase m-0 mb-3">Promoter</p>
-            {promoterStatus === "valid" ? (
-              <div className="bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FiCheckCircle size={16} className="text-[#5DDBB1]" />
-                  <span className="text-[#5DDBB1] text-sm font-poppins-medium">{promoterInput}</span>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Clear promoter"
-                  onClick={clearPromoter}
-                  className="text-[#5DDBB1] bg-transparent border-none cursor-pointer p-1 hover:opacity-70 transition-opacity"
-                >
-                  <FiX size={18} />
-                </button>
+          {/* Promoter — read-only here: it's entered before the hold (event page / sheet) and
+              stored in it; a code typed on this page never reached the order (2026-10-27). */}
+          {purchaseDetails?.promoter_code ? (
+            <div className="pt-4 border-t border-white-10">
+              <p className="text-white-70 text-xs font-poppins-medium uppercase m-0 mb-3">Promoter</p>
+              <div className="bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4 py-3 flex items-center gap-2">
+                <FiCheckCircle size={16} className="text-[#5DDBB1]" />
+                <span className="text-[#5DDBB1] text-sm font-poppins-medium">{purchaseDetails.promoter_code}</span>
               </div>
-            ) : (
-              <div>
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-white-5 border border-white-20 rounded-card px-4 py-3">
-                    <input
-                      type="text"
-                      placeholder="None"
-                      value={promoterInput}
-                      onChange={(e) => setPromoterInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && promoterInput.trim()) {
-                          e.preventDefault();
-                          validatePromoterCode(promoterInput);
-                        }
-                      }}
-                      className="flex-1 bg-transparent text-white-100 text-sm font-poppins outline-none border-none placeholder:text-white-30 uppercase"
-                    />
-                    {promoterStatus === "validating" && (
-                      <div className="w-4 h-4 border-2 border-white-30 border-t-white-100 rounded-full animate-spin" />
-                    )}
-                    {promoterStatus === "invalid" && promoterInput.trim().length > 0 && (
-                      <FiX size={16} className="text-error" />
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (promoterInput.trim()) validatePromoterCode(promoterInput);
-                    }}
-                    className="bg-white-10 border border-white-20 rounded-card px-4 py-3 text-white-100 text-sm font-poppins-medium cursor-pointer hover:bg-white-20 transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-                {promoterStatus === "invalid" && promoterInput.trim().length > 0 && (
-                  <div className="flex items-center gap-2 mt-2 text-error text-xs font-poppins">
-                    <FiAlertCircle size={14} />
-                    <span>Invalid promoter code</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+            </div>
+          ) : null}
 
           {/* Price Breakdown */}
           {amounts && (

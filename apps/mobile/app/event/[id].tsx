@@ -46,6 +46,7 @@ import { useUserTickets } from "../../hooks/useUserTickets";
 import { attendeeV2Enabled } from "../../lib/v2/flags";
 import { EventHeader } from "../../components/v2/attendee/event/EventHeader";
 import { MoreFromOrganizer, useOrganizerFromFeed } from "../../components/v2/attendee/event/MoreFromOrganizer";
+import { AccessCode } from "../../components/v2/attendee/event/AccessCode";
 import {
   getTabBarPaddingBottom,
   TAB_BAR_PILL_HEIGHT,
@@ -617,7 +618,9 @@ export default function EventDetailScreen() {
                 onSelectTier={handleSelectTier}
                 onQuantityChange={handleQuantityChange}
                 belowTitle={
-                  <PreCheckoutCodes
+                  // Flame 2.0 (Kevin 2026-10-27): only the tiers here; promoter + discount in the
+                  // checkout sheet, access code from "Have an access code?" below.
+                  v2 ? undefined : <PreCheckoutCodes
                     promoterCode={checkoutState.promoterCode}
                     promoterStatus={checkoutState.promoterStatus}
                     onPromoterChange={checkoutState.setPromoterCode}
@@ -632,6 +635,18 @@ export default function EventDetailScreen() {
                   />
                 }
               />
+              {v2 ? (
+                <View className="mt-4">
+                  <AccessCode
+                    value={accessCodeInput}
+                    status={accessCodeStatus}
+                    error={accessCodeError}
+                    onChange={handleAccessCodeChange}
+                    onUnlock={validateAccessCode}
+                    onClear={clearAccessCode}
+                  />
+                </View>
+              ) : null}
             </View>
           )}
 

@@ -18,7 +18,7 @@ import {
   FiPlus,
   FiAlertTriangle,
   FiArrowLeft,
-
+  FiLock,
 } from "react-icons/fi";
 import {
   formatCentsAsPrice,
@@ -38,6 +38,8 @@ import RegistrationFormModal, {
 } from "./modals/RegistrationFormModal";
 import RsvpPaymentModal from "./modals/RsvpPaymentModal";
 import ConfirmationModal from "./modals/ConfirmationModal";
+import { CheckoutSheet, AccessCodeSheet } from "../v2/attendee/events/[slug]/CheckoutSheet";
+import { useI18n } from "../lib/i18n";
 
 /** Event shape for EventDetail; extends shared Event with nested relations. */
 interface EventDetailEvent extends Pick<
@@ -107,6 +109,14 @@ export type RegistrationData = Record<string, RegistrationDataValue>;
 
 export default function EventDetail({ event, header, footer }: EventDetailProps) {
   const v2Frame = header !== undefined;
+  // Flame 2.0 checkout (Kevin 2026-10-27): the page shows only the tiers; codes live in sheets.
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [discount, setDiscount] = useState<{ code: string; amountCents: number } | null>(null);
+  const { t: tv2 } = useI18n(); // v2 copy only (outside the v2 frame it falls back to English, unused)
+  const haveAccessCodeLabel = tv2("event.haveAccessCode");
+  const continueLabel = tv2("checkout.continue");
+  const discountInvalidLabel = tv2("checkout.discountInvalid");
   const { isSignedIn, userId } = useAuth();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -906,6 +916,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           clearAccessCode();
           setAccessCodeStatus("invalid");
           setAccessCodeError("Access code was rejected. Re-enter to retry.");
+          if (v2Frame) setAccessOpen(true);
         }
         return;
       }
@@ -966,8 +977,11 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             data.hold_session_id
           }&promoter=${encodeURIComponent(effectivePromoterCode)}`
         : `/purchase?session=${data.hold_session_id}`;
+      // Flame 2.0 sheet: the discount checked there is applied on /purchase (create-payment-intent).
+      const purchaseUrlWithPromo =
+        v2Frame && discount ? `${purchaseUrl}&promo=${encodeURIComponent(discount.code)}` : purchaseUrl;
 
-      window.location.href = purchaseUrl;
+      window.location.href = purchaseUrlWithPromo;
     } catch (error) {
       console.error("Error creating hold:", error);
       setRsvpMessage(
@@ -1238,7 +1252,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             )}
           </div>
 
-          {/* ─── Promoter Code + Access Code (W4-C3) ─── */}
+          {/* ─── Promoter Code + Access Code (W4-C3) — v1 only; v2 moves them to sheets ─── */}
+          {!v2Frame && (
           <div className="mb-6 flex flex-col gap-4">
             {/* Promoter */}
             <div>
@@ -1365,6 +1380,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
               )}
             </div>
           </div>
+
+          )}
 
           {allTiers.length === 0 ? (
             <div className="flex items-center gap-3 p-8 bg-white-5 rounded-card text-white-50 justify-center">
@@ -1578,8 +1595,28 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             </div>
           )}
 
-          {/* Quantity Selection — matching mobile QuantitySelector */}
-          {selectedTier && (
+          {/* Flame 2.0: private tiers unlock from a sheet, not an always-visible input. */}
+          {v2Frame && allTiers.length > 0 && (
+            <div className="mt-4">
+              {accessCodeStatus === "valid" ? (
+                <p className="inline-flex items-center gap-2 rounded-v2-pill bg-v2-good/10 px-3 py-1.5 text-[13px] font-v2-ui-semibold text-v2-good">
+                  <FiCheck size={14} />
+                  {accessCodeInput.trim().toUpperCase()}
+                  <button type="button" onClick={clearAccessCode} aria-label="Remove access code" className="ml-1 hover:opacity-70">
+                    <FiX size={14} />
+                  </button>
+                </p>
+              ) : (
+                <button type="button" onClick={() => setAccessOpen(true)} className="inline-flex items-center gap-2 text-[14px] font-v2-ui-semibold text-v2-cream hover:text-v2-c70">
+                  <FiLock size={15} />
+                  {haveAccessCodeLabel}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Quantity Selection — matching mobile QuantitySelector (v1 only; v2 has it in the sheet) */}
+          {selectedTier && !v2Frame && (
             <div className="mt-4 p-4 bg-white-5 border border-white-20 rounded-card">
               <div className="flex items-center justify-between">
                 {(() => {
@@ -1659,6 +1696,14 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                   Sign In to Continue
                 </button>
               </SignInButton>
+            ) : v2Frame ? (
+              <button
+                onClick={() => setCheckoutOpen(true)}
+                disabled={!selectedTier || creatingHold || rsvpMutation.isPending || isLoadingUserTickets}
+                className="h-12 rounded-v2-pill bg-v2-cream px-8 text-[15px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-50"
+              >
+                {creatingHold || rsvpMutation.isPending ? "…" : continueLabel}
+              </button>
             ) : event.requires_rsvp ? (
               <button
                 onClick={handlePurchaseClick}
@@ -1734,6 +1779,90 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           </div>
         )}
       </div>
+
+      {v2Frame && selectedTierData && (
+        <CheckoutSheet
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          event={{
+            name: event.name,
+            image_url: event.image_url ?? null,
+            starts_at: event.starts_at,
+            timezone: event.timezone ?? null,
+            venue: event.venue ?? null,
+            currency,
+            requires_rsvp: event.requires_rsvp ?? false,
+          }}
+          tier={{
+            name: selectedTierData.name,
+            unitCents: getEffectivePrice(selectedTier, selectedStageId),
+            stageName: selectedStageData?.name ?? null,
+          }}
+          quantity={selectedQuantity}
+          maxQuantity={getMaxQuantityForTier(selectedTierData)}
+          onQuantity={(n) => {
+            setSelectedQuantity(n);
+            setDiscount(null); // the amount depends on the subtotal: check it again
+          }}
+          accessCode={verifiedSecretCode ?? (accessCodeStatus === "valid" ? accessCodeInput.trim().toUpperCase() : null)}
+          promoter={{
+            input: promoterInput,
+            status: promoterStatus,
+            onInput: (v) => {
+              setPromoterInput(v);
+              if (promoterStatus === "invalid") setPromoterStatus("idle");
+            },
+            onValidate: validatePromoterCode,
+            onClear: clearPromoter,
+          }}
+          discount={{
+            applied: discount,
+            onApply: async (code) => {
+              try {
+                const res = await fetch("/api/purchase/validate-promo-code", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    code,
+                    event_id: event.id,
+                    subtotal_cents: getEffectivePrice(selectedTier, selectedStageId) * selectedQuantity,
+                  }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.valid) return (data && data.error) || discountInvalidLabel;
+                setDiscount({ code: String(data.promotional_code?.code ?? code).toUpperCase(), amountCents: Number(data.discount_amount_cents) || 0 });
+                return null;
+              } catch {
+                return discountInvalidLabel;
+              }
+            },
+            onClear: () => setDiscount(null),
+          }}
+          busy={creatingHold || rsvpMutation.isPending}
+          error={rsvpMessage && rsvpMessageType === "error" ? rsvpMessage : null}
+          onContinue={() => {
+            setCheckoutOpen(false);
+            handlePurchaseClick();
+          }}
+        />
+      )}
+      {v2Frame && (
+        <AccessCodeSheet
+          open={accessOpen}
+          onClose={() => setAccessOpen(false)}
+          value={accessCodeInput}
+          onChange={(v) => {
+            setAccessCodeInput(v);
+            if (accessCodeStatus === "invalid") {
+              setAccessCodeStatus("idle");
+              setAccessCodeError(null);
+            }
+          }}
+          onUnlock={(v) => void validateAccessCode(v)}
+          status={accessCodeStatus}
+          error={accessCodeError}
+        />
+      )}
 
       {footer}
 
