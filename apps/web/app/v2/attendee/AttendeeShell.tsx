@@ -72,7 +72,11 @@ function AttendeeFooter() {
   );
 }
 
-export function AttendeeShell({ children, active }: { children: ReactNode; active?: AttendeeTab | null }) {
+/**
+ * `hideTabBar` (event page, Kevin 2026-10-28): the phone tab bar gives way to the page's own
+ * bottom bar (Continue to checkout / View my tickets), as in the prototype.
+ */
+export function AttendeeShell({ children, active, hideTabBar = false }: { children: ReactNode; active?: AttendeeTab | null; hideTabBar?: boolean }) {
   const { t } = useI18n();
   const pathname = usePathname() ?? "/";
   const { isSignedIn, isLoaded } = useUser();
@@ -125,6 +129,7 @@ export function AttendeeShell({ children, active }: { children: ReactNode; activ
       <AttendeeFooter />
 
       {/* Phone: the app's floating bar. */}
+      {!hideTabBar && (
       <nav
         aria-label={t("tabs.main")}
         className="fixed bottom-3 left-4 right-4 z-30 flex h-16 items-center justify-evenly rounded-v2-pill border border-white/10 bg-[rgba(18,18,18,0.94)] backdrop-blur-xl lg:hidden"
@@ -144,6 +149,7 @@ export function AttendeeShell({ children, active }: { children: ReactNode; activ
           );
         })}
       </nav>
+      )}
     </div>
   );
 }

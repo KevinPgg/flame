@@ -5,7 +5,7 @@ import { generateEventSchema } from "../../../../lib/seo-config";
 import { getEventBySlug, eventPageMetadata } from "../../../../lib/event-page";
 import { getHomeEvents, type HomeEvent } from "../../../../lib/home-events";
 import { AttendeeShell } from "../../AttendeeShell";
-import { EventHeader } from "./EventHeader";
+import { EventHeader, EventTopBar } from "./EventHeader";
 import { MoreFromOrganizer } from "./MoreFromOrganizer";
 
 /**
@@ -36,9 +36,14 @@ export default async function EventPageV2({ params }: Props) {
   }
 
   return (
-    <AttendeeShell active={null}>
+    <AttendeeShell active={null} hideTabBar>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateEventSchema(event)) }} />
-      <EventDetail event={event} header={<EventHeader event={event} />} footer={<MoreFromOrganizer organizer={event.organizations?.name ?? ""} events={more} />} />
+      <EventDetail event={event} header={
+          <>
+            <EventTopBar slug={event.slug} name={event.name} />
+            <EventHeader event={event} />
+          </>
+        } footer={<MoreFromOrganizer organizer={event.organizations?.name ?? ""} events={more} />} />
     </AttendeeShell>
   );
 }

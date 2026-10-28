@@ -27,6 +27,7 @@ import {
   normalizeOptionalTicketTierSecretCode,
   normalizeTicketTierSecretCode,
   filterFieldsForTier,
+  myEventState,
 } from "@project-flame/lib";
 import { useRsvpSubmission, type ApiError } from "../lib/hooks/useRsvp";
 import { useMultipleTicketAvailability } from "../lib/hooks/useTicketAvailability";
@@ -39,6 +40,8 @@ import RegistrationFormModal, {
 import RsvpPaymentModal from "./modals/RsvpPaymentModal";
 import ConfirmationModal from "./modals/ConfirmationModal";
 import { CheckoutSheet, AccessCodeSheet } from "../v2/attendee/events/[slug]/CheckoutSheet";
+import { TierCard, BuyBar, buyBtn, type TierState } from "../v2/attendee/events/[slug]/TierCard";
+import { Icon as V2Icon } from "../v2/components/Icon";
 import { useI18n } from "../lib/i18n";
 
 /** Event shape for EventDetail; extends shared Event with nested relations. */
@@ -124,6 +127,10 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [selectedStageId, setSelectedStageId] = useState<string>("");
   const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
+  // A discount is checked against one tier and subtotal: picking another tier asks for it again.
+  useEffect(() => {
+    setDiscount(null);
+  }, [selectedTier, selectedStageId]);
   const [rsvpMessage, setRsvpMessage] = useState<string>("");
   const [rsvpMessageType, setRsvpMessageType] = useState<
     "success" | "error" | null
@@ -390,7 +397,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   // Only fetch when user is signed in AND event requires RSVP to avoid wasted fetches
   const { data: userTicketsData, isLoading: isLoadingUserTickets } =
     useUserTickets({
-      enabled: isSignedIn && event.requires_rsvp,
+      // Flame 2.0 needs them on every event: the bottom bar says "You're going · View N tickets".
+      enabled: !!isSignedIn && (!!event.requires_rsvp || v2Frame),
     });
 
   // React Query mutation for RSVP submission
@@ -1053,8 +1061,82 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
     );
   }
 
+  // ─── Flame 2.0 bottom bar (Kevin 2026-10-28, prototype `x-buybar`) ───
+  // Replaces the phone tab bar and the "Buy Tickets" pill. Tickets → "View N tickets"; open RSVP
+  // request → its state; a tier picked → Continue to checkout; nothing yet → "From $X".
+  let buyBarNode: ReactNode = null;
+  if (v2Frame && mounted) {
+    const money = (cents: number) => (cents === 0 ? tv2("common.free") : formatCentsAsPrice(cents, currency));
+    const mine = myEventState(userTicketsData?.tickets ?? [], event.id);
+    const isRsvp = !!event.requires_rsvp;
+    const signInUrl = `/events/${event.slug}${promoterInput.trim() ? `?promoter=${encodeURIComponent(promoterInput.trim())}` : ""}`;
+    if (mine.tickets.length > 0) {
+      const count = mine.tickets.length;
+      buyBarNode = (
+        <BuyBar kicker={tv2("event.youreGoing")} value={tv2("tickets.count", { count })}>
+          <a href={`/account/ticket/${mine.tickets[0]!.id}`} className={buyBtn()}>
+            <V2Icon name="qr" size={18} />
+            {tv2("event.viewNTickets", { count })}
+          </a>
+        </BuyBar>
+      );
+    } else if (mine.request?.state === "pending") {
+      buyBarNode = (
+        <BuyBar kicker={tv2("event.requestSent")} value={tv2("tickets.count", { count: mine.request.quantity })}>
+          <button type="button" disabled className={buyBtn("dark")}>
+            {tv2("event.pending")}
+          </button>
+        </BuyBar>
+      );
+    } else if (allTiers.length > 0 && selectedTierData) {
+      const name = selectedStageData?.name ?? selectedTierData.name;
+      const unit = getEffectivePrice(selectedTier, selectedStageId);
+      const kicker = isRsvp ? `${selectedQuantity} × ${name}` : tv2("tickets.beforeFees", { quantity: selectedQuantity, tier: name });
+      buyBarNode = (
+        <BuyBar kicker={kicker} value={money(unit * selectedQuantity)}>
+          {!isSignedIn ? (
+            <SignInButton mode="modal" forceRedirectUrl={signInUrl} signUpForceRedirectUrl={signInUrl}>
+              <button type="button" className={buyBtn()}>
+                {tv2("checkout.signInToContinue")}
+              </button>
+            </SignInButton>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCheckoutOpen(true)}
+              disabled={creatingHold || rsvpMutation.isPending || isLoadingUserTickets}
+              className={buyBtn()}
+            >
+              {creatingHold || rsvpMutation.isPending ? "…" : isRsvp ? tv2("event.requestToJoin") : tv2("checkout.continueToCheckout")}
+            </button>
+          )}
+        </BuyBar>
+      );
+    } else if (allTiers.length > 0) {
+      const prices = allTiers.map((tier) => {
+        const current = getStageDisplayData(tier)?.find((st) => st.isCurrentStage && !st.isSoldOut);
+        return { on: isTierAvailable(tier), cents: current?.price_cents ?? tier.price_cents };
+      });
+      const pool = prices.some((x) => x.on) ? prices.filter((x) => x.on) : prices;
+      const from = Math.min(...pool.map((x) => x.cents));
+      const anyOn = prices.some((x) => x.on);
+      buyBarNode = (
+        <BuyBar kicker={isRsvp ? tv2("event.rsvpFrom") : tv2("event.from")} value={money(from)}>
+          <button
+            type="button"
+            disabled={!anyOn}
+            onClick={() => document.getElementById("ticket-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className={buyBtn(anyOn ? "white" : "dark")}
+          >
+            {!anyOn ? tv2("event.soldOut") : isRsvp ? tv2("event.requestToJoin") : tv2("event.getTickets")}
+          </button>
+        </BuyBar>
+      );
+    }
+  }
+
   return (
-    <div className={v2Frame ? "pb-8" : "min-h-screen bg-background pb-8 pt-16"}>
+    <div className={v2Frame ? "pb-28" : "min-h-screen bg-background pb-8 pt-16"}>
       {/* ─── Modals (unchanged) ─── */}
       {event.registration_form_config &&
         (() => {
@@ -1240,11 +1322,15 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         )}
 
         {/* ─── Ticket Tiers — glass cards matching mobile TicketTierCard ─── */}
-        <div id="ticket-section">
+        <div id="ticket-section" className={v2Frame ? "scroll-mt-[124px]" : undefined}>
           <div className="flex items-center gap-3 mb-4">
+            {v2Frame ? (
+              <h2 className="m-0 font-v2-display-bold text-[19px] tracking-[-0.02em] text-v2-cream">{tv2("event.tickets")}</h2>
+            ) : (
             <h2 className="text-white-100 text-2xl font-poppins-semibold uppercase m-0">
               Select Your Ticket
             </h2>
+            )}
             {showAvailabilityUpdate && (
               <span className="text-[#5DDBB1] text-sm font-poppins-medium transition-opacity duration-300">
                 • Updated
@@ -1434,13 +1520,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                         ? "text-[#FBD68D]"
                         : "text-[#F99175]";
 
-                      return (
-                        <button
-                          type="button"
-                          key={`${tier.id}-${stage.id}`}
-                          disabled={!isStageAvailable}
-                          aria-disabled={!isStageAvailable}
-                          onClick={() => {
+                      const pickStage = () => {
                             if (isStageAvailable) {
                               // W4-C3 (Jun 2026): preserve the verified code
                               // when selecting an unlocked tier — otherwise
@@ -1461,7 +1541,46 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                                   : null,
                               );
                             }
-                          }}
+                          };
+                      if (v2Frame) {
+                        const st: TierState = isStageAvailable
+                          ? "on"
+                          : isTierNotStarted(tier) || (!stage.isCurrentStage && !stage.isSoldOut)
+                          ? "next"
+                          : isTierExpired(tier)
+                          ? "ended"
+                          : "sold";
+                        return (
+                          <TierCard
+                            key={`${tier.id}-${stage.id}`}
+                            title={stage.name}
+                            sub={tier.name}
+                            desc={stage.description || tier.description}
+                            priceCents={stage.price_cents}
+                            currency={currency}
+                            state={st}
+                            limit={tier.per_user_limit}
+                            unlocked={unlockedTiers.some((u) => u.id === tier.id)}
+                            isRsvp={!!event.requires_rsvp}
+                            selected={isThisSelected}
+                            quantity={selectedQuantity}
+                            max={getMaxQuantityForTier(tier)}
+                            onSelect={pickStage}
+                            onQuantity={(n) => {
+                              setSelectedQuantity(n);
+                              setDiscount(null);
+                            }}
+                          />
+                        );
+                      }
+
+                      return (
+                        <button
+                          type="button"
+                          key={`${tier.id}-${stage.id}`}
+                          disabled={!isStageAvailable}
+                          aria-disabled={!isStageAvailable}
+                          onClick={pickStage}
                           className={`appearance-none w-full text-left rounded-card px-4 py-3 transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white-50 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                             !isStageAvailable
                               ? "bg-white-10 opacity-60 cursor-not-allowed"
@@ -1526,13 +1645,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                     ? "text-[#FBD68D]"
                     : "text-[#F99175]";
 
-                  return (
-                    <button
-                      type="button"
-                      key={tier.id}
-                      disabled={!isAvailable}
-                      aria-disabled={!isAvailable}
-                      onClick={() => {
+                  const pickTier = () => {
                         if (isAvailable) {
                           // W4-C3 (Jun 2026): preserve verified code when
                           // selecting an unlocked tier — see staged-tier
@@ -1551,7 +1664,39 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                               : null,
                           );
                         }
-                      }}
+                      };
+                  if (v2Frame) {
+                    const st: TierState = isAvailable ? "on" : isTierNotStarted(tier) ? "next" : isTierExpired(tier) ? "ended" : "sold";
+                    return (
+                      <TierCard
+                        key={tier.id}
+                        title={tier.name}
+                        desc={tier.description}
+                        priceCents={tier.price_cents}
+                        currency={currency}
+                        state={st}
+                        limit={tier.per_user_limit}
+                        unlocked={unlockedTiers.some((u) => u.id === tier.id)}
+                        isRsvp={!!event.requires_rsvp}
+                        selected={isThisSelected}
+                        quantity={selectedQuantity}
+                        max={getMaxQuantityForTier(tier)}
+                        onSelect={pickTier}
+                        onQuantity={(n) => {
+                          setSelectedQuantity(n);
+                          setDiscount(null);
+                        }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      key={tier.id}
+                      disabled={!isAvailable}
+                      aria-disabled={!isAvailable}
+                      onClick={pickTier}
                       className={`appearance-none w-full text-left rounded-card px-4 py-3 transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white-50 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                         !isAvailable
                           ? "bg-white-10 opacity-60 cursor-not-allowed"
@@ -1676,7 +1821,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         </div>
 
         {/* ─── Checkout CTA — inline matching mobile CheckoutCTA ─── */}
-        {allTiers.length > 0 && selectedTier && (
+        {!v2Frame && allTiers.length > 0 && selectedTier && (
           <div className="flex justify-end">
             {!mounted || !isSignedIn ? (
               <SignInButton
@@ -1746,7 +1891,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         )}
 
         {/* Auth prompt when no tier selected yet */}
-        {allTiers.length > 0 && !selectedTier && (!mounted || !isSignedIn) && (
+        {!v2Frame && allTiers.length > 0 && !selectedTier && (!mounted || !isSignedIn) && (
           <div className="flex flex-col items-center gap-4 p-6 bg-white-5 rounded-card">
             <FiInfo size={24} className="text-white-50" />
             <p className="text-white-50 text-sm font-poppins m-0 text-center">
@@ -1866,8 +2011,10 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
 
       {footer}
 
-      {/* ─── Floating "Buy Tickets" / "Request RSVP" pill (matching mobile) ─── */}
-      {allTiers.length > 0 && (
+      {buyBarNode}
+
+      {/* ─── Floating "Buy Tickets" / "Request RSVP" pill (matching mobile; v1 only — v2 has the bottom bar) ─── */}
+      {!v2Frame && allTiers.length > 0 && (
         <div
           className={`fixed ${v2Frame ? "bottom-[92px] lg:bottom-6" : "bottom-6"} left-6 right-6 z-50 max-w-[800px] mx-auto transition-opacity duration-200 ${
             showBuyTicketsPill ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"

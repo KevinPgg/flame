@@ -4,7 +4,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderV2 } from "./helpers";
-import { EventHeader, type EventHeaderData } from "../../app/v2/attendee/events/[slug]/EventHeader";
+import { EventHeader, EventTopBar, type EventHeaderData } from "../../app/v2/attendee/events/[slug]/EventHeader";
 import { MoreFromOrganizer } from "../../app/v2/attendee/events/[slug]/MoreFromOrganizer";
 import OrganizerProfile from "../../app/v2/attendee/organizer/[slug]/OrganizerProfile";
 import type { HomeEvent } from "../../app/lib/home-events";
@@ -69,9 +69,17 @@ describe("event page header (web)", () => {
     const user = userEvent.setup({ delay: null });
     const writeText = vi.fn(async () => {});
     vi.stubGlobal("navigator", { ...navigator, share: undefined, clipboard: { writeText } });
-    const { unmount } = renderV2(<EventHeader event={{ ...EVENT, description: null, requires_rsvp: false }} />);
+    // Share lives in the fixed top bar since 2026-10-28 (the header no longer has it).
+    const { unmount } = renderV2(
+      <>
+        <EventTopBar slug="noche-larga" name="Noche Larga" />
+        <EventHeader event={{ ...EVENT, description: null, requires_rsvp: false }} />
+      </>,
+    );
+    expect(screen.getAllByRole("button", { name: "Share event" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Share event" }));
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/events/noche-larga`);
+    expect(await screen.findByText("Link copied")).toBeInTheDocument();
     expect(screen.queryByText(/RSVP required/)).not.toBeInTheDocument();
     unmount();
     renderV2(<EventHeader event={EVENT} />, "es");

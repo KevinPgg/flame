@@ -29,12 +29,10 @@ export type EventHeaderData = {
   cohost_org_names?: string[];
 };
 
-const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
 export function EventHeader({ event }: { event: EventHeaderData }) {
   const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const start = walletDayTime(event.starts_at, event.timezone, locale);
   const end = walletDayTime(event.ends_at, event.timezone, locale);
   // Overnight events (most nights out) read as one night: "Thu, Oct 30 · 10:00 PM – 3:00 AM".
@@ -44,18 +42,6 @@ export function EventHeader({ event }: { event: EventHeaderData }) {
   const maps = directionsUrl(event);
   const hosts = [event.organizations.name, ...(event.cohost_org_names ?? [])].join(" & ");
   const long = (event.description ?? "").length > 220 || (event.description ?? "").split("\n").length > 3;
-
-  const share = async () => {
-    const url = `${window.location.origin}/events/${event.slug}`;
-    try {
-      if (typeof navigator.share === "function") return void (await navigator.share({ title: event.name, url }));
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* closed or not allowed */
-    }
-  };
 
   return (
     <header className="relative -mx-4 -mt-6 overflow-hidden px-4 pb-2 pt-4">
@@ -68,14 +54,8 @@ export function EventHeader({ event }: { event: EventHeaderData }) {
       )}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-black" />
       <div className="relative">
-        <div className="mb-4 flex items-center justify-between">
-          <button type="button" onClick={() => history.back()} aria-label={t("common.back")} className={circle}>
-            <Icon name="back" size={20} />
-          </button>
-          <button type="button" onClick={() => void share()} aria-label={t("event.shareEvent")} className={circle}>
-            <Icon name="share" size={19} />
-          </button>
-        </div>
+        {/* Back and share live in EventTopBar, fixed while the page scrolls (Kevin 2026-10-28). */}
+        <div aria-hidden className="mb-4 h-10" />
         <div className="mx-auto aspect-[4/5] w-full overflow-hidden rounded-[18px] bg-v2-ink3 shadow-[0_30px_70px_rgba(0,0,0,0.55)] md:max-w-[384px]">
           {event.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- remote flyer
@@ -88,7 +68,6 @@ export function EventHeader({ event }: { event: EventHeaderData }) {
           <b className="truncate text-[15px] font-v2-ui-semibold">{hosts}</b>
         </Link>
         <h1 className="mt-2 font-v2-display-bold text-[34px] leading-[1.02] tracking-[-0.04em] md:text-[44px]">{event.name}</h1>
-        {copied && <p className="mt-1 text-[13px] text-v2-c70">{t("home.copied")}</p>}
 
         <div className="mt-5 flex flex-col gap-3">
           <div className="flex items-start gap-3">
@@ -144,5 +123,41 @@ export function EventHeader({ event }: { event: EventHeaderData }) {
         )}
       </div>
     </header>
+  );
+}
+
+const circle = "pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream backdrop-blur-md hover:bg-v2-ink4";
+
+/**
+ * Back + share fixed at the top of the event page while it scrolls (Kevin 2026-10-28, prototype
+ * `x-top float`), under the site bar. Room on the right for "save / follow" later. It takes no
+ * space: the header leaves a 40px gap where the buttons sit at the start.
+ */
+export function EventTopBar({ slug, name }: { slug: string; name: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const url = `${window.location.origin}/events/${slug}`;
+    try {
+      if (typeof navigator.share === "function") return void (await navigator.share({ title: name, url }));
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* closed or not allowed */
+    }
+  };
+  return (
+    <div className="pointer-events-none sticky top-[72px] z-20 -mb-[53px] -mt-2 flex h-10 items-center justify-between">
+      <button type="button" onClick={() => history.back()} aria-label={t("common.back")} className={circle}>
+        <Icon name="back" size={20} />
+      </button>
+      <div className="flex items-center gap-2">
+        {copied && <span className="pointer-events-auto rounded-v2-pill bg-v2-ink3 px-3 py-1.5 text-[12.5px] text-v2-c90">{t("home.copied")}</span>}
+        <button type="button" onClick={() => void share()} aria-label={t("event.shareEvent")} className={circle}>
+          <Icon name="share" size={19} />
+        </button>
+      </div>
+    </div>
   );
 }

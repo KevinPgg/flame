@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderV2, mockFetch } from "./helpers";
 
-const st = vi.hoisted(() => ({ q: "", promoters: ["PROMO1"] as string[] }));
+const st = vi.hoisted(() => ({ q: "", promoters: ["PROMO1"] as string[], tickets: [] as unknown[] }));
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({ isSignedIn: true, userId: "u1" }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
@@ -24,7 +24,7 @@ vi.mock("../../app/lib/hooks/useRsvp", () => ({ useRsvpSubmission: () => ({ muta
 vi.mock("../../app/lib/hooks/useTicketAvailability", () => ({
   useMultipleTicketAvailability: () => ({ results: [], hasDataChanged: false, isLoading: false }),
 }));
-vi.mock("../../app/lib/hooks/useUserTickets", () => ({ useUserTickets: () => ({ data: { tickets: [] }, isLoading: false }) }));
+vi.mock("../../app/lib/hooks/useUserTickets", () => ({ useUserTickets: () => ({ data: { tickets: st.tickets }, isLoading: false }) }));
 vi.mock("../../app/lib/supabase/client", () => {
   const q = { code: "" };
   const chain = {
@@ -88,6 +88,7 @@ function open() {
 
 beforeEach(() => {
   st.q = "";
+  st.tickets = [];
   (window.location as { href: string }).href = "http://localhost:3000/events/hush";
 });
 
@@ -128,7 +129,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     ]);
     open();
     await user.click(screen.getByRole("button", { name: /General/ }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
     const sheet = screen.getByRole("dialog", { name: "Checkout" });
     expect(within(sheet).getByText("Hush · Red Room")).toBeInTheDocument();
     expect(within(sheet).getByText(/limit 6 per person/)).toBeInTheDocument();
@@ -163,7 +164,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     mockFetch([{ match: (u) => u.includes("validate-promo-code"), status: 404, body: { error: "Invalid promotional code" } }]);
     open();
     await user.click(screen.getByRole("button", { name: /General/ }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
     const sheet = screen.getByRole("dialog", { name: "Checkout" });
     expect(await within(sheet).findByText("Promoter PROMO1")).toBeInTheDocument();
     await user.type(within(sheet).getByRole("textbox", { name: "Discount code" }), "bad");
@@ -171,6 +172,39 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(await within(sheet).findByText("Invalid promotional code")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Checkout" })).not.toBeInTheDocument();
+  });
+
+  it("picking a tier: the quantity is chosen in the card (no jump) and the bottom bar follows it", async () => {
+    const user = userEvent.setup({ delay: null });
+    mockFetch([]);
+    open();
+    // nothing picked yet: "From" + Get tickets
+    expect(screen.getByText("From")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Get tickets" })).toBeInTheDocument();
+    expect(screen.getByText("On sale · max 6")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /General/ }));
+    expect(screen.queryByRole("dialog", { name: "Checkout" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More tickets" }));
+    await user.click(screen.getByRole("button", { name: "More tickets" }));
+    expect(screen.getByText("3 × General · before fees")).toBeInTheDocument();
+    expect(screen.getByText("$45.00")).toBeInTheDocument();
+    // the old inline "Continue" under the tiers and the floating pill are gone in v2
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Buy Tickets" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
+    expect(within(screen.getByRole("dialog", { name: "Checkout" })).getByText("3 × General · before fees")).toBeInTheDocument();
+  });
+
+  it("with tickets for this event the bar says You're going · View N tickets", () => {
+    st.tickets = [
+      { id: "tk1", type: "ticket", status: "issued", created_at: "2026-10-01T00:00:00Z", ticket_tier: { id: "t1", name: "General", event: { ...EVENT, organization: { name: "Hush" } } } },
+      { id: "tk2", type: "ticket", status: "issued", created_at: "2026-10-02T00:00:00Z", ticket_tier: { id: "t1", name: "General", event: { ...EVENT, organization: { name: "Hush" } } } },
+    ];
+    mockFetch([]);
+    open();
+    expect(screen.getByText("You’re going")).toBeInTheDocument();
+    expect(screen.getByText("2 tickets")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View 2 tickets" })).toHaveAttribute("href", "/account/ticket/tk1");
   });
 
   it("v1 (no header) keeps the inline promoter and access-code inputs", () => {
