@@ -99,17 +99,17 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 ## 2.4 · Página de evento y perfil de organizador
 **App · 📱 Celular**
 - [ ] Abrir un evento desde Inicio: sin la barra de arriba; atrás y compartir en círculos; flyer grande sobre sus colores difuminados; logo y nombre del organizador (y co-organizadores "A & B") → toca y abre su perfil; título grande.
-- [ ] "Cuándo" en una línea para eventos de una noche ("vie, 30 oct · 22:00 – 03:00"); "Lugar" con botón **Cómo llegar** (abre Maps); si pide RSVP, la línea "Requiere RSVP…".
-- [ ] Descripción en 3 líneas con **Más / Menos**; los enlaces y @instagram siguen tocables.
-- [ ] **El bloque de compra es el de siempre** (tiers, códigos de acceso y promotor, cantidad, checkout, RSVP, pago) y funciona igual: compra uno gratis y uno pagado de prueba, y un RSVP. La píldora "Buy Tickets" lleva a los tickets.
-- [ ] Debajo, "Más de {organizador}" con sus otros eventos (deslizar a los lados); tocar abre ese evento.
-- [ ] Perfil de organizador: portada (o el logo difuminado si no tiene), logo grande, nombre, ciudad, @instagram (abre Instagram), "N eventos próximos", descripción, compartir; Próximos en 2 columnas (incluye los co-organizados); Pasados. Sin seguidores ni "Seguir" (fase 4).
+- [x] "Cuándo" en una línea para eventos de una noche ("vie, 30 oct · 22:00 – 03:00"); "Lugar" con botón **Cómo llegar** (abre Maps); si pide RSVP, la línea "Requiere RSVP…".
+- [x] Descripción en 3 líneas con **Más / Menos**; los enlaces y @instagram siguen tocables. `//Si es en la pagina del evento, no se ve el ig del organizador en ningun lado`
+- [x] **El bloque de compra es el de siempre** (tiers, códigos de acceso y promotor, cantidad, checkout, RSVP, pago) y funciona igual: compra uno gratis y uno pagado de prueba, y un RSVP. La píldora "Buy Tickets" lleva a los tickets.
+- [x] Debajo, "Más de {organizador}" con sus otros eventos (deslizar a los lados); tocar abre ese evento.
+- [x] Perfil de organizador: portada (o el logo difuminado si no tiene), logo grande, nombre, ciudad, @instagram (abre Instagram), "N eventos próximos", descripción, compartir; Próximos en 2 columnas (incluye los co-organizados); Pasados. Sin seguidores ni "Seguir" (fase 4).  `//Mejorar el boton de @instagram, tomar referencia flme2.0, el link de ig tiene un logo de ig y elnombre de usuaio, dejemoslo en ortientacion vertical: lugar -> usuario -> about organizator. Los n eventos proximos pueden ir a lador del nombre de organizador`
 - [ ] Interruptor `EXPO_PUBLIC_ATTENDEE_V1=true`: vuelven la página de evento y el perfil de siempre.
 
 **Web · 🌐 PC y teléfono**
-- [ ] `/events/<slug>` (con y sin sesión): misma dirección, página nueva dentro del marco del asistente; el bloque de compra de siempre funciona (comprar, RSVP, códigos). En el teléfono la píldora "Buy Tickets" queda **encima** de la barra flotante.
-- [ ] Ctrl+U en `/events/<slug>`: `<title>` y descripción del evento, `og:image` del flyer, el JSON-LD del evento, y **sin** `noindex`.
-- [ ] "Más de {organizador}" en cuadrícula. Compartir: menú del sistema o "Enlace copiado".
+- [x] `/events/<slug>` (con y sin sesión): misma dirección, página nueva dentro del marco del asistente; el bloque de compra de siempre funciona (comprar, RSVP, códigos). En el teléfono la píldora "Buy Tickets" queda **encima** de la barra flotante.
+- [x] Ctrl+U en `/events/<slug>`: `<title>` y descripción del evento, `og:image` del flyer, el JSON-LD del evento, y **sin** `noindex`.
+- [x] "Más de {organizador}" en cuadrícula. Compartir: menú del sistema o "Enlace copiado".
 - [ ] `/organizer/<slug>`: perfil nuevo (como la app); Ctrl+U sin `noindex`. **Las pantallas del organizador** `/organizer`, `/organizer/settings`, `/organizer/team`, `/organizer/rsvps`, `/organizer/event/…` siguen funcionando como antes.
 - [ ] `ATTENDEE_V1=true` → página de evento y perfil de siempre.
 
@@ -158,6 +158,25 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 - [ ] **RSVP:** Continuar → el formulario / la autorización de pago de siempre; el descuento se pone en ese paso de pago. El RSVP queda con el promotor.
 - [ ] En `/purchase` el promotor ya no se puede escribir (antes ese campo no llegaba al pedido): solo se ve el que viene de la página de evento.
 - [ ] `ATTENDEE_V1=true`: la página de evento de siempre con sus campos en línea.
+
+## Corrección 10-28 · Página de evento: barras fijas, cantidad en la tarjeta, checkout
+**App · 📱 Celular**
+- [ ] Atrás y compartir quedan **fijos arriba** al desplazar la página (sobre un degradado oscuro); atrás funciona también si entraste por un enlace directo (va al inicio).
+- [ ] Tarjetas de tiers como el prototipo: nombre, "● A la venta · máx. N", precio y **Elegir**; el siguiente tier con candado; el tier desbloqueado con código muestra "Desbloqueado".
+- [ ] Tocar un tier: **la pantalla no se mueve**; en esa tarjeta aparece −/+ y se respeta el máximo. Tocarlo otra vez no lo deselecciona.
+- [ ] La píldora flotante "Buy Tickets" ya no aparece. Abajo hay una **barra fija**: sin tier "Desde $X" + **Comprar tickets** (sube hasta los tiers, no elige solo); con tier "2 × Tier · antes de comisiones" + total + **Continuar al pago** (abre la hoja de checkout); sin sesión dice "Inicia sesión para continuar".
+- [ ] Con tickets de ese evento: "Vas a ir · N tickets" + **Ver N tickets** → abre tu ticket (QR). Con RSVP pendiente: "Solicitud enviada · pendiente" (desactivado).
+- [ ] Hoja de checkout: descuento, promotor y los campos del RSVP **miden lo mismo** (48 px), igual que los botones Aplicar y las etiquetas verdes de "aplicado".
+- [ ] Evento RSVP con preguntas: un recuadro "RSVP questions" (con el nombre del organizador) separado del bloque "Payment codes (optional)" con descuento y promotor; en RSVP pagado aparece "They only apply to the charge if your request is approved."
+- [ ] Compra completa con promotor y descuento sigue funcionando (el cobro no cambió).
+
+**Web · 🌐 Teléfono y PC** (`/events/<slug>`)
+- [ ] Atrás y compartir fijos bajo la barra del sitio al desplazar; compartir copia el enlace ("Link copied") si el navegador no comparte.
+- [ ] En teléfono **no** aparece la barra de pestañas en la página de evento; en su lugar la barra fija de compra (mismos estados que la app). En PC también se ve abajo, centrada.
+- [ ] Tarjetas de tiers como el prototipo; al elegir uno, −/+ en la tarjeta sin mover la página; ya no aparecen el botón "Continue" debajo de los tiers ni la píldora "Buy Tickets".
+- [ ] **Continuar al pago** abre la hoja de checkout con la cantidad elegida; el resto del flujo (promotor, descuento, `/purchase`) igual que en la corrección 2.4. Cambiar de tier borra el descuento aplicado (hay que ponerlo de nuevo).
+- [ ] Con tickets del evento: "Ver N tickets" lleva a `/account/ticket/<id>`.
+- [ ] `ATTENDEE_V1=true` / `EXPO_PUBLIC_ATTENDEE_V1=true`: la página de evento v1 sin cambios (incluido el salto al final de la app v1, que es el de producción).
 
 ## Cosas conocidas
 - El bloque de compra de la página de evento es el de la v1 por dentro (tarjetas de tiers, formularios de RSVP, autorización de pago, `/purchase`), con su estilo y en inglés; desde la corrección 2.4 los códigos van en hojas v2. El resto lo reemplaza la fase 3.
