@@ -4,7 +4,7 @@ Ordenada por relevancia: de arriba hacia abajo, de lo que se lee siempre a lo qu
 
 | Carpeta | Qué hay | Cuándo leerla |
 | --- | --- | --- |
-| [`actual/`](actual/) | `ESTADO_ACTUAL.md` (estado del proyecto; §0 = Flame 2.0), `ARQUITECTURA.md` (arquitectura de producción), `FLAME_2_0_VALORACION.md` (plan y decisiones del rediseño), `FLAME_PLATFORM_OVERVIEW.md` (resumen para stakeholders) | **Siempre**, para retomar el trabajo |
+| [`actual/`](actual/) | `ESTADO_ACTUAL.md` (estado del proyecto; §0 = Flame 2.0), `ARQUITECTURA.md` (arquitectura de producción), `FLAME_2_0_VALORACION.md` (plan y decisiones del rediseño), `FASE_3_PAGOS.md` (bugs de cobro, flujo y plan de la fase 3), `FLAME_PLATFORM_OVERVIEW.md` (resumen para stakeholders) | **Siempre**, para retomar el trabajo |
 | [`sesiones/`](sesiones/) | Registro de cada sesión de trabajo (`YYYY-MM-DD-tema.md`) e índice en su `README.md` | Para saber qué se hizo, por qué y qué quedó pendiente |
 | [`PruebasReales/`](PruebasReales/) | Listas de pruebas manuales por fase, para ejecutar en el PC con datos reales | Antes de cerrar una fase o de pasar cambios a producción |
 | [`guias/`](guias/) | Cómo hacer las cosas: entorno de desarrollo (`SETUP_ENTORNO_DEV.md`), DNS, email, Apple Sign In, OTA, rendimiento, SEO, modo mantenimiento | Al configurar o operar algo |
