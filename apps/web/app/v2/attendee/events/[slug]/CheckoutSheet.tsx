@@ -16,7 +16,8 @@ import { formatCentsAsPrice, walletDayTime } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { Icon } from "../../../components/Icon";
 
-type CodeStatus = "idle" | "validating" | "valid" | "invalid";
+/** "error" = the promoter check itself failed (B2): shown with Retry, doesn't block buying. */
+type CodeStatus = "idle" | "validating" | "valid" | "invalid" | "error";
 
 export type CheckoutSheetProps = {
   open: boolean;
@@ -142,6 +143,14 @@ export function CheckoutSheet(p: CheckoutSheetProps) {
                   </button>
                 </form>
                 {p.promoter.status === "invalid" && p.promoter.input.trim() && <p className="mt-1.5 text-[12.5px] text-v2-errorText">{t("checkout.promoterInvalid")}</p>}
+                {p.promoter.status === "error" && p.promoter.input.trim() && (
+                  <p role="alert" className="mt-1.5 text-[12.5px] text-v2-c70">
+                    {t("checkout.promoterCheckFailed")} ·{" "}
+                    <button type="button" onClick={() => p.promoter.onValidate(p.promoter.input)} className="font-v2-ui-semibold text-v2-cream underline">
+                      {t("checkout.retry")}
+                    </button>
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -203,8 +212,14 @@ export function CheckoutSheet(p: CheckoutSheetProps) {
               {isFree ? t("common.free") : money(Math.max(0, subtotal - (p.discount.applied?.amountCents ?? 0)))}
             </b>
           </span>
-          <button type="button" onClick={p.onContinue} disabled={p.busy} className="inline-flex h-12 shrink-0 items-center rounded-v2-pill bg-v2-cream px-7 text-[15px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-60">
-            {p.busy ? "…" : cta}
+          {/* B2: wait for the promoter check before creating the hold / RSVP. */}
+          <button
+            type="button"
+            onClick={p.onContinue}
+            disabled={p.busy || p.promoter.status === "validating"}
+            className="inline-flex h-12 shrink-0 items-center rounded-v2-pill bg-v2-cream px-7 text-[15px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-60"
+          >
+            {p.busy || p.promoter.status === "validating" ? "…" : cta}
           </button>
         </div>
       </div>

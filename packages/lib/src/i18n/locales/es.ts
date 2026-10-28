@@ -240,6 +240,9 @@ export const es: Messages = {
     increase: "Más tickets",
     continueToCheckout: "Continuar al pago",
     signInToContinue: "Inicia sesión para continuar",
+    promoterCheckFailed: "No pudimos validar el código (puedes comprar igual)",
+    retry: "Reintentar",
+    paymentInProgress: "Ya tienes un pago en curso para este ticket. Espera unos minutos o termínalo.",
   },
   accessCode: {
     title: "Código de acceso",

@@ -242,6 +242,9 @@ export const en = {
     increase: "More tickets",
     continueToCheckout: "Continue to checkout",
     signInToContinue: "Sign in to continue",
+    promoterCheckFailed: "We couldn’t check the code (you can still buy)",
+    retry: "Retry",
+    paymentInProgress: "You already have a payment in progress for this ticket. Wait a few minutes or finish it.",
   },
   accessCode: {
     title: "Access code",

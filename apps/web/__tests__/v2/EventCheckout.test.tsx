@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderV2, mockFetch } from "./helpers";
 
-const st = vi.hoisted(() => ({ q: "", promoters: ["PROMO1"] as string[], tickets: [] as unknown[] }));
+const st = vi.hoisted(() => ({ q: "", tickets: [] as unknown[] }));
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({ isSignedIn: true, userId: "u1" }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
@@ -25,22 +25,17 @@ vi.mock("../../app/lib/hooks/useTicketAvailability", () => ({
   useMultipleTicketAvailability: () => ({ results: [], hasDataChanged: false, isLoading: false }),
 }));
 vi.mock("../../app/lib/hooks/useUserTickets", () => ({ useUserTickets: () => ({ data: { tickets: st.tickets }, isLoading: false }) }));
-vi.mock("../../app/lib/supabase/client", () => {
-  const q = { code: "" };
-  const chain = {
-    select: () => chain,
-    eq: (col: string, v: string) => {
-      if (col === "promoter_code") q.code = v;
-      return chain;
-    },
-    maybeSingle: async () => ({ data: st.promoters.includes(q.code) ? { id: "pl1" } : null, error: null }),
-  };
-  return { supabase: { from: () => chain } };
-});
 vi.mock("../../app/components/modals/RegistrationFormModal", () => ({ default: () => null }));
 vi.mock("../../app/components/modals/RsvpPaymentModal", () => ({ default: () => null }));
 vi.mock("../../app/components/modals/ConfirmationModal", () => ({ default: () => null }));
 import EventDetail from "../../app/components/EventDetail";
+
+// B10 (fase 3.1): the promoter code is checked by the server, /api/promoter-validate (no direct
+// Supabase read from the browser). PROMO1 is a promoter of this event.
+const PROMOTER = [
+  { match: (u: string) => u.startsWith("/api/promoter-validate") && u.includes("code=PROMO1"), body: { valid: true, code: "PROMO1" } },
+  { match: (u: string) => u.startsWith("/api/promoter-validate"), body: { valid: false } },
+];
 
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -94,7 +89,7 @@ beforeEach(() => {
 
 describe("event page purchase block, Flame 2.0 (web)", () => {
   it("the page shows only the tiers: no promoter or access-code inputs, no quantity row", () => {
-    mockFetch([]);
+    mockFetch(PROMOTER);
     open();
     expect(screen.getByRole("button", { name: /General/ })).toBeInTheDocument();
     expect(screen.queryByText(/Promoter Code/i)).not.toBeInTheDocument();
@@ -106,6 +101,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
   it("access code: link → sheet → Unlock checks the code and closes; applied chip with remove", async () => {
     const user = userEvent.setup({ delay: null });
     const f = mockFetch([
+      ...PROMOTER,
       {
         match: (u) => u.includes("/api/ticket-tiers/unlock"),
         body: { tier: { ...EVENT.ticket_tiers[0], id: "vip", name: "VIP secret", price_cents: 3000 } },
@@ -124,6 +120,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
   it("checkout sheet: quantity, promoter (checked) and discount (checked) → the hold carries the promoter, /purchase gets the discount", async () => {
     const user = userEvent.setup({ delay: null });
     const f = mockFetch([
+      ...PROMOTER,
       { match: (u) => u.includes("/api/purchase/validate-promo-code"), body: { valid: true, promotional_code: { code: "SAVE10" }, discount_amount_cents: 300 } },
       { match: (u) => u.includes("/api/holds/create"), body: { hold_session_id: "h1", ticket_tier: { price_cents: 1500 } } },
     ]);
@@ -161,7 +158,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
   it("a ?promoter= link arrives already applied in the sheet; an invalid discount says so", async () => {
     st.q = "promoter=promo1";
     const user = userEvent.setup({ delay: null });
-    mockFetch([{ match: (u) => u.includes("validate-promo-code"), status: 404, body: { error: "Invalid promotional code" } }]);
+    mockFetch([...PROMOTER, { match: (u) => u.includes("validate-promo-code"), status: 404, body: { error: "Invalid promotional code" } }]);
     open();
     await user.click(screen.getByRole("button", { name: /General/ }));
     await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
@@ -176,7 +173,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
 
   it("picking a tier: the quantity is chosen in the card (no jump) and the bottom bar follows it", async () => {
     const user = userEvent.setup({ delay: null });
-    mockFetch([]);
+    mockFetch(PROMOTER);
     open();
     // nothing picked yet: "From" + Get tickets
     expect(screen.getByText("From")).toBeInTheDocument();
@@ -197,7 +194,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
 
   it("Get tickets picks the cheapest tier on sale; the card's Checkout button opens the sheet", async () => {
     const user = userEvent.setup({ delay: null });
-    mockFetch([]);
+    mockFetch(PROMOTER);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const vip = { ...EVENT.ticket_tiers[0], id: "t2", name: "VIP", price_cents: 4000 };
     renderV2(
@@ -218,15 +215,52 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
       { id: "tk1", type: "ticket", status: "issued", created_at: "2026-10-01T00:00:00Z", ticket_tier: { id: "t1", name: "General", event: { ...EVENT, organization: { name: "Hush" } } } },
       { id: "tk2", type: "ticket", status: "issued", created_at: "2026-10-02T00:00:00Z", ticket_tier: { id: "t1", name: "General", event: { ...EVENT, organization: { name: "Hush" } } } },
     ];
-    mockFetch([]);
+    mockFetch(PROMOTER);
     open();
     expect(screen.getByText("You’re going")).toBeInTheDocument();
     expect(screen.getByText("2 tickets")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "View 2 tickets" })).toHaveAttribute("href", "/account/ticket/tk1");
   });
 
+  it("B2: Continue waits while the promoter code is checked; a failed check says so, offers Retry and doesn't block", async () => {
+    st.q = "promoter=promo1";
+    const user = userEvent.setup({ delay: null });
+    const gate = { release: () => {} };
+    let fail = true;
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.startsWith("/api/promoter-validate")) {
+          await new Promise<void>((r) => (gate.release = r));
+          return fail ? new Response(JSON.stringify({ error: "Validation failed" }), { status: 500 }) : new Response(JSON.stringify({ valid: true, code: "PROMO1" }));
+        }
+        return new Response(JSON.stringify({ error: "unmocked" }), { status: 599 });
+      }),
+    );
+    open();
+    await user.click(screen.getByRole("button", { name: /General/ }));
+    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
+    const sheet = screen.getByRole("dialog", { name: "Checkout" });
+    // still checking → the sheet's Continue is disabled (no hold can be created without the promoter)
+    // (the promoter's Add and the sheet's Continue both show "…" and are disabled)
+    const busy = within(sheet).getAllByRole("button", { name: "…" });
+    expect(busy).toHaveLength(2);
+    busy.forEach((b) => expect(b).toBeDisabled());
+    expect(calls.some((u) => u.includes("/api/promoter-validate?event_id=e1&code=PROMO1"))).toBe(true);
+    gate.release();
+    expect(await within(sheet).findByText(/We couldn’t check the code/)).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Continue" })).toBeEnabled();
+    fail = false;
+    await user.click(within(sheet).getByRole("button", { name: "Retry" }));
+    gate.release();
+    expect(await within(sheet).findByText("Promoter PROMO1")).toBeInTheDocument();
+  });
+
   it("v1 (no header) keeps the inline promoter and access-code inputs", () => {
-    mockFetch([]);
+    mockFetch(PROMOTER);
     const client = new QueryClient();
     renderV2(
       <QueryClientProvider client={client}>

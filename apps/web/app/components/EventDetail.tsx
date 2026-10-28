@@ -33,7 +33,6 @@ import { useRsvpSubmission, type ApiError } from "../lib/hooks/useRsvp";
 import { useMultipleTicketAvailability } from "../lib/hooks/useTicketAvailability";
 import { useUserTickets } from "../lib/hooks/useUserTickets";
 import { LinkifiedText } from "../lib/utils/linkify-text";
-import { supabase } from "../lib/supabase/client";
 import RegistrationFormModal, {
   FormField,
 } from "./modals/RegistrationFormModal";
@@ -193,13 +192,17 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
 
   // Promoter code state — editable field matching mobile CheckoutMainSheet.tsx
   const [promoterInput, setPromoterInput] = useState(promoterCode || "");
+  // B2 (fase 3.1): "error" = the check itself failed (network / server). It is shown with Retry and
+  // does NOT block buying; "validating" does block Continue so a fast tap can't drop the promoter.
   const [promoterStatus, setPromoterStatus] = useState<
-    "idle" | "validating" | "valid" | "invalid"
+    "idle" | "validating" | "valid" | "invalid" | "error"
   >(promoterCode ? "validating" : "idle");
 
   // Request-id guard: prevent out-of-order completions from overwriting newer state
   const latestValidateTokenRef = useRef(0);
 
+  // B10 (fase 3.1): one rule for the promoter code — the server (/api/promoter-validate), not a
+  // direct Supabase read from the browser (that needed promoter_links open to anon, see B11).
   const validatePromoterCode = useCallback(
     async (code: string) => {
       const trimmed = code.trim().toUpperCase();
@@ -210,28 +213,22 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
       const token = ++latestValidateTokenRef.current;
       setPromoterStatus("validating");
       try {
-        if (!supabase) {
-          if (token === latestValidateTokenRef.current) setPromoterStatus("idle");
-          return;
-        }
-        const { data: row, error: dbError } = await supabase
-          .from("promoter_links")
-          .select("id")
-          .eq("event_id", event.id)
-          .eq("promoter_code", trimmed)
-          .maybeSingle();
+        const res = await fetch(
+          `/api/promoter-validate?event_id=${encodeURIComponent(event.id)}&code=${encodeURIComponent(trimmed)}`,
+        );
+        const data = await res.json().catch(() => null);
         if (token !== latestValidateTokenRef.current) return;
-        if (dbError) {
-          console.error("[validatePromoter] DB error:", {
+        if (!res.ok || !data || typeof data.valid !== "boolean") {
+          console.error("[validatePromoter] server error:", {
             action: "validatePromoter",
-            error: dbError,
+            status: res.status,
             eventId: event.id,
             userId: userId ?? null,
           });
-          setPromoterStatus("idle");
+          setPromoterStatus("error");
           return;
         }
-        if (row) {
+        if (data.valid) {
           setPromoterInput(trimmed);
           setPromoterStatus("valid");
         } else {
@@ -244,7 +241,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           eventId: event.id,
           userId: userId ?? null,
         });
-        if (token === latestValidateTokenRef.current) setPromoterStatus("idle");
+        if (token === latestValidateTokenRef.current) setPromoterStatus("error");
       }
     },
     [event.id, userId],
@@ -900,8 +897,12 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           errorMessage = text || errorMessage;
         }
 
+        // B4: a payment for this ticket is already running in another tab / device.
+        if (errorCode === "PAYMENT_IN_PROGRESS" && v2Frame) errorMessage = tv2("checkout.paymentInProgress");
         setRsvpMessage(errorMessage);
         setRsvpMessageType("error");
+        // Show it in the sheet the buyer just left (access-code errors open their own sheet).
+        if (v2Frame && errorCode !== "MISSING_SECRET_CODE" && errorCode !== "INVALID_SECRET_CODE") setCheckoutOpen(true);
 
         // Check for structured error codes for sold-out/availability issues
         if (
@@ -1009,6 +1010,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   // Handle purchase/RSVP click
   const handlePurchaseClick = () => {
     if (!selectedTier || !isSignedIn) return;
+    // B2: never create the hold / RSVP while the promoter code is still being checked.
+    if (promoterStatus === "validating") return;
 
     // Check for existing RSVP/Ticket for this event (RSVP events only)
     // Non-RSVP events (holds) support repeat purchases, so we don't gate them.
@@ -1159,7 +1162,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             disabled={!anyOn}
             onClick={() => {
               selectCheapestV2();
-              document.getElementById("ticket-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document.getElementById("ticket-section")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
             }}
             className={buyBtn(anyOn ? "white" : "dark")}
           >
@@ -1431,6 +1434,15 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
               {promoterStatus === "invalid" && promoterInput.trim().length > 0 && (
                 <p className="text-error text-xs font-poppins mt-1 m-0">
                   Invalid promoter code
+                </p>
+              )}
+              {promoterStatus === "error" && promoterInput.trim().length > 0 && (
+                <p className="text-white-70 text-xs font-poppins mt-1 m-0">
+                  We couldn&apos;t check the code.{" "}
+                  <button type="button" onClick={() => validatePromoterCode(promoterInput)} className="underline bg-transparent border-none p-0 text-white-100 cursor-pointer">
+                    Retry
+                  </button>{" "}
+                  · You can still buy without it.
                 </p>
               )}
             </div>
@@ -1894,7 +1906,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                 disabled={
                   !selectedTier ||
                   rsvpMutation.isPending ||
-                  isLoadingUserTickets
+                  isLoadingUserTickets ||
+                  promoterStatus === "validating"
                 }
                 className="bg-white-100 text-dark font-poppins-semibold text-sm px-8 py-3 rounded-pill hover:opacity-90 transition-opacity cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -1908,7 +1921,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
               <button
                 onClick={handlePurchaseClick}
                 disabled={
-                  creatingHold || !selectedTier || isLoadingUserTickets
+                  creatingHold || !selectedTier || isLoadingUserTickets || promoterStatus === "validating"
                 }
                 className="bg-white-100 text-dark font-poppins-semibold text-sm px-8 py-3 rounded-pill hover:opacity-90 transition-opacity cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
               >

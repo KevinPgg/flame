@@ -17,6 +17,8 @@ interface StripePaymentFormProps {
   isRsvp?: boolean;
   onBeforePayment?: () => void | Promise<void>;
   holdSessionId?: string | null;
+  /** B3: the PaymentIntent about to be confirmed (recorded on the hold when the payment starts). */
+  paymentIntentId?: string | null;
   externalError?: string | null;
 }
 
@@ -28,6 +30,7 @@ export default function StripePaymentForm({
   isRsvp = false,
   onBeforePayment,
   holdSessionId,
+  paymentIntentId,
   externalError,
 }: StripePaymentFormProps) {
   const stripe = useStripe();
@@ -95,6 +98,35 @@ export default function StripePaymentForm({
         setProcessing(false);
         onError(submitError.message || "An error occurred");
         return;
+      }
+
+      // B3 (fase 3.1): mark the hold "payment in progress" (+10 min, cleanup grace) right before
+      // confirming, so it can't expire and be deleted while Stripe processes the payment.
+      // After elements.submit() so a form error doesn't mark it for nothing.
+      if (!isRsvp && holdSessionId && paymentIntentId) {
+        try {
+          const startRes = await fetch("/api/holds/start-payment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hold_id: holdSessionId, payment_intent_id: paymentIntentId }),
+          });
+          if (!startRes.ok) {
+            const data = await startRes.json().catch(() => ({}));
+            throw new Error(
+              data.error ||
+                "We couldn't start the payment. Your card was not charged — please try again."
+            );
+          }
+        } catch (startErr) {
+          const message =
+            startErr instanceof Error
+              ? startErr.message
+              : "We couldn't start the payment. Your card was not charged — please try again.";
+          setErrorMessage(message);
+          setProcessing(false);
+          onError(message);
+          return; // STOP PAYMENT (nothing was charged)
+        }
       }
 
       // Hook to perform actions before payment confirmation (e.g. saving state for redirect)

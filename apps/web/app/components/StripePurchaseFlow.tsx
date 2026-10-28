@@ -827,6 +827,7 @@ export default function StripePurchaseFlow() {
                   currency={currency}
                   isRsvp={purchaseDetails.mode === "rsvp"}
                   holdSessionId={holdSessionId}
+                  paymentIntentId={paymentIntentId}
                   externalError={paymentError}
                 />
               </Elements>
