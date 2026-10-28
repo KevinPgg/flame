@@ -71,12 +71,13 @@ function Harness({ onSelect, onCheckout = jest.fn() }: { onSelect: (id: string) 
 }
 
 describe("TierList (app)", () => {
-  it("prototype cards: status · max, Select, lock on the next tier, Unlocked badge", async () => {
+  it("prototype cards: status · max, no buttons until picked, lock on the next tier, Unlocked badge", async () => {
     await renderV2(<Harness onSelect={jest.fn()} />);
     expect(screen.getByText("Tickets")).toBeTruthy();
     expect(screen.getAllByText(/On sale · max/)).toHaveLength(2);
     expect(screen.getByText("Opens next · max 20")).toBeTruthy();
-    expect(screen.getAllByText("Select")).toHaveLength(2);
+    expect(screen.queryByText("Select")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Checkout" })).toBeNull();
     expect(screen.getByText("Unlocked")).toBeTruthy();
   });
 
@@ -85,7 +86,7 @@ describe("TierList (app)", () => {
     await renderV2(<Harness onSelect={onSelect} />);
     await fireEvent.press(screen.getByRole("button", { name: /^Tier 1/ }));
     expect(onSelect).toHaveBeenCalledWith("t1");
-    expect(screen.getAllByText("Select")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Checkout" })).toHaveLength(1);
     await fireEvent.press(screen.getByRole("button", { name: "More tickets" }));
     await fireEvent.press(screen.getByRole("button", { name: "More tickets" }));
     expect(screen.getByText("3")).toBeTruthy();

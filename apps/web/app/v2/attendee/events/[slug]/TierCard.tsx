@@ -67,11 +67,6 @@ export function TierCard(p: {
           </small>
         </span>
         <b className={`shrink-0 font-v2-display-bold text-[18px] ${on ? "text-v2-cream" : "text-v2-c50"} ${p.state === "sold" ? "line-through" : ""}`}>{price}</b>
-        {!p.selected && on && (
-          <span className="inline-flex h-9 shrink-0 items-center rounded-v2-pill bg-v2-cream px-4 text-[14px] font-v2-ui-semibold text-v2-ink">
-            {p.isRsvp ? t("event.request") : t("event.select")}
-          </span>
-        )}
         {p.state === "next" && (
           <span className="shrink-0 text-v2-c50">
             <Icon name="lock" size={15} />

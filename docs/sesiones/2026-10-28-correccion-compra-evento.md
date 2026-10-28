@@ -44,3 +44,7 @@ Pruebas reales: `docs/PruebasReales/FASE_2_ASISTENTE.md` → "Corrección 10-28"
 - App y web: la tarjeta elegida muestra **"Ir al pago"** (RSVP: "Solicitar") junto al precio, que corre a la izquierda; abre la hoja de checkout (sin sesión → iniciar sesión). Texto nuevo `event.toCheckout`.
 
 **Verificación:** jest app 163/163 (+2: botón de la tarjeta, isla oculta en `/event/`); vitest `EventCheckout` + `EventOrganizer` + `AttendeeShell` web 26/26 (+1: "Get tickets" elige el más barato y el botón de la tarjeta abre la hoja); tsc web 0, lib 0, app 40 (heredados). Queda `_to_delete/flme-delta-1028b.tgz` (borrable).
+
+## Ronda 3 (10-28, 10:23)
+**Kevin:** por defecto los tiers no llevan botones; al tocar uno se abren la elección de cantidad y el botón "Ir al pago" / "Solicitar".
+**Cambio:** se quitó la píldora "Elegir/Solicitar" de las tarjetas sin elegir (app `TierList`, web `TierCard`); el candado del tier que abre después se mantiene (es un indicador, no un botón). Tests: app `EventPurchase` 9/9, web `EventCheckout` 8/8; tsc web 0, app 40 (heredados). Queda `_to_delete/flme-delta-1028c.tgz` (borrable).

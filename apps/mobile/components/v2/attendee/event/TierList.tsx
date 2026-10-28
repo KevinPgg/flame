@@ -107,10 +107,6 @@ export function TierList({
                   >
                     <Text className="font-v2-ui-semibold text-[14px] text-v2-ink">{isRsvp ? t("event.request") : t("event.toCheckout")}</Text>
                   </Pressable>
-                ) : on ? (
-                  <View className="h-9 justify-center rounded-v2-pill bg-v2-cream px-4">
-                    <Text className="font-v2-ui-semibold text-[14px] text-v2-ink">{isRsvp ? t("event.request") : t("event.select")}</Text>
-                  </View>
                 ) : tier.status === "not_available_yet" ? (
                   <Icon name="lock" size={15} color={c.c50} />
                 ) : null}

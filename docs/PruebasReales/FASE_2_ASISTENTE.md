@@ -115,27 +115,27 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 
 ## 2.5 · Explorar
 **App · 📱 Celular** (pestaña Explorar o la lupa)
-- [ ] "Explorar", buscador; abajo: Eventos destacados (los marcados como destacados primero), Organizadores destacados (portada + logo → perfil), tarjeta "Organiza tus eventos" y Preguntas frecuentes (la primera abierta) + "Ver todas las preguntas".
-- [ ] Buscar por nombre de evento, lugar, ciudad u organizador; sin importar tildes ("cumbia" encuentra "Cúmbia"); también encuentra organizadores. Sin resultados → mensaje y "Borrar búsqueda".
-- [ ] "Postular como organizador": sin sesión → iniciar sesión; con sesión → la hoja de solicitud de siempre. Con una organización en revisión → "Tu organización está en revisión…". Con una aprobada → la tarjeta no aparece (como la v1).
+- [x] "Explorar", buscador; abajo: Eventos destacados (los marcados como destacados primero), Organizadores destacados (portada + logo → perfil), tarjeta "Organiza tus eventos" y Preguntas frecuentes (la primera abierta) + "Ver todas las preguntas".
+- [x] Buscar por nombre de evento, lugar, ciudad u organizador; sin importar tildes ("cumbia" encuentra "Cúmbia"); también encuentra organizadores. Sin resultados → mensaje y "Borrar búsqueda".
+- [x] "Postular como organizador": sin sesión → iniciar sesión; con sesión → la hoja de solicitud de siempre. Con una organización en revisión → "Tu organización está en revisión…". Con una aprobada → la tarjeta no aparece (como la v1).
 
 **Web · 🌐 PC y teléfono** (`/discover` o la lupa)
-- [ ] Lo mismo adaptado a PC (resultados en cuadrícula). Ctrl+U: metadatos de Discover y sin `noindex`.
-- [ ] "Postular como organizador": sin sesión → iniciar sesión y luego la creación de organización; con sesión sin organización → **se abre la ventana de crear organización**; aprobada → "Crear un evento" (va al panel del organizador); en revisión → mensaje.
-- [ ] **Arreglo importante (venía roto desde la 2.2):** `http://localhost:3000/?onboarding=true` con sesión abre otra vez la ventana de crear organización (es adonde mandan `/onboarding`, `/organizer` sin organización, etc.).
+- [x] Lo mismo adaptado a PC (resultados en cuadrícula). Ctrl+U: metadatos de Discover y sin `noindex`.
+- [x] "Postular como organizador": sin sesión → iniciar sesión y luego la creación de organización; con sesión sin organización → **se abre la ventana de crear organización**; aprobada → "Crear un evento" (va al panel del organizador); en revisión → mensaje.
+- [x] **Arreglo importante (venía roto desde la 2.2):** `http://localhost:3000/?onboarding=true` con sesión abre otra vez la ventana de crear organización (es adonde mandan `/onboarding`, `/organizer` sin organización, etc.).
 
 ## 2.6 · Tú, bandeja y bienvenida
 **App · 📱 Celular**
-- [ ] Pestaña Tú: foto, nombre y correo; "Eventos" (a los que asististe) y "Organizadores"; **Editar perfil** y **Ajustes** (Ajustes ya no está arriba con sesión; sin sesión sigue arriba).
-- [ ] Mis organizadores: aprobada → "Gestionar" abre su panel (como antes); en revisión → "En revisión"; "Nuevo organizador" abre la hoja de solicitud. Si eres soporte de Flame, la entrada "Aprobación de organizadores".
-- [ ] Eventos pasados (5) → abren su ticket; "Historial" → Mis tickets.
-- [ ] Campana: cada notificación de un evento próximo muestra su flyer a la izquierda (si no, un ícono); "Hace 5 min", "Ayer"… en tu idioma; punto rojo si no está leída; tocar, deslizar para borrar y "Borrar todo" como antes.
-- [ ] Iniciar sesión: detrás, collage de flyers reales que se funde a negro, y "Todas las noches que valen la pena…". **Apple, Google y correo funcionan igual** (iniciar sesión y crear cuenta).
+- [x] Pestaña Tú: foto, nombre y correo; "Eventos" (a los que asististe) y "Organizadores"; **Editar perfil** y **Ajustes** (Ajustes ya no está arriba con sesión; sin sesión sigue arriba).
+- [x] Mis organizadores: aprobada → "Gestionar" abre su panel (como antes); en revisión → "En revisión"; "Nuevo organizador" abre la hoja de solicitud. Si eres soporte de Flame, la entrada "Aprobación de organizadores".
+- [x] Eventos pasados (5) → abren su ticket; "Historial" → Mis tickets.
+- [x] Campana: cada notificación de un evento próximo muestra su flyer a la izquierda (si no, un ícono); "Hace 5 min", "Ayer"… en tu idioma; punto rojo si no está leída; tocar, deslizar para borrar y "Borrar todo" como antes.
+- [x] Iniciar sesión: detrás, collage de flyers reales que se funde a negro, y "Todas las noches que valen la pena…". **Apple, Google y correo funcionan igual** (iniciar sesión y crear cuenta).
 
 **Web · 🌐 PC y teléfono**
-- [ ] `/profile`: lo mismo que la app (Ajustes → `/v2/account`; organizador aprobado → su panel; "Nuevo organizador" abre la ventana de crear organización). Sin sesión → iniciar sesión.
-- [ ] El engranaje ya no está en la barra de arriba (está dentro de Tú).
-- [ ] `/sign-in` y `/sign-up`: fondo negro con el collage, logo, la frase (en el idioma del navegador) y el formulario de Clerk en oscuro. Iniciar sesión, crear cuenta, Google, "¿olvidaste tu contraseña?" y el código por correo funcionan. El inicio de sesión en ventana emergente (botón "Iniciar sesión" de la v1) sigue igual.
+- [x] `/profile`: lo mismo que la app (Ajustes → `/v2/account`; organizador aprobado → su panel; "Nuevo organizador" abre la ventana de crear organización). Sin sesión → iniciar sesión.
+- [x] El engranaje ya no está en la barra de arriba (está dentro de Tú).
+- [x] `/sign-in` y `/sign-up`: fondo negro con el collage, logo, la frase (en el idioma del navegador) y el formulario de Clerk en oscuro. Iniciar sesión, crear cuenta, Google, "¿olvidaste tu contraseña?" y el código por correo funcionan. El inicio de sesión en ventana emergente (botón "Iniciar sesión" de la v1) sigue igual.
 
 ## 2.7 · Cierre de la fase 2
 - [ ] Recorrido completo en el celular: Inicio → evento → comprar → Mis tickets → QR → Tú → Ajustes → Explorar → organizador.
@@ -179,6 +179,7 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 **Ronda 2 (10-28) · 📱 Celular y 🌐 web**
 - [ ] 📱 En el detalle del evento **no** aparece la isla (Inicio, Explorar, Tickets, Tú); al volver a Inicio/Explorar sí.
 - [ ] Sin tier elegido, **Comprar tickets** selecciona el tier más barato a la venta (con etapas: la etapa vigente más barata) y lo muestra; la barra pasa a "Continuar al pago".
+- [ ] Por defecto las tarjetas **no tienen botones** (solo nombre, estado, precio; candado si abre después). Al tocar una aparecen −/+ y el botón.
 - [ ] La tarjeta elegida muestra **Ir al pago** junto al precio (RSVP: "Solicitar"); abre la hoja de checkout con la cantidad elegida. Sin sesión lleva a iniciar sesión.
 - [ ] `ATTENDEE_V1=true` / `EXPO_PUBLIC_ATTENDEE_V1=true`: la página de evento v1 sin cambios (incluido el salto al final de la app v1, que es el de producción).
 
