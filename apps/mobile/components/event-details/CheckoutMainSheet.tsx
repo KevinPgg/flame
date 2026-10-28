@@ -52,6 +52,12 @@ interface CheckoutMainSheetProps {
   onCheckout: () => void;
 }
 
+// Kevin 2026-10-28: every field, button and "applied" chip in this sheet is 48 px tall.
+const INPUT = "h-12 border rounded-card px-4 text-white-100 font-poppins text-sm";
+const INPUT_STYLE = { height: 48, paddingVertical: 0 } as const;
+const BUTTON = "h-12 bg-white-10 border border-white-20 rounded-card px-4 items-center justify-center flex-row gap-1";
+const APPLIED = "h-12 flex-row items-center bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4";
+
 function getButtonLabel(
   isRsvp: boolean,
   isFree: boolean,
@@ -279,7 +285,7 @@ export function CheckoutMainSheet({
                 >
                   Access Code
                 </FlameText>
-                <View className="flex-row items-center bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4 py-3">
+                <View className={APPLIED}>
                   <Feather name="check-circle" size={16} color="#5DDBB1" />
                   <FlameText
                     variant="subtitle1"
@@ -293,11 +299,20 @@ export function CheckoutMainSheet({
 
             {/* Registration Form — shown for events with registration_form_config.
                 Archived fields are hidden from the registrant form but remain in
-                the event's config for organizer display + XLSX export. */}
+                the event's config for organizer display + XLSX export.
+                Kevin 2026-10-28: the organizer's RSVP questions sit in their own
+                card, apart from the payment codes (discount / promoter) below, so
+                it's clear which fields answer the organizer and which touch the price. */}
             {hasForm && tierFormConfig && (
-              <View className="mb-4">
-                <FlameText variant="subtitle2" className="text-white-70 mb-2 uppercase">
-                  Registration Info
+              <View className="mb-4 rounded-card border border-white-20 bg-white-5 p-4">
+                <View className="flex-row items-center gap-2">
+                  <Feather name="clipboard" size={16} color={colors["white-100"]} />
+                  <FlameText variant="subtitle2" className="text-white-100 uppercase">
+                    RSVP questions
+                  </FlameText>
+                </View>
+                <FlameText variant="subtitle2-light" className="text-white-50 mt-1 mb-3">
+                  {event.organization_name || event.organizations?.name || "The organizer"} asks this to review your request.
                 </FlameText>
                 <View className="gap-3">
                   {tierFormConfig.map((field) => {
@@ -315,7 +330,7 @@ export function CheckoutMainSheet({
                       return (
                         <View key={field.id}>
                           <Pressable
-                            className="flex-row items-center gap-3"
+                            className="flex-row items-center gap-3 min-h-[48px]"
                             onPress={() => {
                               const updated = { ...localFormData, [field.id]: !localFormData[field.id] };
                               setLocalFormData(updated);
@@ -342,11 +357,12 @@ export function CheckoutMainSheet({
                     }
                     return (
                       <View key={field.id}>
-                        <FlameText variant="subtitle2-light" className="text-white-50 mb-1">
+                        <FlameText variant="subtitle2-light" className="text-white-70 mb-1">
                           {field.label}{field.required ? " *" : ""}
                         </FlameText>
                         <TextInput
-                          className={`bg-white-5 border rounded-card px-4 py-3 text-white-100 font-poppins text-sm ${fieldError ? "border-primary" : "border-white-20"}`}
+                          className={`${INPUT} bg-black ${fieldError ? "border-primary" : "border-white-20"}`}
+                          style={INPUT_STYLE}
                           placeholder={field.placeholder || field.label}
                           placeholderTextColor="rgba(255,255,255,0.3)"
                           value={String(localFormData[field.id] ?? "")}
@@ -372,15 +388,27 @@ export function CheckoutMainSheet({
               </View>
             )}
 
+            {/* Payment codes (optional): discount + promoter, same 48 px height as every other field. */}
             <View className="mb-4">
-              <FlameText
-                variant="subtitle2"
-                className="text-white-70 mb-2 uppercase"
-              >
-                Discount Code
+              <View className="flex-row items-center gap-2 mb-1">
+                <Feather name="tag" size={15} color={colors["white-80"]} />
+                <FlameText variant="subtitle2" className="text-white-70 uppercase">
+                  {hasForm ? "Payment codes (optional)" : "Codes (optional)"}
+                </FlameText>
+              </View>
+              {hasForm && !isFree ? (
+                <FlameText variant="subtitle2-light" className="text-white-50 mb-2">
+                  They only apply to the charge if your request is approved.
+                </FlameText>
+              ) : (
+                <View className="h-2" />
+              )}
+
+              <FlameText variant="subtitle2-light" className="text-white-50 mb-1">
+                Discount code
               </FlameText>
               {promoApplied ? (
-                <View className="flex-row items-center bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4 py-3">
+                <View className={APPLIED}>
                   <Feather name="check-circle" size={16} color="#5DDBB1" />
                   <FlameText
                     variant="subtitle1"
@@ -388,14 +416,15 @@ export function CheckoutMainSheet({
                   >
                     {promoCode} applied
                   </FlameText>
-                  <Pressable onPress={onClearPromo}>
+                  <Pressable onPress={onClearPromo} hitSlop={8}>
                     <Feather name="x" size={18} color="#5DDBB1" />
                   </Pressable>
                 </View>
               ) : (
                 <View className="flex-row gap-2">
                   <TextInput
-                    className="flex-1 bg-white-5 border border-white-20 rounded-card px-4 py-3 text-white-100 font-poppins text-sm"
+                    className={`${INPUT} flex-1 bg-white-5 border-white-20`}
+                    style={INPUT_STYLE}
                     placeholder="Enter code"
                     placeholderTextColor="rgba(255,255,255,0.3)"
                     value={localPromo}
@@ -409,7 +438,7 @@ export function CheckoutMainSheet({
                       if (localPromo.trim() && !isValidatingPromo) onApplyPromo(localPromo.trim());
                     }}
                     disabled={isValidatingPromo || !localPromo.trim()}
-                    className={`bg-white-10 border border-white-20 rounded-card px-4 items-center justify-center flex-row gap-1 ${isValidatingPromo ? "opacity-60" : ""}`}
+                    className={`${BUTTON} ${isValidatingPromo ? "opacity-60" : ""}`}
                   >
                     {isValidatingPromo && (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -420,17 +449,12 @@ export function CheckoutMainSheet({
                   </Pressable>
                 </View>
               )}
-            </View>
 
-            <View className="mb-4">
-              <FlameText
-                variant="subtitle2"
-                className="text-white-70 mb-2 uppercase"
-              >
+              <FlameText variant="subtitle2-light" className="text-white-50 mt-3 mb-1">
                 Promoter
               </FlameText>
               {promoterStatus === "valid" && !promoterEditing ? (
-                <View className="flex-row items-center bg-[#5DDBB1]/10 border border-[#5DDBB1]/30 rounded-card px-4 py-3">
+                <View className={APPLIED}>
                   <Feather name="check-circle" size={16} color="#5DDBB1" />
                   <FlameText
                     variant="subtitle1"
@@ -439,6 +463,7 @@ export function CheckoutMainSheet({
                     {promoterCode}
                   </FlameText>
                   <Pressable
+                    hitSlop={8}
                     onPress={() => {
                       onClearPromoter();
                       setLocalPromoter("");
@@ -449,11 +474,14 @@ export function CheckoutMainSheet({
                   </Pressable>
                 </View>
               ) : (
-                <View className="flex-row gap-2 items-center">
-                  <View className="flex-1 flex-row items-center bg-white-5 border border-white-20 rounded-card px-4 py-3">
+                <View className="flex-row gap-2">
+                  {/* One box of the same height as the discount field (it used to be a
+                      View with its own vertical padding around the input: taller). */}
+                  <View className="flex-1 h-12 flex-row items-center bg-white-5 border border-white-20 rounded-card px-4">
                     <TextInput
                       className="flex-1 text-white-100 font-poppins text-sm"
-                      placeholder="None"
+                      style={{ height: "100%", paddingVertical: 0 }}
+                      placeholder="Promoter code"
                       placeholderTextColor="rgba(255,255,255,0.3)"
                       value={localPromoter}
                       onChangeText={setLocalPromoter}
@@ -471,7 +499,7 @@ export function CheckoutMainSheet({
                   </View>
                   <Pressable
                     onPress={handlePromoterSubmit}
-                    className="bg-white-10 border border-white-20 rounded-card px-4 h-[46px] items-center justify-center"
+                    className={BUTTON}
                   >
                     <FlameText variant="subtitle2" className="text-white-100">
                       Apply

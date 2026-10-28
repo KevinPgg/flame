@@ -37,6 +37,8 @@ import {
   buildTimeRange,
   isValidIanaTimezone,
   normalizeTicketTierSecretCode,
+  formatCentsAsPrice,
+  myEventState,
   type TicketTier,
 } from "@project-flame/lib";
 import { useCheckout } from "../../hooks/useCheckout";
@@ -47,6 +49,10 @@ import { attendeeV2Enabled } from "../../lib/v2/flags";
 import { EventHeader } from "../../components/v2/attendee/event/EventHeader";
 import { MoreFromOrganizer, useOrganizerFromFeed } from "../../components/v2/attendee/event/MoreFromOrganizer";
 import { AccessCode } from "../../components/v2/attendee/event/AccessCode";
+import { TierList } from "../../components/v2/attendee/event/TierList";
+import { BuyBar, BUY_BAR_HEIGHT, EventTopBar, EVENT_TOP_BAR_HEIGHT, type BuyBarProps } from "../../components/v2/attendee/event/EventChrome";
+import { useI18n } from "../../lib/i18n";
+import type { Href } from "expo-router";
 import {
   getTabBarPaddingBottom,
   TAB_BAR_PILL_HEIGHT,
@@ -70,12 +76,14 @@ export default function EventDetailScreen() {
   // Fase 2.4: Flame 2.0 surroundings (header + "More from") around the unchanged purchase block.
   const v2 = attendeeV2Enabled();
   const feedOrg = useOrganizerFromFeed(id);
+  const { t } = useI18n();
 
   const { isSignedIn, isConfigured, getToken } = useOptionalAuth();
 
-  // Fetch user tickets to check for existing RSVPs (mirrors web EventDetail.tsx)
+  // Fetch user tickets to check for existing RSVPs (mirrors web EventDetail.tsx). Flame 2.0 also
+  // needs them for every event: the bottom bar says "You're going · View N tickets".
   const { data: userTicketsData, isLoading: isLoadingUserTickets } = useUserTickets({
-    enabled: isSignedIn && Boolean(event?.requires_rsvp),
+    enabled: Boolean(isSignedIn) && (v2 || Boolean(event?.requires_rsvp)),
   });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -448,6 +456,16 @@ export default function EventDetailScreen() {
     }, 50);
   }, [fadePillOut]);
 
+  // Flame 2.0: "Get tickets" in the bottom bar brings the tiers into view (below the fixed top bar).
+  const scrollToTiersV2 = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, ticketSectionY.current - insets.top - EVENT_TOP_BAR_HEIGHT - 8),
+        animated: true,
+      });
+    }, 50);
+  }, [insets.top]);
+
   const scrollToCheckout = useCallback(() => {
     setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -458,10 +476,64 @@ export default function EventDetailScreen() {
   useEffect(() => {
     const tierChanged = prevSelectedTierIdRef.current !== selectedTierId;
     prevSelectedTierIdRef.current = selectedTierId;
+    // Flame 2.0 (Kevin 2026-10-28): picking a tier never moves the screen; the quantity is chosen
+    // in the card and Continue lives in the bottom bar.
+    if (v2) return;
     if (tierChanged && selectedTier && quantity > 0) {
       scrollToCheckout();
     }
-  }, [selectedTierId, selectedTier, quantity, scrollToCheckout]);
+  }, [selectedTierId, selectedTier, quantity, scrollToCheckout, v2]);
+
+  // --- Flame 2.0 bottom bar (replaces the floating pill) ---
+  const mine = useMemo(
+    () => myEventState(userTicketsData?.tickets ?? [], event?.id ?? ""),
+    [userTicketsData?.tickets, event?.id],
+  );
+  const buyBar = useMemo<BuyBarProps | null>(() => {
+    if (!v2 || !event) return null;
+    const money = (cents: number) => (cents === 0 ? t("common.free") : formatCentsAsPrice(cents, event.currency));
+    if (mine.tickets.length > 0) {
+      const count = mine.tickets.length;
+      return {
+        kicker: t("event.youreGoing"),
+        value: t("tickets.count", { count }),
+        cta: { label: t("event.viewNTickets", { count }), icon: "qr", onPress: () => router.push(`/ticket/${mine.tickets[0]!.id}` as Href) },
+      };
+    }
+    if (mine.request?.state === "pending") {
+      return {
+        kicker: t("event.requestSent"),
+        value: t("tickets.count", { count: mine.request.quantity }),
+        cta: { label: t("event.pending"), tone: "dark", disabled: true },
+      };
+    }
+    if (!hasTicketTiers) return null;
+    if (selectedTier && quantity > 0) {
+      const name = selectedTier.currentStageName ?? selectedTier.name;
+      return {
+        kicker: isRsvp ? `${quantity} × ${name}` : t("tickets.beforeFees", { quantity, tier: name }),
+        value: money(selectedTier.displayPrice * quantity),
+        cta: {
+          label: isSignedIn === false ? t("checkout.signInToContinue") : isRsvp ? t("event.requestToJoin") : t("checkout.continueToCheckout"),
+          onPress: handleContinueToCheckout,
+          // Wait for Clerk before routing (W8-M1), and for the RSVP duplicate check.
+          disabled: isSignedIn === undefined || (isRsvp && isLoadingUserTickets),
+        },
+      };
+    }
+    const available = displayedTiers.filter((x) => x.status === "available");
+    const from = Math.min(...(available.length ? available : displayedTiers).map((x) => x.displayPrice));
+    return {
+      kicker: isRsvp ? t("event.rsvpFrom") : t("event.from"),
+      value: money(from),
+      cta: available.length
+        ? {
+            label: isRsvp ? t("event.requestToJoin") : t("event.getTickets"),
+            onPress: scrollToTiersV2,
+          }
+        : { label: t("event.soldOut"), tone: "dark", disabled: true },
+    };
+  }, [v2, event, mine, hasTicketTiers, selectedTier, quantity, isRsvp, isSignedIn, isLoadingUserTickets, displayedTiers, handleContinueToCheckout, scrollToTiersV2, router, t]);
 
   // --- Loading state ---
   if (isLoading && !event) {
@@ -540,8 +612,9 @@ export default function EventDetailScreen() {
         showsVerticalScrollIndicator={false}
         bounces
         contentContainerStyle={{
-          paddingBottom:
-            getTabBarPaddingBottom(insets.bottom) + FLOATING_PILL_HEIGHT,
+          paddingBottom: v2
+            ? (buyBar ? BUY_BAR_HEIGHT : 0) + insets.bottom + 24
+            : getTabBarPaddingBottom(insets.bottom) + FLOATING_PILL_HEIGHT,
         }}
         refreshControl={
           <CustomRefreshControl
@@ -573,7 +646,6 @@ export default function EventDetailScreen() {
             <EventHeader
               event={event}
               organizer={organizerName ? { names: organizerName, slug: feedOrg?.slug ?? event.organizations?.slug ?? null, logoUrl: feedOrg?.logo_url ?? null } : null}
-              onShare={handleShare}
             />
           ) : (
           <>
@@ -608,6 +680,19 @@ export default function EventDetailScreen() {
               cards (mirrors web EventDetail.tsx). */}
           {hasTicketTiers && (
             <View onLayout={onTicketSectionLayout}>
+              {v2 ? (
+                <TierList
+                  tiers={displayedTiers}
+                  unlockedIds={new Set(unlockedTiers.map((x) => x.id))}
+                  selectedId={selectedTierId}
+                  quantity={quantity}
+                  maxQuantity={maxQuantity}
+                  isRsvp={isRsvp}
+                  currency={event.currency}
+                  onSelect={handleSelectTier}
+                  onQuantity={handleQuantityChange}
+                />
+              ) : (
               <TicketSelection
                 tiers={displayedTiers}
                 selectedTierId={selectedTierId}
@@ -635,6 +720,7 @@ export default function EventDetailScreen() {
                   />
                 }
               />
+              )}
               {v2 ? (
                 <View className="mt-4">
                   <AccessCode
@@ -650,7 +736,7 @@ export default function EventDetailScreen() {
             </View>
           )}
 
-          {selectedTier && quantity > 0 && (
+          {!v2 && selectedTier && quantity > 0 && (
             <CheckoutCTA
               isSignedIn={isSignedIn}
               quantity={quantity}
@@ -672,7 +758,11 @@ export default function EventDetailScreen() {
       </ScrollView>
 
       {/* ─── Floating CTA (above tab bar, matches tab bar dimensions) ─── */}
-      {hasTicketTiers && pillMounted && (
+      {/* Flame 2.0: fixed top bar (back / share) and bottom bar (continue / view tickets). */}
+      {v2 ? <EventTopBar onBack={() => (router.canGoBack() ? router.back() : router.replace("/" as Href))} onShare={handleShare} /> : null}
+      {v2 && buyBar ? <BuyBar {...buyBar} /> : null}
+
+      {!v2 && hasTicketTiers && pillMounted && (
         <Animated.View
           style={{
             position: "absolute",

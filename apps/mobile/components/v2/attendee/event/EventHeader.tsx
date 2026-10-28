@@ -48,11 +48,9 @@ function Row({ icon, label, value, action, tone }: { icon: IconName; label?: str
 export function EventHeader({
   event,
   organizer,
-  onShare,
 }: {
   event: EventHeaderData;
   organizer: { names: string; slug?: string | null; logoUrl?: string | null } | null;
-  onShare: () => void;
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -66,7 +64,6 @@ export function EventHeader({
   const maps = directionsUrl(event);
   const desc = event.description ?? "";
   const long = desc.length > 220 || desc.split("\n").length > 3;
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/" as Href));
 
   return (
     <View style={{ paddingTop: insets.top + 8 }} className="overflow-hidden px-4 pb-2">
@@ -78,14 +75,8 @@ export function EventHeader({
           contentFit="cover"
         />
       ) : null}
-      <View className="mb-4 flex-row items-center justify-between">
-        <Pressable onPress={back} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={4} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(28,28,28,0.82)" }} className="items-center justify-center">
-          <Icon name="back" size={20} color={c.cream} />
-        </Pressable>
-        <Pressable onPress={onShare} accessibilityRole="button" accessibilityLabel={t("event.shareEvent")} hitSlop={4} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(28,28,28,0.82)" }} className="items-center justify-center">
-          <Icon name="share" size={19} color={c.cream} />
-        </Pressable>
-      </View>
+      {/* Back and share live in EventTopBar, fixed over the page (Kevin 2026-10-28). */}
+      <View style={{ height: 40 }} className="mb-4" />
       <View style={{ aspectRatio: 4 / 5, borderRadius: 18, overflow: "hidden", backgroundColor: c.ink3 }}>
         {event.image_url ? <Image source={{ uri: event.image_url }} style={{ width: "100%", height: "100%" }} contentFit="cover" accessibilityLabel={event.name} /> : null}
       </View>

@@ -60,8 +60,7 @@ beforeEach(() => {
 describe("event header (app)", () => {
   it("organizer → profile; title; one-night time range; directions; RSVP; More / Less", async () => {
     const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true as never);
-    const onShare = jest.fn();
-    await renderV2(<EventHeader event={EVENT} organizer={{ names: "Club Uno & Sonar", slug: "club-uno" }} onShare={onShare} />);
+    await renderV2(<EventHeader event={EVENT} organizer={{ names: "Club Uno & Sonar", slug: "club-uno" }} />);
     await fireEvent.press(screen.getByRole("link", { name: "See organizer" }));
     expect(mockNav.push).toHaveBeenCalledWith("/organizer/club-uno");
     expect(screen.getByText("Club Uno & Sonar")).toBeTruthy();
@@ -72,8 +71,8 @@ describe("event header (app)", () => {
     expect(screen.getByTestId("event-description").props.numberOfLines).toBe(3);
     await fireEvent.press(screen.getByText("More"));
     expect(screen.getByTestId("event-description").props.numberOfLines).toBeUndefined();
-    await fireEvent.press(screen.getByRole("button", { name: "Share event" }));
-    expect(onShare).toHaveBeenCalled();
+    // Back / share moved to EventTopBar (fixed over the page, Kevin 2026-10-28).
+    expect(screen.queryByRole("button", { name: "Share event" })).toBeNull();
   });
 
   it("More from the organizer: its other events only; opens them", async () => {
