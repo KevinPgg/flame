@@ -32,3 +32,15 @@
 Adelanta parte de la 3.2 (selección de cantidad) sin crear la "hoja del tier" del prototipo: aquí la cantidad se elige en la tarjeta y "Continuar al pago" abre la hoja de checkout actual. Los arreglos 3.1 (B2, B10, B3, B4) siguen pendientes — en especial B2 en la app: el botón de pagar no espera la validación del promotor.
 
 Pruebas reales: `docs/PruebasReales/FASE_2_ASISTENTE.md` → "Corrección 10-28".
+
+## Ronda 2 (10-28, 09:48)
+**Kevin:** en la app la isla de pestañas (Inicio, Explorar, Tickets, Tú) seguía en el detalle del evento y no había forma de llegar al checkout. "Get tickets" debe seleccionar un tier (el más barato si no hay uno elegido; si ya hay, ese). Al elegir un tier, un botón junto al precio que lleve al checkout.
+
+**Causa:** la isla (`AttendeeTabBar`) la dibuja `RoleResolutionGate` encima de todo el Stack y solo se ocultaba en modo organizador; quedaba **encima de la barra de compra** (las dos pegadas abajo), así que "Continuar al pago" no se veía ni se podía tocar.
+
+**Cambios:**
+- App: `hidesAttendeeTabBar(pathname)` → la isla no se dibuja en `/event/…`.
+- App y web: "Comprar tickets" de la barra selecciona el tier (o etapa) **más barato a la venta** y lo trae a la vista; con uno ya elegido la barra ya dice "Continuar al pago".
+- App y web: la tarjeta elegida muestra **"Ir al pago"** (RSVP: "Solicitar") junto al precio, que corre a la izquierda; abre la hoja de checkout (sin sesión → iniciar sesión). Texto nuevo `event.toCheckout`.
+
+**Verificación:** jest app 163/163 (+2: botón de la tarjeta, isla oculta en `/event/`); vitest `EventCheckout` + `EventOrganizer` + `AttendeeShell` web 26/26 (+1: "Get tickets" elige el más barato y el botón de la tarjeta abre la hoja); tsc web 0, lib 0, app 40 (heredados). Queda `_to_delete/flme-delta-1028b.tgz` (borrable).

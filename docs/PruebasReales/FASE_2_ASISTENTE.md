@@ -176,6 +176,10 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 - [ ] Tarjetas de tiers como el prototipo; al elegir uno, −/+ en la tarjeta sin mover la página; ya no aparecen el botón "Continue" debajo de los tiers ni la píldora "Buy Tickets".
 - [ ] **Continuar al pago** abre la hoja de checkout con la cantidad elegida; el resto del flujo (promotor, descuento, `/purchase`) igual que en la corrección 2.4. Cambiar de tier borra el descuento aplicado (hay que ponerlo de nuevo).
 - [ ] Con tickets del evento: "Ver N tickets" lleva a `/account/ticket/<id>`.
+**Ronda 2 (10-28) · 📱 Celular y 🌐 web**
+- [ ] 📱 En el detalle del evento **no** aparece la isla (Inicio, Explorar, Tickets, Tú); al volver a Inicio/Explorar sí.
+- [ ] Sin tier elegido, **Comprar tickets** selecciona el tier más barato a la venta (con etapas: la etapa vigente más barata) y lo muestra; la barra pasa a "Continuar al pago".
+- [ ] La tarjeta elegida muestra **Ir al pago** junto al precio (RSVP: "Solicitar"); abre la hoja de checkout con la cantidad elegida. Sin sesión lleva a iniciar sesión.
 - [ ] `ATTENDEE_V1=true` / `EXPO_PUBLIC_ATTENDEE_V1=true`: la página de evento v1 sin cambios (incluido el salto al final de la app v1, que es el de producción).
 
 ## Cosas conocidas
