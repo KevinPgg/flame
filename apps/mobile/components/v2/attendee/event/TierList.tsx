@@ -20,6 +20,8 @@ export function TierList({
   currency,
   onSelect,
   onQuantity,
+  onCheckout,
+  checkoutDisabled,
 }: {
   tiers: TicketTierWithStatus[];
   unlockedIds: ReadonlySet<string>;
@@ -30,6 +32,9 @@ export function TierList({
   currency?: string;
   onSelect: (id: string) => void;
   onQuantity: (n: number) => void;
+  /** Selected card: the button next to the price that opens the checkout sheet. */
+  onCheckout: () => void;
+  checkoutDisabled?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -91,7 +96,18 @@ export function TierList({
                 >
                   {tier.displayPrice === 0 ? t("common.free") : formatCentsAsPrice(tier.displayPrice, currency)}
                 </Text>
-                {selected ? null : on ? (
+                {selected ? (
+                  <Pressable
+                    onPress={onCheckout}
+                    disabled={checkoutDisabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={isRsvp ? t("event.requestToJoin") : t("event.toCheckout")}
+                    style={{ opacity: checkoutDisabled ? 0.5 : 1 }}
+                    className="h-9 justify-center rounded-v2-pill bg-v2-cream px-4 active:bg-v2-paper"
+                  >
+                    <Text className="font-v2-ui-semibold text-[14px] text-v2-ink">{isRsvp ? t("event.request") : t("event.toCheckout")}</Text>
+                  </Pressable>
+                ) : on ? (
                   <View className="h-9 justify-center rounded-v2-pill bg-v2-cream px-4">
                     <Text className="font-v2-ui-semibold text-[14px] text-v2-ink">{isRsvp ? t("event.request") : t("event.select")}</Text>
                   </View>

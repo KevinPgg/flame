@@ -95,6 +95,7 @@ export const en = {
     requestSent: "Request sent",
     requestPending: "Request sent · pending",
     noTicketsOnSale: "No tickets on sale",
+    toCheckout: "Checkout",
   },
   organizerPage: {
     notFound: "This organizer isn’t available",

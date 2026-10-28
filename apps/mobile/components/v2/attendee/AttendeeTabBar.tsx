@@ -35,6 +35,14 @@ export function activeAttendeeTab(pathname: string): AttendeeTab | null {
   return null;
 }
 
+/**
+ * Screens with their own bottom bar hide the island (Kevin 2026-10-28): the event page shows
+ * Get tickets / Continue to checkout / View tickets there instead, as in the prototype.
+ */
+export function hidesAttendeeTabBar(pathname: string): boolean {
+  return pathname.startsWith("/event/");
+}
+
 export function AttendeeTabBar() {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -62,7 +70,7 @@ export function AttendeeTabBar() {
     [active, isSignedIn, router, triggerScrollToTop],
   );
 
-  if (typing) return null;
+  if (typing || hidesAttendeeTabBar(pathname)) return null;
   return (
     <View
       style={{ bottom: Math.max(insets.bottom, 12) }}

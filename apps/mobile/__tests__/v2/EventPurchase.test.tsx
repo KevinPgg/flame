@@ -47,7 +47,7 @@ const TIERS = [
   tier("ff", "Friends & Family", 1000, "available", { per_user_limit: 4 }),
 ];
 
-function Harness({ onSelect }: { onSelect: (id: string) => void }) {
+function Harness({ onSelect, onCheckout = jest.fn() }: { onSelect: (id: string) => void; onCheckout?: () => void }) {
   const [sel, setSel] = useState<string | null>(null);
   const [q, setQ] = useState(1);
   return (
@@ -65,6 +65,7 @@ function Harness({ onSelect }: { onSelect: (id: string) => void }) {
         setQ(1);
       }}
       onQuantity={(n) => setQ(Math.max(1, Math.min(4, n)))}
+      onCheckout={onCheckout}
     />
   );
 }
@@ -96,6 +97,27 @@ describe("TierList (app)", () => {
     // a tier that isn't on sale can't be picked
     await fireEvent.press(screen.getByRole("button", { name: /^Tier 2/ }));
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TierList checkout button (app)", () => {
+  it("the selected card gets a Checkout button next to the price that opens the checkout", async () => {
+    const onCheckout = jest.fn();
+    await renderV2(<Harness onSelect={jest.fn()} onCheckout={onCheckout} />);
+    expect(screen.queryByRole("button", { name: "Checkout" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: /^Friends & Family/ }));
+    await fireEvent.press(screen.getByRole("button", { name: "Checkout" }));
+    expect(onCheckout).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("attendee island on the event screen (app)", () => {
+  it("hides on /event/… (its own bottom bar), stays elsewhere", () => {
+    const { hidesAttendeeTabBar } = require("../../components/v2/attendee/AttendeeTabBar");
+    expect(hidesAttendeeTabBar("/event/abc")).toBe(true);
+    expect(hidesAttendeeTabBar("/")).toBe(false);
+    expect(hidesAttendeeTabBar("/discover")).toBe(false);
+    expect(hidesAttendeeTabBar("/ticket/t1")).toBe(false);
   });
 });
 

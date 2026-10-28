@@ -93,6 +93,7 @@ export const es: Messages = {
     requestSent: "Solicitud enviada",
     requestPending: "Solicitud enviada · pendiente",
     noTicketsOnSale: "Sin tickets a la venta",
+    toCheckout: "Ir al pago",
   },
   organizerPage: {
     notFound: "Este organizador no está disponible",

@@ -529,11 +529,17 @@ export default function EventDetailScreen() {
       cta: available.length
         ? {
             label: isRsvp ? t("event.requestToJoin") : t("event.getTickets"),
-            onPress: scrollToTiersV2,
+            // Kevin 2026-10-28: Get tickets picks the cheapest tier on sale (the bar then says
+            // Continue to checkout) and brings it into view.
+            onPress: () => {
+              const cheapest = available.reduce((a, b) => (b.displayPrice < a.displayPrice ? b : a));
+              if (selectedTierId !== cheapest.id) handleSelectTier(cheapest.id);
+              scrollToTiersV2();
+            },
           }
         : { label: t("event.soldOut"), tone: "dark", disabled: true },
     };
-  }, [v2, event, mine, hasTicketTiers, selectedTier, quantity, isRsvp, isSignedIn, isLoadingUserTickets, displayedTiers, handleContinueToCheckout, scrollToTiersV2, router, t]);
+  }, [v2, event, mine, hasTicketTiers, selectedTier, quantity, isRsvp, isSignedIn, isLoadingUserTickets, displayedTiers, selectedTierId, handleSelectTier, handleContinueToCheckout, scrollToTiersV2, router, t]);
 
   // --- Loading state ---
   if (isLoading && !event) {
@@ -691,6 +697,8 @@ export default function EventDetailScreen() {
                   currency={event.currency}
                   onSelect={handleSelectTier}
                   onQuantity={handleQuantityChange}
+                  onCheckout={handleContinueToCheckout}
+                  checkoutDisabled={isSignedIn === undefined || (isRsvp && isLoadingUserTickets)}
                 />
               ) : (
               <TicketSelection
