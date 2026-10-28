@@ -192,6 +192,8 @@ export function CheckoutMainSheet({
     isRsvp && tierFormConfig !== null && tierFormConfig.length > 0;
 
   const handleCheckoutPress = useCallback(() => {
+    // B2: wait for the promoter check (the button is disabled meanwhile, this is the backstop).
+    if (promoterStatus === "validating") return;
     // Client-side required-field gate matching web's RegistrationFormModal.
     // Server still validates (api/rsvp/route.ts) — this exists for UX so users
     // see inline per-field errors instead of a generic server response.
@@ -216,7 +218,7 @@ export function CheckoutMainSheet({
     }
     setFormErrors({});
     onCheckout();
-  }, [hasForm, tierFormConfig, localFormData, onCheckout]);
+  }, [hasForm, tierFormConfig, localFormData, onCheckout, promoterStatus]);
 
   return (
     <Modal
@@ -507,6 +509,24 @@ export function CheckoutMainSheet({
                   </Pressable>
                 </View>
               )}
+              {promoterStatus === "invalid" && localPromoter.trim().length > 0 && (
+                <FlameText variant="subtitle2-light" className="text-primary mt-1">
+                  That promoter code isn’t valid for this event.
+                </FlameText>
+              )}
+              {/* B2 (fase 3.1): a failed check is said out loud, with Retry; paying still works. */}
+              {promoterStatus === "error" && localPromoter.trim().length > 0 && (
+                <View className="flex-row flex-wrap items-center mt-1">
+                  <FlameText variant="subtitle2-light" className="text-white-70">
+                    We couldn’t check the code (you can still pay) ·{" "}
+                  </FlameText>
+                  <Pressable onPress={handlePromoterSubmit} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry promoter code">
+                    <FlameText variant="subtitle2" className="text-white-100 underline">
+                      Retry
+                    </FlameText>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             {checkoutError ? (
@@ -557,9 +577,14 @@ export function CheckoutMainSheet({
             </View>
 
             <PillButton
-              label={getButtonLabel(isRsvp, isFree, displayAmounts.total, event.currency)}
+              label={
+                promoterStatus === "validating"
+                  ? "Checking promoter code…"
+                  : getButtonLabel(isRsvp, isFree, displayAmounts.total, event.currency)
+              }
               variant="solid"
               onPress={handleCheckoutPress}
+              disabled={promoterStatus === "validating"}
             />
           </ScrollView>
         </View>

@@ -271,6 +271,22 @@ export async function apiPostPublic<T>(
 }
 
 /**
+ * Unauthenticated GET (same pipeline as apiPostPublic). Used for the promoter-code check
+ * (B10, fase 3.1): `/api/promoter-validate` is public and a promoter link can be opened before
+ * signing in.
+ */
+export async function apiGetPublic<T>(endpoint: string): Promise<T> {
+  const url = `${API_BASE}${endpoint}`;
+  const { response, data } = await executeRequest(url, null, { method: "GET" }, undefined, endpoint, DEFAULT_TIMEOUT_MS);
+  if (!response.ok) {
+    const body = data as Record<string, string> | null;
+    throw new ApiError(response.status, body?.error ?? body?.message ?? "Request failed", body?.code);
+  }
+  if (data === null) throw new ApiError(response.status, "Failed to parse response body");
+  return data as T;
+}
+
+/**
  * PATCH helper — convenience wrapper around apiClient.
  */
 export function apiPatch<T>(

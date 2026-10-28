@@ -11,9 +11,8 @@ import {
 } from "@project-flame/lib";
 import type { FeeCalculation } from "@project-flame/lib";
 import type { TicketTierWithStatus, EventDetail } from "./useEventDetails";
-import { apiPost, apiGet, ApiError } from "../lib/api";
+import { apiPost, apiGet, apiGetPublic, ApiError } from "../lib/api";
 import { useOptionalAuth } from "./useOptionalAuth";
-import { supabase } from "../lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -153,7 +152,11 @@ async function getStripeFunctions() {
 // Hook
 // ---------------------------------------------------------------------------
 
-export type PromoterValidationStatus = "idle" | "validating" | "valid" | "invalid";
+/**
+ * "error" (B2, fase 3.1) = the check itself failed (network / server): shown with Retry and it
+ * does not block paying; "validating" does block the pay button so a fast tap can't drop it.
+ */
+export type PromoterValidationStatus = "idle" | "validating" | "valid" | "invalid" | "error";
 
 interface UseCheckoutOptions {
   event: EventDetail | undefined;
@@ -163,6 +166,7 @@ interface UseCheckoutOptions {
   promoterCode?: string;
   apiPost?: typeof apiPost;
   apiGet?: typeof apiGet;
+  apiGetPublic?: typeof apiGetPublic;
   getStripeFunctions?: typeof getStripeFunctions;
 }
 
@@ -174,6 +178,7 @@ export function useCheckout({
   promoterCode: initialPromoterCode,
   apiPost: injectedApiPost = apiPost,
   apiGet: injectedApiGet = apiGet,
+  apiGetPublic: injectedApiGetPublic = apiGetPublic,
   getStripeFunctions: injectedGetStripeFunctions = getStripeFunctions,
 }: UseCheckoutOptions) {
   const { getToken, isSignedIn, userId } = useOptionalAuth();
@@ -232,19 +237,17 @@ export function useCheckout({
       const token = validationIdRef.current;
       setPromoterStatus("validating");
       try {
-        const { data, error } = await supabase
-          .from("promoter_links")
-          .select("id")
-          .eq("event_id", event.id)
-          .eq("promoter_code", trimmed)
-          .maybeSingle();
+        // B10 (fase 3.1): the server's rule (/api/promoter-validate), not a direct Supabase read
+        // (that needs promoter_links open to anon — B11, closed at release).
+        const data = await injectedApiGetPublic<{ valid?: boolean }>(
+          `/api/promoter-validate?event_id=${encodeURIComponent(event.id)}&code=${encodeURIComponent(trimmed)}`,
+        );
         if (token !== validationIdRef.current) return;
-        if (error) {
-          console.error("[useCheckout] promoter validation error:", error);
-          setPromoterStatus("idle");
+        if (typeof data?.valid !== "boolean") {
+          setPromoterStatus("error");
           return;
         }
-        if (data) {
+        if (data.valid) {
           setPromoterCode(trimmed);
           setPromoterStatus("valid");
         } else {
@@ -253,10 +256,11 @@ export function useCheckout({
       } catch (err) {
         if (token !== validationIdRef.current) return;
         console.error("[useCheckout] promoter validation failed:", err);
-        setPromoterStatus("invalid");
+        // B2: a failed check is not an invalid code — say so and let them retry.
+        setPromoterStatus("error");
       }
     },
-    [event],
+    [event, injectedApiGetPublic],
   );
 
   const clearPromoter = useCallback(() => {
@@ -500,6 +504,8 @@ export function useCheckout({
    */
   const checkout = useCallback(async () => {
     if (!event || !tier || !isSignedIn) return;
+    // B2 (fase 3.1): never create the hold / RSVP while the promoter code is still being checked.
+    if (promoterStatus === "validating") return;
 
     // Prevent double-submissions before React state batch flushes
     if (
@@ -822,6 +828,15 @@ export function useCheckout({
           "Stripe is not available. Please use a development build for payments.",
         );
       }
+
+      // B3 (fase 3.1): mark the hold "payment in progress" (+10 min, cleanup grace) before the
+      // PaymentSheet opens, so it can't expire and be deleted while Stripe processes the payment.
+      // If it fails nothing was charged; the catch below releases the hold as for any error.
+      await injectedApiPost<unknown>(
+        "/api/holds/start-payment",
+        { hold_id: holdResponse.hold_session_id, payment_intent_id: piResponse.paymentIntentId },
+        getToken,
+      );
 
       stepInProgressRef.current = "presenting_sheet";
       setStep("presenting_sheet");
