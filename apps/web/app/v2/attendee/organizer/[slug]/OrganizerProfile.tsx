@@ -57,7 +57,7 @@ export default function OrganizerProfile({ org, upcoming, past }: { org: PublicO
 
       <div className="px-4 md:px-8">
         <div className="-mt-12 flex items-end gap-4">
-          <span className="rounded-[22px] border-4 border-black">
+          <span style={{zIndex:10}} className="rounded-[22px] border-4 border-black">
             <OrgAvatar name={org.name} logoUrl={org.logo_url} size={96} />
           </span>
         </div>

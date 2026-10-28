@@ -138,49 +138,49 @@ Necesitas una cuenta con: un evento próximo con **2 o más tickets** (mejor si 
 - [x] `/sign-in` y `/sign-up`: fondo negro con el collage, logo, la frase (en el idioma del navegador) y el formulario de Clerk en oscuro. Iniciar sesión, crear cuenta, Google, "¿olvidaste tu contraseña?" y el código por correo funcionan. El inicio de sesión en ventana emergente (botón "Iniciar sesión" de la v1) sigue igual.
 
 ## 2.7 · Cierre de la fase 2
-- [ ] Recorrido completo en el celular: Inicio → evento → comprar → Mis tickets → QR → Tú → Ajustes → Explorar → organizador.
-- [ ] Recorrido completo en la web (PC y teléfono) con y sin sesión.
+- [x] Recorrido completo en el celular: Inicio → evento → comprar → Mis tickets → QR → Tú → Ajustes → Explorar → organizador.
+- [x] Recorrido completo en la web (PC y teléfono) con y sin sesión.
 - [ ] Interruptor completo: con `EXPO_PUBLIC_ATTENDEE_V1=true` (app) y `ATTENDEE_V1=true` (web) **todo** el asistente vuelve a la v1 (Inicio, evento, organizador, Explorar/Discover, Mis tickets, ticket, Tú/Profile, iniciar sesión) y `/notifications` lleva al inicio.
 
 ## Corrección 2.4 · Compra en la página de evento (ronda de Kevin, 10-27)
 **App · 📱 Celular**
-- [ ] En la página de evento solo se ven los tiers (sin campos de promotor ni de código de acceso).
-- [ ] Debajo de los tiers, "¿Tienes un código de acceso?" → hoja "Código de acceso" con el campo y **Desbloquear**. Código bueno: la hoja se cierra, aparece el tier privado y una etiqueta "Código X aplicado" con ✕ para quitarlo. Código malo: el error dentro de la hoja.
-- [ ] Elegir tier → continuar → la hoja de checkout de siempre tiene **código de descuento** y **promotor**. Comprar con un promotor y comprobar en el panel del organizador que la venta quedó atribuida.
-- [ ] Un enlace con `?promoter=CODIGO` llega con el promotor ya aplicado en el checkout.
+- [x] En la página de evento solo se ven los tiers (sin campos de promotor ni de código de acceso).
+- [x] Debajo de los tiers, "¿Tienes un código de acceso?" → hoja "Código de acceso" con el campo y **Desbloquear**. Código bueno: la hoja se cierra, aparece el tier privado y una etiqueta "Código X aplicado" con ✕ para quitarlo. Código malo: el error dentro de la hoja.
+- [x] Elegir tier → continuar → la hoja de checkout de siempre tiene **código de descuento** y **promotor**. Comprar con un promotor y comprobar en el panel del organizador que la venta quedó atribuida.
+- [x] Un enlace con `?promoter=CODIGO` llega con el promotor ya aplicado en el checkout.
 
 **Web · 🌐 PC y teléfono** (`/events/<slug>`)
-- [ ] Solo los tiers; sin campos de promotor/código ni la fila de cantidad. Debajo, "¿Tienes un código de acceso?" → hoja (abajo en teléfono, centrada en PC) con Desbloquear; se cierra al aceptar y queda la etiqueta con ✕.
-- [ ] Elegir tier → **Continuar** → hoja de checkout: evento, tier con −/+ (respeta el máximo por persona), "Código de promotor (opcional)" + Agregar, "Código de descuento (opcional)" + Aplicar (solo tickets pagados, no RSVP), aviso de 30 min, total "antes de comisiones". Esc o clic fuera la cierran.
-- [ ] Promotor malo → mensaje; bueno → "Promotor X". Descuento bueno → "CÓDIGO · −$X" y el total baja; malo → el mensaje del servidor.
-- [ ] **Pagado:** Continuar → `/purchase` con el descuento **ya aplicado** (mira el desglose) y el promotor mostrado; pagar con tarjeta de prueba y comprobar en el panel que la venta tiene el promotor y el descuento.
-- [ ] **Gratis:** Continuar → se obtiene el ticket (con el promotor si lo pusiste).
-- [ ] **RSVP:** Continuar → el formulario / la autorización de pago de siempre; el descuento se pone en ese paso de pago. El RSVP queda con el promotor.
-- [ ] En `/purchase` el promotor ya no se puede escribir (antes ese campo no llegaba al pedido): solo se ve el que viene de la página de evento.
-- [ ] `ATTENDEE_V1=true`: la página de evento de siempre con sus campos en línea.
+- [x] Solo los tiers; sin campos de promotor/código ni la fila de cantidad. Debajo, "¿Tienes un código de acceso?" → hoja (abajo en teléfono, centrada en PC) con Desbloquear; se cierra al aceptar y queda la etiqueta con ✕.
+- [x] Elegir tier → **Continuar** → hoja de checkout: evento, tier con −/+ (respeta el máximo por persona), "Código de promotor (opcional)" + Agregar, "Código de descuento (opcional)" + Aplicar (solo tickets pagados, no RSVP), aviso de 30 min, total "antes de comisiones". Esc o clic fuera la cierran.
+- [x] Promotor malo → mensaje; bueno → "Promotor X". Descuento bueno → "CÓDIGO · −$X" y el total baja; malo → el mensaje del servidor.
+- [x] **Pagado:** Continuar → `/purchase` con el descuento **ya aplicado** (mira el desglose) y el promotor mostrado; pagar con tarjeta de prueba y comprobar en el panel que la venta tiene el promotor y el descuento.
+- [x] **Gratis:** Continuar → se obtiene el ticket (con el promotor si lo pusiste).
+- [x] **RSVP:** Continuar → el formulario / la autorización de pago de siempre; el descuento se pone en ese paso de pago. El RSVP queda con el promotor.
+- [x] En `/purchase` el promotor ya no se puede escribir (antes ese campo no llegaba al pedido): solo se ve el que viene de la página de evento.
+- [] `ATTENDEE_V1=true`: la página de evento de siempre con sus campos en línea.
 
 ## Corrección 10-28 · Página de evento: barras fijas, cantidad en la tarjeta, checkout
 **App · 📱 Celular**
-- [ ] Atrás y compartir quedan **fijos arriba** al desplazar la página (sobre un degradado oscuro); atrás funciona también si entraste por un enlace directo (va al inicio).
-- [ ] Tarjetas de tiers como el prototipo: nombre, "● A la venta · máx. N", precio y **Elegir**; el siguiente tier con candado; el tier desbloqueado con código muestra "Desbloqueado".
-- [ ] Tocar un tier: **la pantalla no se mueve**; en esa tarjeta aparece −/+ y se respeta el máximo. Tocarlo otra vez no lo deselecciona.
-- [ ] La píldora flotante "Buy Tickets" ya no aparece. Abajo hay una **barra fija**: sin tier "Desde $X" + **Comprar tickets** (sube hasta los tiers, no elige solo); con tier "2 × Tier · antes de comisiones" + total + **Continuar al pago** (abre la hoja de checkout); sin sesión dice "Inicia sesión para continuar".
-- [ ] Con tickets de ese evento: "Vas a ir · N tickets" + **Ver N tickets** → abre tu ticket (QR). Con RSVP pendiente: "Solicitud enviada · pendiente" (desactivado).
-- [ ] Hoja de checkout: descuento, promotor y los campos del RSVP **miden lo mismo** (48 px), igual que los botones Aplicar y las etiquetas verdes de "aplicado".
-- [ ] Evento RSVP con preguntas: un recuadro "RSVP questions" (con el nombre del organizador) separado del bloque "Payment codes (optional)" con descuento y promotor; en RSVP pagado aparece "They only apply to the charge if your request is approved."
-- [ ] Compra completa con promotor y descuento sigue funcionando (el cobro no cambió).
+- [x] Atrás y compartir quedan **fijos arriba** al desplazar la página (sobre un degradado oscuro); atrás funciona también si entraste por un enlace directo (va al inicio).
+- [x] Tarjetas de tiers como el prototipo: nombre, "● A la venta · máx. N", precio y **Elegir**; el siguiente tier con candado; el tier desbloqueado con código muestra "Desbloqueado".
+- [x] Tocar un tier: **la pantalla no se mueve**; en esa tarjeta aparece −/+ y se respeta el máximo. Tocarlo otra vez no lo deselecciona.
+- [x] La píldora flotante "Buy Tickets" ya no aparece. Abajo hay una **barra fija**: sin tier "Desde $X" + **Comprar tickets** (sube hasta los tiers, no elige solo); con tier "2 × Tier · antes de comisiones" + total + **Continuar al pago** (abre la hoja de checkout); sin sesión dice "Inicia sesión para continuar".
+- [x] Con tickets de ese evento: "Vas a ir · N tickets" + **Ver N tickets** → abre tu ticket (QR). Con RSVP pendiente: "Solicitud enviada · pendiente" (desactivado).
+- [x] Hoja de checkout: descuento, promotor y los campos del RSVP **miden lo mismo** (48 px), igual que los botones Aplicar y las etiquetas verdes de "aplicado".
+- [x] Evento RSVP con preguntas: un recuadro "RSVP questions" (con el nombre del organizador) separado del bloque "Payment codes (optional)" con descuento y promotor; en RSVP pagado aparece "They only apply to the charge if your request is approved."
+- [x] Compra completa con promotor y descuento sigue funcionando (el cobro no cambió).
 
 **Web · 🌐 Teléfono y PC** (`/events/<slug>`)
-- [ ] Atrás y compartir fijos bajo la barra del sitio al desplazar; compartir copia el enlace ("Link copied") si el navegador no comparte.
-- [ ] En teléfono **no** aparece la barra de pestañas en la página de evento; en su lugar la barra fija de compra (mismos estados que la app). En PC también se ve abajo, centrada.
-- [ ] Tarjetas de tiers como el prototipo; al elegir uno, −/+ en la tarjeta sin mover la página; ya no aparecen el botón "Continue" debajo de los tiers ni la píldora "Buy Tickets".
-- [ ] **Continuar al pago** abre la hoja de checkout con la cantidad elegida; el resto del flujo (promotor, descuento, `/purchase`) igual que en la corrección 2.4. Cambiar de tier borra el descuento aplicado (hay que ponerlo de nuevo).
-- [ ] Con tickets del evento: "Ver N tickets" lleva a `/account/ticket/<id>`.
+- [x] Atrás y compartir fijos bajo la barra del sitio al desplazar; compartir copia el enlace ("Link copied") si el navegador no comparte.
+- [x] En teléfono **no** aparece la barra de pestañas en la página de evento; en su lugar la barra fija de compra (mismos estados que la app). En PC también se ve abajo, centrada.
+- [x] Tarjetas de tiers como el prototipo; al elegir uno, −/+ en la tarjeta sin mover la página; ya no aparecen el botón "Continue" debajo de los tiers ni la píldora "Buy Tickets".
+- [x] **Continuar al pago** abre la hoja de checkout con la cantidad elegida; el resto del flujo (promotor, descuento, `/purchase`) igual que en la corrección 2.4. Cambiar de tier borra el descuento aplicado (hay que ponerlo de nuevo).
+- [x] Con tickets del evento: "Ver N tickets" lleva a `/account/ticket/<id>`.
 **Ronda 2 (10-28) · 📱 Celular y 🌐 web**
-- [ ] 📱 En el detalle del evento **no** aparece la isla (Inicio, Explorar, Tickets, Tú); al volver a Inicio/Explorar sí.
-- [ ] Sin tier elegido, **Comprar tickets** selecciona el tier más barato a la venta (con etapas: la etapa vigente más barata) y lo muestra; la barra pasa a "Continuar al pago".
-- [ ] Por defecto las tarjetas **no tienen botones** (solo nombre, estado, precio; candado si abre después). Al tocar una aparecen −/+ y el botón.
-- [ ] La tarjeta elegida muestra **Ir al pago** junto al precio (RSVP: "Solicitar"); abre la hoja de checkout con la cantidad elegida. Sin sesión lleva a iniciar sesión.
+- [x] 📱 En el detalle del evento **no** aparece la isla (Inicio, Explorar, Tickets, Tú); al volver a Inicio/Explorar sí.
+- [x] Sin tier elegido, **Comprar tickets** selecciona el tier más barato a la venta (con etapas: la etapa vigente más barata) y lo muestra; la barra pasa a "Continuar al pago".
+- [x] Por defecto las tarjetas **no tienen botones** (solo nombre, estado, precio; candado si abre después). Al tocar una aparecen −/+ y el botón.
+- [x] La tarjeta elegida muestra **Ir al pago** junto al precio (RSVP: "Solicitar"); abre la hoja de checkout con la cantidad elegida. Sin sesión lleva a iniciar sesión.
 - [ ] `ATTENDEE_V1=true` / `EXPO_PUBLIC_ATTENDEE_V1=true`: la página de evento v1 sin cambios (incluido el salto al final de la app v1, que es el de producción).
 
 ## Cosas conocidas
