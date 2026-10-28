@@ -1,6 +1,6 @@
 # Fase 3 · Pagos: arreglos previos y flujo nuevo
 
-Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-27 (3.0: análisis y plan; **sin código de pagos tocado todavía**, salvo lo de la corrección 2.4 descrito en §1.2).
+Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-28: 3.0 análisis y plan; **3.1 hecha en código** (B2, B10, B3, B4 — §5), pruebas reales pendientes.
 
 Fuente de verdad del comportamiento actual: **`Flme_comp/`** (producción). Diagnósticos de origen: `sesiones/2026-07-09-analisis-stripe-holds-promotor-bug.md` y `sesiones/2026-07-09-auditoria-bugs-holds-promoter.md` (B1–B10). Aquí se re-verificó cada uno contra `Flme_comp` y contra la copia de trabajo.
 
@@ -112,3 +112,26 @@ Principio: **la lógica de cobro no cambia** (mismos endpoints, mismo webhook, m
 - [Seguro] Las pruebas reales de la fase 2 (incluida la corrección 2.4 del checkout) siguen pendientes: la 3.2 reemplaza esa hoja, así que lo que se pruebe de ella vale para poco; **lo que sí hay que probar antes de la 3.3 es un pago real** de punta a punta en local.
 - [Probable] Stripe Payment Element (web) y PaymentSheet (app) no se pueden probar en los tests automáticos más allá de simularlos.
 - [Adivinando] Esfuerzo: 1,5–2,5 semanas (la valoración decía 1–2; se agregan los arreglos de §2).
+
+## 5. 3.1 hecha (2026-10-28) — qué cambió de verdad
+
+**Alcance:** son arreglos de bugs, **no** van detrás del interruptor del asistente: aplican a la v1 y a la v2 (web y app), porque el camino de cobro es el mismo.
+
+| Bug | Web | App | Servidor |
+| --- | --- | --- | --- |
+| B10 | `EventDetail.validatePromoterCode` → `GET /api/promoter-validate` (ya no lee `promoter_links` desde el navegador; se quitó el import de Supabase del componente) | `useCheckout.validatePromoter` → `apiGetPublic("/api/promoter-validate…")` (nuevo `apiGetPublic` en `lib/api.ts`: el enlace del promotor puede abrirse sin sesión) | sin cambios (el endpoint ya existía) |
+| B2 | Estado nuevo `"error"`. Continuar (v1 y hoja v2) deshabilitado mientras `"validating"`; `handlePurchaseClick` también lo frena. Error → "No pudimos validar el código (puedes comprar igual) · Reintentar" (v2 i18n; v1 en inglés) | Igual: `checkout()` no hace nada mientras `"validating"`; botón de pagar deshabilitado ("Checking promoter code…"); `"error"` con Retry; un código de enlace inválido ahora se ve como inválido en la hoja | — |
+| B3 | `StripePaymentForm`: tras `elements.submit()` y antes de `confirmPayment`, `POST /api/holds/start-payment {hold_id, payment_intent_id}` (`StripePurchaseFlow` le pasa el id). Si falla, no se confirma (no hay cobro) y se muestra el motivo. RSVP no lo usa (no hay hold) | `useCheckout`: después de `holds/validate` y antes de abrir el PaymentSheet. Si falla, no se abre y la reserva se libera (catch de siempre) | **Nuevo** `POST /api/holds/start-payment`: dueño, no vencida, sin pedido → `mark_hold_payment_started(hold, "stripe:<pi>", 10)`. |
+| B4 | Error `PAYMENT_IN_PROGRESS` → mensaje i18n en la hoja v2 (se reabre) | Mensaje del servidor en la hoja | `holds/create`: antes del RPC, si el usuario tiene un hold de ese tier sin pedido, `payment_in_progress = true` y empezado hace < 20 min → **409** `PAYMENT_IN_PROGRESS`. Si esa consulta falla, sigue como antes (no bloquea comprar) |
+
+**Decisiones de implementación (para revisar):**
+- [Seguro] **Tope contra abuso en start-payment** (no estaba en el análisis): sin él, llamar el endpoint en bucle alargaría la reserva +10 min cada vez y retendría inventario sin límite. Ahora: una segunda llamada dentro de 10 min no alarga (reintento tras tarjeta rechazada, doble toque) y una reserva con más de 60 min de vida no se alarga más (paga con lo que le queda).
+- [Seguro] El id del PaymentIntent se guarda como `stripe:pi_…` en `datafast_checkout_id` (la única columna que la función escribe). `datafast/verify-payment` busca por igualdad con el id de Datafast, así que nunca coincide. Sin migración.
+- [Seguro] Verificado en la base (`baseline.sql`): `cleanup_expired_holds` respeta 15 min de gracia desde `payment_started_at`; `cleanup_abandoned_payments` quita la marca a los 20 min; el webhook no mira `expires_at`. Con la marca, la fila existe cuando llega el webhook.
+- [Probable] **Riesgo residual B4:** ventana mínima entre la consulta y el RPC (dos pestañas exactamente a la vez). Cerrarla exige cambiar el RPC (migración); no se hizo.
+- [Probable] **Riesgo residual B3:** si el pago se queda >15 min dentro de Stripe (3DS muy lento) y otra compra dispara la limpieza, vuelve el caso viejo. Muy raro.
+- **B11 sigue abierto:** la política anon de `promoter_links` se quita en la salida (fase 5), cuando las versiones viejas de la app ya no consulten directo.
+
+**Tests:** web `holds-payment` 9 (start-payment: marca y alarga, sesión/cuerpo/dueño, vencida/usada, no re-alarga en 10 min, tope de 60 min, respuesta de la base; create: 409 con pago en curso, reemplaza la abandonada, no bloquea por otro usuario); `StripePaymentStart` 2 (orden validate → submit → start-payment → confirm; si falla no confirma); `EventCheckout` +1 (B2 web: espera, error con Reintentar, no bloquea) y los existentes migrados a `/api/promoter-validate`. App `CheckoutFixes` 4 (B10, B2, B3 orden, B3 fallo libera la reserva). Totales: web 918 ✓ (13 ✗ heredados: 6 `create-payment-intent`, 7 `purchase-page.integration` — fallan igual con los archivos de `HEAD` —, y `payment-protection` necesita Supabase real); app 167/167; lib 399/399; tsc web 0, lib 0, app 40 (heredados).
+
+**No verificado:** un pago real de punta a punta (ver `PruebasReales/FASE_3_PAGOS.md`).

@@ -12,3 +12,4 @@ Pruebas manuales que hay que hacer en el PC de Kevin con datos reales de desarro
 | [FASE_1_ORGANIZADOR_WEB.md](FASE_1_ORGANIZADOR_WEB.md) | Organizador web v2: redirecciones, menú, panel, evento, crear/editar, tiers, equipo, escáner (configuración), ajustes, payouts, RSVPs, permisos, idioma, errores | Cerrada (10-22). Ronda 3 (10-26, Manage/Ajustes/soporte web): **aprobada 10-27**. Abierto: ingresos v1↔v2 (v1 se conserva). Casos de app → FASE_1B |
 | [FASE_1B_ORGANIZADOR_APP.md](FASE_1B_ORGANIZADOR_APP.md) | Organizador en la app (Expo): se llena con cada entrega de la 1b; ya incluye los casos de app heredados de la fase 1 | **Cerrada y aprobada (10-27)** |
 | [FASE_2_ASISTENTE.md](FASE_2_ASISTENTE.md) | Asistente web + app (fase 2): se llena con cada entrega (2.1 marco y campana web) | En curso |
+- [FASE_3_PAGOS.md](FASE_3_PAGOS.md) — fase 3 (pagos): 3.1 arreglos B2, B10, B3, B4.
