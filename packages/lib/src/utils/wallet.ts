@@ -116,6 +116,19 @@ export function buildWallet(rows: UserTicket[], now: Date = new Date()): Wallet 
   return { upcoming, requests, past, stats: { total: purchased + pending, purchased, pending } };
 }
 
+/**
+ * What the event page's bottom bar says about this person and one event (Kevin 2026-10-28,
+ * prototype `x-buybar`): their door tickets (→ "View N tickets") or their open RSVP request.
+ */
+export type MyEventState = { tickets: UserTicket[]; request: WalletRequest | null };
+
+export function myEventState(rows: UserTicket[], eventId: string, now: Date = new Date()): MyEventState {
+  const w = buildWallet(rows, now);
+  const mine = [...w.upcoming, ...w.past].find((x) => x.event.id === eventId);
+  const request = w.requests.find((r) => r.event.id === eventId && (r.state === "pending" || r.state === "approved")) ?? null;
+  return { tickets: mine?.tickets ?? [], request };
+}
+
 /** Kicker of an upcoming card: running now, today, tomorrow, in N days (≤ 7) or a date. */
 export type WalletWhen = { kind: "now" } | { kind: "today" } | { kind: "tomorrow" } | { kind: "days"; days: number } | { kind: "date" };
 

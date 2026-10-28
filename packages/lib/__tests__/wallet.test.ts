@@ -1,6 +1,6 @@
 /** Fase 2.3: My tickets and the QR ticket, shared by web and app. */
 import { describe, it, expect } from "vitest";
-import { buildWallet, walletWhen, eventTicketSlides, ticketPrice, ticketQr, ticketStage, walletOrganizer, directionsUrl, type UserTicket } from "../src";
+import { buildWallet, myEventState, walletWhen, eventTicketSlides, ticketPrice, ticketQr, ticketStage, walletOrganizer, directionsUrl, type UserTicket } from "../src";
 
 const GYE = "America/Guayaquil";
 const NOW = new Date("2026-10-27T20:00:00Z"); // Tue 15:00 in Guayaquil
@@ -140,5 +140,25 @@ describe("ticket details", () => {
     expect(walletOrganizer({ ...SOON, organization: undefined, organizations: [{ name: "Multi" }] })).toBe("Multi");
     expect(directionsUrl({ venue: "Club Uno", city: "Quito" })).toBe("https://www.google.com/maps/search/?api=1&query=Club%20Uno%2C%20Quito");
     expect(directionsUrl({ venue: "", city: null })).toBeNull();
+  });
+});
+
+describe("myEventState (event page bottom bar)", () => {
+  const rows: UserTicket[] = [
+    tk("a", SOON, "GA", "2026-10-20T00:00:00Z"),
+    tk("b", SOON, "VIP", "2026-10-21T00:00:00Z"),
+    tk("x", SOON, "GA", "2026-10-19T00:00:00Z", { status: "refunded" }),
+    rsvp("r1", LATER, "pending", 2),
+    rsvp("r2", OLD, "rejected", 1),
+  ];
+  it("door tickets of that event in purchase order (refunded ones don't count)", () => {
+    const s = myEventState(rows, "soon", NOW);
+    expect(s.tickets.map((t) => t.id)).toEqual(["a", "b"]);
+    expect(s.request).toBeNull();
+  });
+  it("an open RSVP request; nothing for other events", () => {
+    expect(myEventState(rows, "later", NOW)).toMatchObject({ tickets: [], request: { state: "pending", quantity: 2 } });
+    expect(myEventState(rows, "old", NOW)).toEqual({ tickets: [], request: null });
+    expect(myEventState([], "soon", NOW)).toEqual({ tickets: [], request: null });
   });
 });
