@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import { faqs, featuredFirst, flameV2Colors as c, searchExplore } from "@project-flame/lib";
+import { faqs, featuredFirst, flameV2Colors as c, organizerCover, searchExplore } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { useAppEvents } from "../../../../hooks/useAppEvents";
 import { useOrganizations } from "../../../../hooks/useOrganizations";
@@ -27,10 +27,12 @@ import { Button, ErrorBox, Icon, OrgAvatar } from "../../ui";
 
 type Org = { id: string; name: string; slug: string; logo_url?: string | null; cover_image_url?: string | null; city?: string | null };
 
-function OrgCard({ org, width }: { org: Org; width: number }) {
+/** Background: the flyer of the organizer's next event, else its photo (Kevin 2026-10-28). */
+function OrgCard({ org, width, events }: { org: Org; width: number; events: FeedEvent[] }) {
   const { t } = useI18n();
   const router = useRouter();
-  const cover = org.cover_image_url || org.logo_url || null;
+  const bg = organizerCover(org, events);
+  const cover = bg?.url ?? null;
   return (
     <Pressable
       onPress={() => router.push(`/organizer/${org.slug}` as Href)}
@@ -40,7 +42,15 @@ function OrgCard({ org, width }: { org: Org; width: number }) {
       className="active:opacity-80"
     >
       <View style={{ height: 90, backgroundColor: c.ink3 }}>
-        {cover ? <Image source={{ uri: cover }} style={{ height: 90, opacity: org.cover_image_url ? 1 : 0.6 }} blurRadius={org.cover_image_url ? 0 : 30} contentFit="cover" /> : null}
+        {cover ? (
+          <Image
+            testID={`org-card-bg-${bg?.kind}`}
+            source={{ uri: cover }}
+            style={{ height: 90, opacity: bg?.kind === "flyer" ? 0.75 : bg?.kind === "logo" ? 0.6 : 1 }}
+            blurRadius={bg?.kind === "logo" ? 30 : 0}
+            contentFit="cover"
+          />
+        ) : null}
       </View>
       <View className="px-3.5 pb-3.5">
         <View style={{ marginTop: -26, alignSelf: "flex-start", borderRadius: 16, borderWidth: 3, borderColor: "#121212" }}>
@@ -174,7 +184,7 @@ export function Explore() {
                 {sectionTitle(t("explore.organizers"))}
                 <View className="flex-row flex-wrap px-4" style={{ gap: 12 }}>
                   {result.organizers.map((o) => (
-                    <OrgCard key={o.id} org={o} width={tileW} />
+                    <OrgCard key={o.id} org={o} width={tileW} events={raw} />
                   ))}
                 </View>
               </View>
@@ -208,7 +218,7 @@ export function Explore() {
               {sectionTitle(t("explore.organizers"))}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
                 {orgList.map((o) => (
-                  <OrgCard key={o.id} org={o} width={200} />
+                  <OrgCard key={o.id} org={o} width={200} events={raw} />
                 ))}
               </ScrollView>
             </View>

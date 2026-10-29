@@ -502,7 +502,10 @@ export function useCheckout({
    * RSVP paid:       PI (manual capture) → PaymentSheet → submit RSVP → success
    * Free (promo):    hold → PI → complete-hold-free → success
    */
-  const checkout = useCallback(async () => {
+  // `opts.registrationData` (fase 3.4, v2 RSVP sheet): the answers just collected — guest 1 at the
+  // top level + `_guests` — passed directly so a state update in the same tap can't be missed.
+  const checkout = useCallback(async (opts?: { registrationData?: Record<string, unknown> | null }) => {
+    const answers = opts && "registrationData" in opts ? opts.registrationData ?? null : registrationData;
     if (!event || !tier || !isSignedIn) return;
     // B2 (fase 3.1): never create the hold / RSVP while the promoter code is still being checked.
     if (promoterStatus === "validating") return;
@@ -546,7 +549,7 @@ export function useCheckout({
             quantity,
             ...(stageId !== undefined ? { stage_id: stageId } : {}),
             ...(effectiveSecretCode ? { secret_code: effectiveSecretCode } : {}),
-            ...(registrationData ? { registration_data: registrationData } : {}),
+            ...(answers ? { registration_data: answers } : {}),
             ...(checkoutPromoter ? { promoter_code: checkoutPromoter } : {}),
           },
           getToken,
@@ -599,7 +602,7 @@ export function useCheckout({
               paymentIntentId: piResponse.paymentIntentId,
               ...(stageId !== undefined ? { stage_id: stageId } : {}),
               ...(effectiveSecretCode ? { secret_code: effectiveSecretCode } : {}),
-              ...(registrationData ? { registration_data: registrationData } : {}),
+              ...(answers ? { registration_data: answers } : {}),
               ...(piResponse.promotionalCodeId
                 ? { promotional_code_id: piResponse.promotionalCodeId }
                 : {}),
@@ -663,7 +666,7 @@ export function useCheckout({
             paymentIntentId: piResponse.paymentIntentId,
             ...(stageId !== undefined ? { stage_id: stageId } : {}),
             ...(effectiveSecretCode ? { secret_code: effectiveSecretCode } : {}),
-            ...(registrationData ? { registration_data: registrationData } : {}),
+            ...(answers ? { registration_data: answers } : {}),
             ...(piResponse.promotionalCodeId
               ? { promotional_code_id: piResponse.promotionalCodeId }
               : {}),

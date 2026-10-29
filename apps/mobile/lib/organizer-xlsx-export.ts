@@ -15,6 +15,7 @@ import {
   normalizeRegistrationExportColumns,
   purchaseExportColumnWidths,
   registrationValuesForExportColumns,
+  withGuestExportColumns,
   type RegistrationExportColumn,
 } from "@project-flame/lib";
 import type { EnrichedPurchase } from "../hooks/useOrgEventEnriched";
@@ -84,8 +85,11 @@ export async function exportPendingRsvpsXlsx(params: {
   const rawTz = params.eventTimezone?.trim() ?? "";
   const formatInTz = (iso: string) => formatSheetDateTime(iso, rawTz);
 
-  const registrationColumns: RegistrationExportColumn[] =
-    normalizeRegistrationExportColumns(params.registrationFormConfig ?? undefined);
+  // Fase 3.4: plus "Guest N · …" columns for RSVPs that carry their guests' answers.
+  const registrationColumns: RegistrationExportColumn[] = withGuestExportColumns(
+    normalizeRegistrationExportColumns(params.registrationFormConfig ?? undefined),
+    params.rows.map((r) => r.registrationData as Record<string, unknown> | null),
+  );
 
   const exportedDate = new Date().toLocaleDateString("en-US");
   const wsData = buildPendingRsvpExportAoa(

@@ -23,6 +23,7 @@ import { NotificationsOverlay } from "../notifications/NotificationsOverlay";
 import { FlameLogo } from "../FlameLogo";
 import { AttendeeTopBar } from "../v2/attendee/AttendeeTopBar";
 import { AttendeeTabBar } from "../v2/attendee/AttendeeTabBar";
+import { PurchaseInProgress } from "../v2/attendee/PurchaseInProgress";
 import { attendeeV2Enabled } from "../../lib/v2/flags";
 import { AttendeeCityProvider } from "../../contexts/AttendeeCityContext";
 import { colors } from "@project-flame/ui";
@@ -112,6 +113,8 @@ export function RoleResolutionGate({
             ))}
           </Stack>
           {!v2 && (attendeeV2 ? <AttendeeTabBar /> : <CustomTabBar />)}
+          {/* A running reservation follows the buyer across the app (Kevin 2026-10-28). */}
+          {!v2 && attendeeV2 ? <PurchaseInProgress /> : null}
         </View>
         <NotificationsOverlay
           visible={notificationsOpen}

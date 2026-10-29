@@ -3,6 +3,7 @@ import type { CheckoutStep, CheckoutResult, PromoterValidationStatus } from "../
 import { CheckoutSuccessState } from "./CheckoutSuccessState";
 import { CheckoutProcessingState } from "./CheckoutProcessingState";
 import { CheckoutMainSheet } from "./CheckoutMainSheet";
+import { RsvpSheet } from "../v2/attendee/event/RsvpSheet";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -44,9 +45,11 @@ interface CheckoutSheetProps {
   onPromoterChange: (code: string) => void;
   onValidatePromoter: (code: string) => void;
   onClearPromoter: () => void;
-  onCheckout: () => void;
+  onCheckout: (opts?: { registrationData?: Record<string, unknown> | null }) => void;
   onReset: () => void;
   onViewTickets: () => void;
+  /** Flame 2.0 (fase 3.4): RSVPs use the new request sheet (questions per guest). */
+  v2Rsvp?: { maxQuantity: number; onQuantity: (n: number) => void };
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +88,7 @@ export function CheckoutSheet({
   onCheckout,
   onReset,
   onViewTickets,
+  v2Rsvp,
 }: CheckoutSheetProps) {
   if (step === "success" && result) {
     return (
@@ -108,6 +112,35 @@ export function CheckoutSheet({
   if (isProcessing) {
     return (
       <CheckoutProcessingState visible={visible} step={step} />
+    );
+  }
+
+  if (v2Rsvp && isRsvp) {
+    return (
+      <RsvpSheet
+        visible={visible}
+        onClose={onClose}
+        event={event}
+        tier={tier}
+        quantity={quantity}
+        maxQuantity={v2Rsvp.maxQuantity}
+        onQuantity={v2Rsvp.onQuantity}
+        promoterCode={promoterCode}
+        promoterStatus={promoterStatus}
+        onValidatePromoter={(code) => {
+          onPromoterChange(code);
+          onValidatePromoter(code);
+        }}
+        onClearPromoter={onClearPromoter}
+        secretCode={secretCode}
+        error={error}
+        busy={!!isProcessing}
+        promo={{ applied: promoApplied, code: promoCode, busy: !!isValidatingPromo, onApply: onApplyPromo, onClear: onClearPromo }}
+        onSend={(answers) => {
+          onRegistrationDataChange(answers);
+          onCheckout({ registrationData: answers });
+        }}
+      />
     );
   }
 

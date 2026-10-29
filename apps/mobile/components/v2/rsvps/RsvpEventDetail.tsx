@@ -21,6 +21,7 @@ import {
   formatCentsAsPrice,
   formatEventDateTime,
   registrationEntries,
+  rsvpGuestBlocks,
   rsvpAmountCents,
   rsvpGuestName,
   rsvpStatusKey,
@@ -500,6 +501,23 @@ function RegistrationSheet({
                   </View>
                 </View>
               )}
+              {/* Fase 3.4: the other guests' answers, one block each. */}
+              {rsvpGuestBlocks(config, rsvp.registration_data ?? null).map((b) => (
+                <View key={b.guest} className="gap-2" testID={`rsvp-guest-${b.guest}`}>
+                  <Text className="font-v2-ui-semibold text-[11px] uppercase tracking-[0.6px] text-v2-c50">{t("rsvps.guestN", { n: b.guest })}</Text>
+                  <View className="rounded-v2-md bg-v2-ink3 px-4">
+                    {b.entries.map((e, i) => (
+                      <Row
+                        key={e.key}
+                        first={i === 0}
+                        label={e.label}
+                        value={e.value.kind === "missing" ? t("rsvps.notProvided") : e.value.kind === "bool" ? (e.value.value ? t("rsvps.yes") : t("rsvps.no")) : e.value.text}
+                        muted={e.value.kind === "missing"}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ))}
             </ScrollView>
           </>
         )}

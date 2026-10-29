@@ -916,6 +916,7 @@ export default function EventDetailScreen() {
             onClearPromoter={checkoutState.clearPromoter}
             // Actions
             onCheckout={checkoutState.checkout}
+            v2Rsvp={v2 ? { maxQuantity, onQuantity: handleQuantityChange } : undefined}
             onReset={checkoutState.resetCheckout}
             onViewTickets={handleViewTickets}
           />

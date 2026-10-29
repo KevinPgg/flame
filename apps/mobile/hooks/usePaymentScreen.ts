@@ -222,6 +222,7 @@ export function usePaymentScreen(
       }
       setStep("paid");
       void queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
+      void queryClient.invalidateQueries({ queryKey: ["active-hold"] });
     } catch (e) {
       setPayError(e instanceof ApiError || e instanceof Error ? e.message : "Something went wrong. Please try again.");
       setStep("ready");
@@ -244,6 +245,7 @@ export function usePaymentScreen(
       );
       setStep("claimed");
       void queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
+      void queryClient.invalidateQueries({ queryKey: ["active-hold"] });
     } catch (e) {
       setPayError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
       setStep("ready");
@@ -253,8 +255,10 @@ export function usePaymentScreen(
   /** Release the tickets (back / cancel). Fire and forget: the reservation expires anyway. */
   const cancel = useCallback(() => {
     if (step === "paid" || step === "claimed" || step === "paying") return;
-    post<unknown>("/api/holds/cancel", { holdSessionId: holdId }, getToken).catch(() => {});
-  }, [step, post, holdId, getToken]);
+    post<unknown>("/api/holds/cancel", { holdSessionId: holdId }, getToken)
+      .catch(() => {})
+      .finally(() => void queryClient.invalidateQueries({ queryKey: ["active-hold"] }));
+  }, [step, post, holdId, getToken, queryClient]);
 
   return {
     step,
