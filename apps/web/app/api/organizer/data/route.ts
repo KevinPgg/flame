@@ -239,6 +239,7 @@ export async function GET(req: NextRequest) {
           secret_code,
           order_index,
           registration_form_fields,
+          registration_per_ticket,
           is_manually_sold_out,
           is_hidden,
           description,
@@ -377,7 +378,7 @@ export async function GET(req: NextRequest) {
                 ticket_tiers (
                   id, name, price_cents, quantity_total, quantity_sold,
                   per_user_limit, sales_start, sales_end, secret_code,
-                  order_index, registration_form_fields,
+                  order_index, registration_form_fields, registration_per_ticket,
                   is_manually_sold_out, is_hidden, description,
                   ticket_stages (
                     id, name, price_cents, quantity, sold_quantity, order_index, description

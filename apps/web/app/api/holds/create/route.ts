@@ -19,6 +19,12 @@ const createHoldSchema = z.object({
     ])
     .optional(), // Optional: if provided, must be at least 3 chars after trimming (empty string treated as undefined)
   promoter_code: z.string().optional(), // Optional promoter code for tracking
+  // Fase 3 pruebas (Kevin 2026-10-29): the new screens ask before replacing a reservation.
+  // `check_existing` → 409 HOLD_EXISTS when the buyer already holds this tier (any device);
+  // `replace_existing` → they confirmed, replace it as before. Old clients send neither and keep
+  // the old behavior (the RPC replaces it silently).
+  check_existing: z.boolean().optional(),
+  replace_existing: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -37,6 +43,8 @@ export async function POST(req: NextRequest) {
       stage_id,
       secret_code,
       promoter_code,
+      check_existing,
+      replace_existing,
     } = createHoldSchema.parse(body);
 
     // Get the user's Supabase ID (JIT sync: creates user if missing)
@@ -214,6 +222,28 @@ export async function POST(req: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    if (check_existing && !replace_existing) {
+      const { data: existing, error: existingError } = await supabaseAdmin
+        .from("holds")
+        .select("id, quantity, expires_at, stage_name")
+        .eq("user_id", supabaseUser.id)
+        .eq("tier_id", ticket_tier_id)
+        .is("order_id", null)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (existingError) {
+        console.error("[HOLD_CREATE] existing-hold lookup failed:", existingError);
+      } else if (existing && existing.length > 0) {
+        const h = existing[0];
+        const info = { id: h.id, quantity: h.quantity, expires_at: h.expires_at, stage_name: h.stage_name ?? null };
+        return NextResponse.json(
+          { error: "You already have a reservation for this ticket.", code: "HOLD_EXISTS", hold: info, details: info },
+          { status: 409 }
+        );
+      }
     }
 
     // Cleanup expired holds BEFORE creating a new one

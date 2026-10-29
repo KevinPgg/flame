@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const { data: hiddenTiers, error: tiersError } = await supabaseAdmin
       .from("ticket_tiers")
       .select(
-        `id, event_id, name, description, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden, is_manually_sold_out, order_index, registration_form_fields, created_at, updated_at,
+        `id, event_id, name, description, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden, is_manually_sold_out, order_index, registration_form_fields, registration_per_ticket, created_at, updated_at,
          ticket_stages (*)`,
       )
       .eq("event_id", event_id)

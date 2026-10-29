@@ -65,6 +65,8 @@ export const createTierSchema = z.object({
   useStages: z.boolean().optional(),
   stages: z.array(stageSchema).optional(),
   registration_form_fields: z.array(z.string()).max(50).nullable().optional(),
+  // RSVP: questions per ticket (each guest) instead of once per request (Kevin 2026-10-29).
+  registration_per_ticket: z.boolean().optional(),
   // W4-C1 (May 2026): organizer toggles. Both default to false on the DB side
   // so omitting them is safe; we accept them at create time for parity with the
   // edit flow and so future API consumers can pre-set them.
@@ -87,6 +89,8 @@ export const updateTierSchema = z.object({
   useStages: z.boolean().optional(),
   stages: z.array(stageSchema).optional(),
   registration_form_fields: z.array(z.string()).max(50).nullable().optional(),
+  // RSVP: questions per ticket (each guest) instead of once per request (Kevin 2026-10-29).
+  registration_per_ticket: z.boolean().optional(),
   // W4-C1 (May 2026): organizer toggles editable from the tier edit form.
   is_manually_sold_out: z.boolean().optional(),
   is_hidden: z.boolean().optional(),

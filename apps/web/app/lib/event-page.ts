@@ -38,6 +38,7 @@ export async function getEventBySlug(slug: string) {
           sales_start,
           sales_end,
           registration_form_fields,
+          registration_per_ticket,
           secret_code,
           is_manually_sold_out,
           is_hidden,

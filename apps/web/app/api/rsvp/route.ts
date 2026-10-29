@@ -645,7 +645,7 @@ export async function POST(req: NextRequest) {
     const { data: ticketTier, error: tierError } = await supabaseAdmin
       .from("ticket_tiers")
       .select(
-        `id, name, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden, registration_form_fields,
+        `id, name, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden, registration_form_fields, registration_per_ticket,
          ticket_stages (
            id,
            name,
@@ -781,7 +781,12 @@ export async function POST(req: NextRequest) {
 
       // Fase 3.4: answers of guests 2..N (`_guests`), validated like the requester's. Older
       // clients don't send it and stay valid; guest 1 stays at the top level as always.
-      const guestCheck = validateRsvpGuests(formConfig, registration_data, quantity);
+      // Kevin 2026-10-29: only tiers set to "questions per ticket" collect them; by default the
+      // questions are once per request and any `_guests` sent is ignored.
+      const perTicket = (ticketTier as { registration_per_ticket?: boolean | null }).registration_per_ticket === true;
+      const guestCheck = perTicket
+        ? validateRsvpGuests(formConfig, registration_data, quantity)
+        : { guests: null, missing: [] as string[], error: null };
       if (guestCheck.error) {
         return await returnErrorWithCancellation(guestCheck.error, 400, paymentIntentId, "Invalid guest answers", "INVALID_GUESTS");
       }

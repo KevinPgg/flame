@@ -17,6 +17,7 @@ interface TicketTier {
   // Per-tier registration form subset. `null`/`undefined` = inherit all event
   // fields; `[]` = collect none; `[ids]` = subset (preserves event field order).
   registration_form_fields?: string[] | null;
+  registration_per_ticket?: boolean | null;
 }
 
 interface Event {

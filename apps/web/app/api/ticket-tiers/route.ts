@@ -254,6 +254,7 @@ export async function POST(req: NextRequest) {
       stages,
       secret_code,
       registration_form_fields,
+      registration_per_ticket,
       is_manually_sold_out,
       is_hidden,
       description,
@@ -308,6 +309,7 @@ export async function POST(req: NextRequest) {
     if (
       secret_code !== undefined ||
       registration_form_fields !== undefined ||
+      registration_per_ticket !== undefined ||
       is_manually_sold_out !== undefined ||
       is_hidden !== undefined ||
       description !== undefined
@@ -321,6 +323,9 @@ export async function POST(req: NextRequest) {
       }
       if (registration_form_fields !== undefined) {
         postRpcUpdate.registration_form_fields = registration_form_fields;
+      }
+      if (registration_per_ticket !== undefined) {
+        postRpcUpdate.registration_per_ticket = registration_per_ticket;
       }
       if (is_manually_sold_out !== undefined) {
         postRpcUpdate.is_manually_sold_out = is_manually_sold_out;
