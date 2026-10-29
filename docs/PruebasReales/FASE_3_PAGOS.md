@@ -25,13 +25,15 @@ Una página web no puede ver qué apps tienes instaladas; la comprobación la ha
 - [x] 📱 Celular: con el enlace del promotor y red lenta (o modo avión un instante), el botón de pagar de la hoja dice "Checking promoter code…" y no responde hasta terminar; si falla: "We couldn’t check the code (you can still pay) · Retry".
 
 ### B3 + reloj · La reserva de 30 minutos
+**Ojo:** solo en eventos con **tickets** (sin RSVP). Un evento RSVP no reserva nada ni pasa por `/purchase`: ahí no hay reloj.
+
 **Qué es:** al tocar Continuar se **reservan** tus tickets por 30 minutos (nadie más puede comprarlos). La hora en que vence esa reserva se guarda en la base, en la tabla `holds`, columna `expires_at` (fecha y hora de vencimiento). Antes, si la reserva vencía mientras Stripe cobraba, podías quedar cobrado y reembolsado sin tickets. Ahora, al tocar **Pagar**, la reserva se marca "pago en curso" y se alarga 10 minutos.
 
 **Lo que ves en la web (`/purchase`):** arriba de la página, fijo, **"Tickets reservados por 29:41"** contando hacia atrás. En los últimos 5 minutos se pone amarillo con "Te quedan menos de 5 minutos para pagar". Al llegar a 0: "Tu reserva venció · Volver a elegir" y el botón de pagar se bloquea. Al tocar Pagar, el reloj **sube 10 minutos** (es el alargue del servidor).
 **En la app** todavía no hay reloj: la reserva se crea en el mismo toque de "Pagar" y enseguida se abre la hoja de Stripe, que tapa la pantalla. El reloj de la app llega con la pantalla de pago (3.3).
 
-- [ ] 🌐 PC: elegir tier → Continuar → en `/purchase` aparece el reloj cerca de 30:00 y baja cada segundo.
-- [ ] 🌐 PC: tocar **Pagar** con `4242…` → antes de que termine, el reloj sube ~10 minutos; la compra termina con tickets.
+- [x] 🌐 PC: elegir tier → Continuar → en `/purchase` aparece el reloj cerca de 30:00 y baja cada segundo.
+- [x] 🌐 PC: tocar **Pagar** con `4242…` → antes de que termine, el reloj sube ~10 minutos; la compra termina con tickets.
 - [ ] 🌐 PC, **simular el vencimiento** (no hace falta esperar 30 min): con `/purchase` abierto, en Supabase Studio local (`http://127.0.0.1:54323` → Table Editor → `holds`) buscar la fila de tu reserva (la más reciente con tu usuario y sin `order_id`) y cambiar `expires_at` a **2 minutos en el futuro** (hora UTC). Recargar `/purchase` → el reloj muestra ~02:00 en amarillo. Pagar antes de que llegue a 0 → **tickets emitidos** (esto antes podía terminar en reembolso).
 - [ ] 🌐 PC: repetir pero dejar que llegue a 0 → "Tu reserva venció", el botón Pagar no responde y **no** aparece ningún cobro en Stripe. "Volver a elegir" lleva al evento.
 - [ ] Verificación en la base tras pagar: en `holds`, tu reserva tiene `payment_in_progress = true`, `payment_started_at` con la hora del pago y `datafast_checkout_id = stripe:pi_…` (el id del pago en Stripe).
@@ -66,6 +68,27 @@ Con `stripe listen` corriendo (si no, el pago se cobra pero los tickets no se cr
 - [ ] Reserva vencida (en Studio poner `expires_at` 1 min en el futuro y esperar) → "Tu reserva venció · Volver a elegir" y Pagar bloqueado.
 - [ ] Ticket gratis → "Obtener ticket gratis" → "You’re in".
 - [ ] RSVP: "Solicitar" sigue con la hoja de siempre.
+
+## Compra en curso y tarjetas de organizador (10-28 noche)
+- [ ] 🌐 Evento con tickets → Ir al pago → en `/purchase` **no** se ve el aviso. Ir a Inicio/Explorar (o cerrar la pestaña y volver a abrir flme) → abajo "COMPRA EN CURSO · White Party · 2 × Tier · quedan 27:10" + **Continuar** → vuelve a la misma pantalla de pago con el reloj.
+- [ ] 📱 Igual en la app: Ir al pago → flecha atrás **no** (esa libera la reserva): sal con el gesto/cerrar la app y vuelve a abrirla → el aviso sobre la isla; en el detalle de un evento, sobre la barra de compra. **Continuar** abre la pantalla de pago.
+- [ ] ✕ oculta el aviso; pagar, "Cancelar y liberar" o el vencimiento lo hacen desaparecer solos.
+- [ ] Iniciar el pago (tocar Pagar) y salir: el aviso **no** aparece (el pago puede estar en camino).
+- [ ] 🌐📱 Explorar → "Organizadores": cada tarjeta lleva de fondo el flyer del próximo evento de ese organizador; uno sin eventos vigentes muestra su foto de perfil difuminada.
+
+## 3.4 · RSVP
+Evento RSVP con preguntas en el formulario del organizador (ej. Nombre obligatorio, Instagram opcional) y un tier gratis y otro pagado.
+
+**Web · 🌐 / App · 📱**
+- [ ] Elegir tier → **Solicitar** → hoja "Solicitar entrada" con el nombre del organizador, las preguntas, "Invitados" con −/+, promotor y "No se te cobra ahora…" (pagado) o "Este evento es gratis".
+- [ ] Subir a 3 invitados → aparecen "Invitado 1 de 3", "2 de 3", "3 de 3", cada uno con las preguntas. Dejar vacío un obligatorio → "Obligatorio" en ese campo y no se envía.
+- [ ] Gratis: **Enviar solicitud** → "Solicitud enviada". En el panel del organizador (detalle de la solicitud): las respuestas del invitado 1 como siempre y bloques "Invitado 2", "Invitado 3".
+- [ ] Pagado: Enviar → autorización de tarjeta (web: ventana de pago; app: hoja de Stripe). En la web el promotor del enlace aparece **aplicado** (ya no "None"). Aprobar en el panel → tickets.
+- [ ] 📱 Pagado: el código de descuento en la hoja baja el monto autorizado.
+- [ ] Organizador: "Exportar pendientes" → el Excel trae columnas "Guest 2 · …" para las solicitudes con invitados.
+
+**Conciliación (🌐 local)**
+- [ ] Con `stripe listen` **apagado**: aprobar una RSVP pagada → queda "Aprobada" y sin tickets (como el 10-28). Esperar 15 min (o, en Studio, poner `approved_at` 20 min atrás) y llamar al cron: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/reconcile-rsvp-payments` → responde `{"created":1,…}`, la RSVP pasa a "Pagada" y aparecen los tickets. Llamarlo otra vez → `created: 0` (no duplica).
 
 ## Pendiente
 - **Datos por ticket** en compras pagadas (formulario del organizador por cada entrada): entrega aparte con migración (decisión de Kevin 10-28).

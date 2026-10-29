@@ -1,6 +1,6 @@
 # Fase 3 · Pagos: arreglos previos y flujo nuevo
 
-Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-28: 3.0 análisis y plan; **3.1 hecha** (B2, B10, B3, B4 — §5); **3.2 unida a la 3.3 y hecha en código** (pantalla de pago nueva web y app, B5, B7 — §6); pruebas reales pendientes. Siguiente: 3.4 (RSVP).
+Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-28: 3.0 análisis y plan; **3.1 hecha** (B2, B10, B3, B4 — §5); **3.2 unida a la 3.3 y hecha en código** (pantalla de pago nueva web y app, B5, B7 — §6); pruebas reales pendientes. **3.4 (RSVP) hecha en código** (§7). Siguiente: 3.5 cierre.
 
 Fuente de verdad del comportamiento actual: **`Flme_comp/`** (producción). Diagnósticos de origen: `sesiones/2026-07-09-analisis-stripe-holds-promotor-bug.md` y `sesiones/2026-07-09-auditoria-bugs-holds-promoter.md` (B1–B10). Aquí se re-verificó cada uno contra `Flme_comp` y contra la copia de trabajo.
 
@@ -167,3 +167,33 @@ Principio: **la lógica de cobro no cambia** (mismos endpoints, mismo webhook, m
 - Datos por ticket: entrega aparte (migración).
 
 **Tests:** web `PaymentV2` 7 (reloj, pedido, desglose, Pagar $X; promotor escrito → validado y PI re-creado; promotor de la reserva + descuento; reserva vencida bloquea; B5 espera creciente, mensaje honesto a los 10 s, "You're in" cuando llega el pedido, nunca error a los 2 min), `EventCheckout` reescrito (Ir al pago reserva directo con cantidad y promotor; RSVP mantiene su hoja; B2 bloquea reservar mientras valida), `attendee-lib` +1 (reescrituras `/purchase`). App `PaymentScreen` 6 (orden validate → start-payment → PaymentSheet; cerrar Stripe no libera; promotor escrito + descuento; gratis; vista; isla oculta). Totales: web 931 ✓ (13 ✗ heredados); app 174/174; lib 400/400; tsc web 0, lib 0, app 40 heredados.
+
+### 6.1 Ronda de Kevin (10-28 noche)
+- **Aclaración B3 / reloj:** solo existe en **compras de tickets** (reserva de 30 min). Los eventos **RSVP no crean reserva**: no pasan por `/purchase` ni tienen reloj; su pago es la autorización de tarjeta (hoja RSVP → `RsvpPaymentModal`, aún v1 hasta la 3.4). Kevin lo probó con un evento RSVP. Visto en su captura (para la 3.4): en esa hoja v1 el campo de promotor aparece vacío ("NONE") aunque el promotor venía aplicado.
+- **Compra en curso (nuevo):** `GET /api/holds/active` devuelve la reserva activa más reciente del comprador (sin pedido, sin vencer; **excluye las que ya empezaron a pagar** para no invitar a pagar dos veces). Web: aviso flotante en todo el asistente (`PurchaseInProgress` en `AttendeeShell`), app: aviso flotante sobre la isla o sobre la barra del evento (`PurchaseInProgress` en `RoleResolutionGate`). Muestra flyer, evento, "2 × Tier · quedan 12:34" y **Continuar** (web `/purchase?session=…`, app `/checkout/<id>`); se oculta en la pantalla de pago; ✕ la oculta para esa visita. Se consulta en cada cambio de pantalla, al volver a la pestaña/app y cada 60 s (app). Como viene del servidor, sigue ahí tras cerrar la pestaña/app o cambiar de dispositivo.
+- **Tarjetas de organizador (Explorar, web y app):** fondo = flyer del próximo evento del organizador (`organizerCover` en lib); sin evento con flyer → su foto de perfil (difuminada, como antes); luego la portada. "Último evento" = el próximo que aún no termina (Explorar solo carga eventos vigentes).
+- Tests: lib 402 (+2); web 936 ✓ (+3 `holds-active`, +2 `PurchaseInProgress`; 13 ✗ heredados); app 177 (+3); tsc sin errores nuevos.
+
+## 7. 3.4 hecha (2026-10-28 noche) — RSVP
+
+**Decisiones de Kevin:** (1) preguntas por invitado en formato **compatible**: invitado 1 en el nivel de arriba de `registration_data` (como siempre), invitados 2..N en `registration_data._guests` (lista con la misma forma). Sin migración; todo lo que ya lee `registration_data` sigue igual. (2) **Conciliación automática** de RSVPs pagadas incluida.
+
+**Servidor**
+- `validateRsvpGuests` (lib) + `/api/rsvp`: si llega `_guests`, debe ser una lista de `cantidad − 1` invitados; cada uno se valida contra las preguntas obligatorias del tier ("Missing required fields: Guest 2: Full name"); se guarda limpio (solo campos del formulario). Sin `_guests` (apps viejas) sigue siendo válido.
+- **Cron nuevo** `/api/cron/reconcile-rsvp-payments` (cada hora, minuto 20; `Authorization: Bearer $CRON_SECRET`, en `vercel.json`): RSVPs "approved" hace más de 15 min (y menos de 30 días) con PaymentIntent y **sin pedido** → pregunta a Stripe; si el pago está **succeeded**, corre **el mismo código del webhook** (`createOrderAndTicketsFromRsvp`). Para eso esa función (con `getFeePercent`, `linkOrderToAuditLog` y el tipo) se **movió tal cual** de `webhooks/stripe/route.ts` a `app/lib/stripe/rsvp-order.ts`; el webhook la importa (sin cambios de comportamiento).
+
+**Web** — hoja RSVP v2 (`events/[slug]/RsvpSheet.tsx`, reemplaza a la hoja anterior + la ventana del formulario en v2): evento, "Solicitar entrada", "{org} revisa cada solicitud…", preguntas **un bloque por invitado** ("Invitado 2 de 3"), número de invitados, promotor (✓ o campo con validación B2/B10), "No se te cobra ahora…" o "Este evento es gratis", **Enviar solicitud**. Gratis → se envía; pagada → la autorización de tarjeta de siempre (`RsvpPaymentModal`).
+- **Bug B12 (también en producción, `Flme_comp` L85/L756):** en `RsvpPaymentModal` el campo de promotor se inicializaba solo al montar → mostraba "None" aunque el promotor del enlace estuviera aplicado (captura de Kevin), y un código escrito ahí se validaba pero **nunca se enviaba** (se mandaba el prop). Arreglo: promotor **de solo lectura** en ese paso (se elige antes); se quitó el campo engañoso.
+
+**App** — hoja RSVP v2 (`components/v2/attendee/event/RsvpSheet.tsx`, dentro del `CheckoutSheet` de siempre con `v2Rsvp`): lo mismo que la web + el **descuento** para RSVPs pagadas (en la app siempre fue en esta hoja). `useCheckout.checkout({ registrationData })` recibe las respuestas en el mismo toque (sin depender del estado). Pagada → autorización con la hoja de Stripe como hoy.
+
+**Organizador (web y app v2)** — detalle de la solicitud: bloques "Invitado 2", "Invitado 3"… con sus respuestas (`rsvpGuestBlocks`); Excel de pendientes con columnas "Guest 2 · Nombre…" (`withGuestExportColumns`). La vista "datos crudos" oculta claves internas (`_guests`, `_promotional_code_id`).
+
+**No cambió:** aprobación/rechazo, captura, webhook (solo se movió la función), comisiones. V1 intacta salvo el arreglo B12 (solo quita un campo que no funcionaba).
+
+**Pendiente / riesgos:**
+- [Probable] La exportación de **compras** (Desglose/Compras) aún muestra solo las respuestas del invitado 1.
+- [Seguro] Vercel: el cron necesita `CRON_SECRET` configurado (ya lo usan los otros crons).
+- [Probable] Los crons existentes solo exportan `POST`; Vercel llama con `GET`. El nuevo exporta ambos. Vale la pena revisar los otros (fuera de esta entrega).
+
+**Tests:** lib 408 (+3 guests, +2 bloques/raw, +1 export); web 939 ✓ (+1 RSVP por invitado, RSVP hoja, +2 cron; 13 ✗ heredados); app 179 (+2 `RsvpSheet`); tsc web 0, lib 0, app 40 heredados.
