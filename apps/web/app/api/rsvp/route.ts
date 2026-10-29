@@ -10,7 +10,10 @@ import { sendPushNotification, sendPushToOrgMembersByRole } from "../../lib/push
 import { getBaseUrl } from "../../lib/utils/url";
 import { revalidatePath } from "next/cache";
 import { stripe } from "../../lib/stripe/stripe";
-import { filterFieldsForTier } from "@project-flame/lib";
+import { filterFieldsForTier,
+  validateRsvpGuests,
+  RSVP_GUESTS_KEY,
+} from "@project-flame/lib";
 
 // Helper function to cancel PaymentIntent and release customer funds
 async function cancelPaymentIntentSafely(
@@ -775,6 +778,15 @@ export async function POST(req: NextRequest) {
           validatedRegistrationData[field.id] = value;
         }
       }
+
+      // Fase 3.4: answers of guests 2..N (`_guests`), validated like the requester's. Older
+      // clients don't send it and stay valid; guest 1 stays at the top level as always.
+      const guestCheck = validateRsvpGuests(formConfig, registration_data, quantity);
+      if (guestCheck.error) {
+        return await returnErrorWithCancellation(guestCheck.error, 400, paymentIntentId, "Invalid guest answers", "INVALID_GUESTS");
+      }
+      missingFields.push(...guestCheck.missing);
+      if (guestCheck.guests) validatedRegistrationData[RSVP_GUESTS_KEY] = guestCheck.guests;
 
       if (missingFields.length > 0) {
         return await returnErrorWithCancellation(
