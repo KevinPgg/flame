@@ -709,7 +709,7 @@ export const en = {
     deleteBlockedSold: "Tiers with sold tickets can’t be deleted.",
     deleteBlockedLast: "An event needs at least one tier.",
     forceTitle: "Reduce {name} to {count} spots?",
-    forceDetail: "{sold} sold and {reserved} reserved (checkouts in progress or pending/approved RSVPs) don’t fit. Reducing anyway cancels every checkout in progress and rejects every pending and approved RSVP of this tier, not only the extra ones. Each person gets an email; card holds not yet charged are released. Sold tickets are not touched.",
+    forceDetail: "{sold} sold and {reserved} reserved (checkouts in progress or RSVPs) don’t fit. Reducing anyway cancels the checkouts that haven’t started paying and rejects every pending RSVP of this tier, not only the extra ones. Each person gets an email and their card hold is released. Sold tickets, approved (already charged) RSVPs and payments being processed are never touched: capacity can’t go below them.",
     forceConfirm: "Reduce and reject",
     forceStaged: "{sold} sold and {reserved} reserved don’t fit in {count} spots. Review this tier’s pending RSVPs first, then try again.",
     questionsSaveFailed: "Nothing was saved: the new questions couldn’t be added. Try again.",

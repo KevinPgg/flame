@@ -707,7 +707,7 @@ export const es: Messages = {
     deleteBlockedSold: "Los tiers con tickets vendidos no se pueden eliminar.",
     deleteBlockedLast: "Un evento necesita al menos un tier.",
     forceTitle: "¿Reducir {name} a {count} cupos?",
-    forceDetail: "{sold} vendidos y {reserved} reservados (compras en curso o RSVPs pendientes/aprobados) no caben. Reducir de todos modos cancela todas las compras en curso y rechaza todos los RSVPs pendientes y aprobados de este tier, no solo los que sobran. Cada persona recibe un email; se liberan las retenciones de tarjeta que aún no se cobraron. Los tickets vendidos no se tocan.",
+    forceDetail: "{sold} vendidos y {reserved} reservados (compras en curso o RSVPs) no caben. Reducir de todos modos cancela las compras en curso que aún no empezaron a pagar y rechaza todos los RSVPs pendientes de este tier, no solo los que sobran. Cada persona recibe un email y se libera su retención de tarjeta. No se tocan los tickets vendidos, los RSVPs aprobados (ya cobrados) ni los pagos que están en proceso: la capacidad no puede bajar de eso.",
     forceConfirm: "Reducir y rechazar",
     forceStaged: "{sold} vendidos y {reserved} reservados no caben en {count} cupos. Revisa primero los RSVPs pendientes de este tier y vuelve a intentar.",
     questionsSaveFailed: "No se guardó nada: no se pudieron agregar las preguntas nuevas. Intenta de nuevo.",

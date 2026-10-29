@@ -995,7 +995,7 @@ export default function TierInlineForm({
 
       {/* W4-C1 (May 2026): force-reduce confirmation modal. Surfaces only when
           the PATCH returns code=QUANTITY_BELOW_RESERVED. Sold tickets are never
-          touched — only active checkout holds and pending/approved RSVPs. */}
+          touched — only idle checkout holds and pending RSVPs (approved RSVPs and payments in progress are kept, Fase 3.5). */}
       {forceReducePrompt && (
         <div
           className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 px-4"

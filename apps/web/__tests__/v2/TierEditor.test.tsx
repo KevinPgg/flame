@@ -164,7 +164,7 @@ describe("TierEditor v2 — existing simple tier", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("Reduce General B to 45 spots?")).toBeInTheDocument();
     expect(within(dialog).getByText(/40 sold and 8 reserved/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/rejects every pending and approved RSVP of this tier, not only the extra ones/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/rejects every pending RSVP of this tier, not only the extra ones/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Reduce and reject" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(TIERS_TAB));
     expect(writes(fetchMock.calls).map((c) => [c.method, c.url, c.body])).toEqual([

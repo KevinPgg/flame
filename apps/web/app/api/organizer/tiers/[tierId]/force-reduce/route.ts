@@ -22,7 +22,7 @@ import { requireEventAccess } from "@/app/lib/utils/event-access";
  *
  * This endpoint does the cleanup atomically (best-effort sequencing):
  *   1. Delete all active holds for the tier (DB delete; releases inventory).
- *   2. Mark all pending/approved RSVPs as `rejected`, set rejected_at /
+ *   2. Mark all PENDING RSVPs as `rejected`, set rejected_at /
  *      rejected_by metadata, and best-effort cancel each linked Stripe
  *      PaymentIntent so the card hold is released.
  *   3. Reduce `ticket_tiers.quantity_total` to the new value, clamped to
@@ -158,10 +158,27 @@ export async function POST(
       );
     }
 
+    // Fase 3.5 (2026-10-29): what is already COMMITTED is never cancelled here —
+    //   · approved RSVPs: the card was already charged (only the webhook is missing); rejecting
+    //     them left the person charged, rejected and without a refund;
+    //   · holds whose payment already started (B3, /api/holds/start-payment): deleting them
+    //     turned an in-flight payment into "charge + automatic refund, no tickets".
+    // Both count as taken, like sold tickets: capacity can't go below them.
+    const { data: approvedRows, error: approvedError } = await supabaseAdmin
+      .from("rsvps")
+      .select("id, requested_quantity")
+      .eq("ticket_tier_id", tierId)
+      .eq("status", "approved");
+    if (approvedError) {
+      console.error("[force-reduce] failed to fetch approved RSVPs:", approvedError);
+      return NextResponse.json({ error: "Failed to enumerate approved RSVPs" }, { status: 500 });
+    }
+    const approvedQty = (approvedRows ?? []).reduce((n: number, r: { requested_quantity: number | null }) => n + (r.requested_quantity ?? 1), 0);
+
     // Step 1 — collect active holds for the tier (so we can report counts).
     const { data: holdRows, error: holdsError } = await supabaseAdmin
       .from("holds")
-      .select("id, quantity")
+      .select("id, quantity, payment_in_progress, payment_started_at")
       .eq("tier_id", tierId)
       .gt("expires_at", new Date().toISOString())
       .is("order_id", null);
@@ -174,7 +191,23 @@ export async function POST(
       );
     }
 
-    const holdIds = (holdRows ?? []).map((h) => h.id);
+    const payingCutoff = Date.now() - 20 * 60_000; // same window as cleanup_abandoned_payments
+    const isPaying = (h: { payment_in_progress?: boolean | null; payment_started_at?: string | null }) =>
+      h.payment_in_progress === true && !!h.payment_started_at && Date.parse(h.payment_started_at) > payingCutoff;
+    const payingQty = (holdRows ?? []).filter(isPaying).reduce((n: number, h: { quantity: number }) => n + (h.quantity ?? 0), 0);
+    const committed = tier.quantity_sold + approvedQty + payingQty;
+    if (new_quantity_total < committed) {
+      return NextResponse.json(
+        {
+          error: `Cannot reduce capacity below ${committed}: ${tier.quantity_sold} sold, ${approvedQty} in approved (already charged) RSVPs and ${payingQty} being paid right now.`,
+          code: "BELOW_COMMITTED",
+          details: { sold: tier.quantity_sold, approved_rsvps: approvedQty, paying_holds: payingQty, minimum: committed },
+        },
+        { status: 400 },
+      );
+    }
+
+    const holdIds = (holdRows ?? []).filter((h) => !isPaying(h)).map((h) => h.id);
     let cancelledHolds = 0;
     if (holdIds.length > 0) {
       // Re-apply the same predicates from the SELECT above so a hold that gets
@@ -198,7 +231,7 @@ export async function POST(
       cancelledHolds = count ?? holdIds.length;
     }
 
-    // Step 2 — collect pending/approved RSVPs so we can reject them in bulk
+    // Step 2 — collect PENDING RSVPs (approved ones are committed, see above) so we can reject them in bulk
     // and notify the affected users.
     const { data: rsvpRows, error: rsvpFetchError } = await supabaseAdmin
       .from("rsvps")
@@ -216,7 +249,7 @@ export async function POST(
       `,
       )
       .eq("ticket_tier_id", tierId)
-      .in("status", ["pending", "approved"]);
+      .eq("status", "pending");
 
     if (rsvpFetchError) {
       console.error(
@@ -263,7 +296,7 @@ export async function POST(
           "id",
           affectedRsvps.map((r) => r.id),
         )
-        .in("status", ["pending", "approved"]);
+        .eq("status", "pending");
 
       if (updateError) {
         console.error(

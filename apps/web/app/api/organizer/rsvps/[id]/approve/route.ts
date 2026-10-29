@@ -44,7 +44,7 @@ async function rollbackApproval(rsvpId: string): Promise<{ error: any }> {
 // Type for RSVP with relations from Supabase query
 interface RsvpWithRelations {
   users: { first_name: string | null; last_name: string | null; email: string } | null;
-  events: { name: string; starts_at: string; venue: string; timezone?: string; organization_id?: string; currency?: string };
+  events: { name: string; starts_at: string; ends_at?: string | null; venue: string; timezone?: string; organization_id?: string; currency?: string };
   ticket_tiers: { name: string };
   requested_quantity: number | null;
 }
@@ -57,7 +57,7 @@ interface RsvpRecord {
   ticket_tier_id: string;
   stage_id: string | null;
   ticket_tiers: { name: string };
-  events: { name: string; starts_at: string; venue: string; timezone?: string; organization_id?: string; currency?: string };
+  events: { name: string; starts_at: string; ends_at?: string | null; venue: string; timezone?: string; organization_id?: string; currency?: string };
 }
 
 /**
@@ -275,6 +275,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           id,
           name,
           starts_at,
+          ends_at,
           venue,
           timezone,
           organization_id,
@@ -306,6 +307,17 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: "Unauthorized to manage this RSVP" },
         { status: 403 }
+      );
+    }
+
+    // Fase 3.5 (2026-10-29): approving charges the card (manual capture). The UI already hides
+    // approve once the event ended (canDecideRsvp); the API must refuse it too, so nobody is
+    // charged for an event that is over. Same rule as the UI: ended ⇔ ends_at <= now.
+    const endsAt = (rsvp.events as { ends_at?: string | null }).ends_at;
+    if (endsAt && Date.parse(endsAt) <= Date.now()) {
+      return NextResponse.json(
+        { error: "This event has already ended. RSVPs can no longer be approved.", code: "EVENT_ENDED" },
+        { status: 409 }
       );
     }
 
