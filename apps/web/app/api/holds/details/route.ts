@@ -51,6 +51,8 @@ export async function GET(req: NextRequest) {
           venue,
           city,
           image_url,
+          timezone,
+          currency,
           organizations!inner (
             name
           )
@@ -99,6 +101,8 @@ export async function GET(req: NextRequest) {
         price_cents: hold.ticket_tiers.price_cents,
       },
       quantity: hold.quantity,
+      // B7 (brought forward 10-28): the payment screen shows the reservation countdown.
+      expires_at: hold.expires_at,
       stage_id: hold.stage_id,
       stage_name: hold.stage_name,
       stage_price_cents: hold.stage_price_cents,

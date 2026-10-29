@@ -7,6 +7,7 @@ import { getHomeEvents, type HomeEvent } from "../../../../lib/home-events";
 import { AttendeeShell } from "../../AttendeeShell";
 import { EventHeader, EventTopBar } from "./EventHeader";
 import { MoreFromOrganizer } from "./MoreFromOrganizer";
+import { OpenInApp } from "./OpenInApp";
 
 /**
  * Flame 2.0 event page (fase 2.4), served at /events/[slug] by the middleware rewrite (same
@@ -42,6 +43,7 @@ export default async function EventPageV2({ params }: Props) {
           <>
             <EventTopBar slug={event.slug} name={event.name} />
             <EventHeader event={event} />
+            <OpenInApp slug={event.slug} />
           </>
         } footer={<MoreFromOrganizer organizer={event.organizations?.name ?? ""} events={more} />} />
     </AttendeeShell>

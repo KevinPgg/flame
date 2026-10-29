@@ -902,7 +902,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         setRsvpMessage(errorMessage);
         setRsvpMessageType("error");
         // Show it in the sheet the buyer just left (access-code errors open their own sheet).
-        if (v2Frame && errorCode !== "MISSING_SECRET_CODE" && errorCode !== "INVALID_SECRET_CODE") setCheckoutOpen(true);
+        if (v2Frame && event.requires_rsvp && errorCode !== "MISSING_SECRET_CODE" && errorCode !== "INVALID_SECRET_CODE") setCheckoutOpen(true);
 
         // Check for structured error codes for sold-out/availability issues
         if (
@@ -1059,13 +1059,20 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   // Flame 2.0: the selected card's button and the bottom bar both open the checkout sheet
   // (signed out → sign in, back to this event).
   const signInUrlV2 = `/events/${event.slug}${promoterInput.trim() ? `?promoter=${encodeURIComponent(promoterInput.trim())}` : ""}`;
-  const checkoutBusyV2 = creatingHold || rsvpMutation.isPending || isLoadingUserTickets;
+  // B2: no hold while the promoter code is still being checked.
+  const checkoutBusyV2 = creatingHold || rsvpMutation.isPending || isLoadingUserTickets || promoterStatus === "validating";
+  // Fase 3.3 (3.2 merged, Kevin 10-28): tickets → reserve and go straight to the payment screen
+  // (promoter, discount and the countdown live there). RSVP keeps its sheet until 3.4.
   const openCheckoutV2 = () => {
     if (!isSignedIn) {
       router.push(`/sign-in?redirect_url=${encodeURIComponent(signInUrlV2)}`);
       return;
     }
-    setCheckoutOpen(true);
+    if (event.requires_rsvp) {
+      setCheckoutOpen(true);
+      return;
+    }
+    handlePurchaseClick();
   };
   // "Get tickets" (Kevin 2026-10-28): picks the cheapest tier (or stage) on sale.
   const selectCheapestV2 = () => {
@@ -1138,8 +1145,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           ) : (
             <button
               type="button"
-              onClick={() => setCheckoutOpen(true)}
-              disabled={creatingHold || rsvpMutation.isPending || isLoadingUserTickets}
+              onClick={openCheckoutV2}
+              disabled={checkoutBusyV2}
               className={buyBtn()}
             >
               {creatingHold || rsvpMutation.isPending ? "…" : isRsvp ? tv2("event.requestToJoin") : tv2("checkout.continueToCheckout")}
@@ -1788,6 +1795,39 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
                     </button>
                   );
                 })}
+            </div>
+          )}
+
+          {/* B10 (10-28): the promoter from the link is visible before checkout (checked / checking /
+              not valid / couldn't check · Retry). */}
+          {v2Frame && allTiers.length > 0 && promoterInput.trim() && promoterStatus !== "idle" && (
+            <div className="mt-4" data-testid="promoter-chip">
+              {promoterStatus === "valid" ? (
+                <p className="m-0 inline-flex items-center gap-2 rounded-v2-pill bg-v2-good/10 px-3 py-1.5 text-[13px] font-v2-ui-semibold text-v2-good">
+                  <FiCheck size={14} />
+                  {tv2("checkout.promoterApplied", { code: promoterInput.trim().toUpperCase() })}
+                  <button type="button" onClick={clearPromoter} aria-label={`${tv2("checkout.remove")} ${promoterInput}`} className="ml-1 hover:opacity-70">
+                    <FiX size={14} />
+                  </button>
+                </p>
+              ) : promoterStatus === "validating" ? (
+                <p className="m-0 inline-flex items-center gap-2 rounded-v2-pill bg-v2-ink3 px-3 py-1.5 text-[13px] text-v2-c70">
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-v2-c30 border-t-v2-cream" />
+                  {tv2("event.promoterChecking", { code: promoterInput.trim().toUpperCase() })}
+                </p>
+              ) : promoterStatus === "invalid" ? (
+                <p className="m-0 inline-flex items-center gap-2 rounded-v2-pill bg-v2-errorText/10 px-3 py-1.5 text-[13px] text-v2-errorText">
+                  <FiX size={14} />
+                  {tv2("event.promoterInvalid", { code: promoterInput.trim().toUpperCase() })}
+                </p>
+              ) : (
+                <p className="m-0 inline-flex flex-wrap items-center gap-2 rounded-v2-pill bg-v2-ink3 px-3 py-1.5 text-[13px] text-v2-c70">
+                  {tv2("checkout.promoterCheckFailed")} ·
+                  <button type="button" onClick={() => validatePromoterCode(promoterInput)} className="font-v2-ui-semibold text-v2-cream underline">
+                    {tv2("checkout.retry")}
+                  </button>
+                </p>
+              )}
             </div>
           )}
 

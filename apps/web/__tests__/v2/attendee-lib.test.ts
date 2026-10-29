@@ -56,6 +56,13 @@ describe("attendeeV2Route", () => {
     expect(attendeeNeedsSignIn("/events/luna")).toBe(false);
     expect(attendeeNeedsSignIn("/organizer/club-uno")).toBe(false);
   });
+  it("payment screen and You're in (3.3) at /purchase and /purchase/success, signed in; v1 untouched", () => {
+    expect(attendeeV2Route("/purchase", false)).toEqual({ rewrite: "/v2/attendee/purchase" });
+    expect(attendeeV2Route("/purchase/success", false)).toEqual({ rewrite: "/v2/attendee/purchase/success" });
+    expect(attendeeV2Route("/purchase", true)).toBeNull();
+    expect(attendeeNeedsSignIn("/purchase")).toBe(true);
+    expect(attendeeNeedsSignIn("/purchase/success")).toBe(true);
+  });
   it("leaves the rest alone (until their delivery adds them)", () => {
     expect(attendeeV2Route("/events/luna/extra", false)).toBeNull();
   });

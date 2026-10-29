@@ -15,6 +15,8 @@ import Image from "next/image";
 import { flameCheckoutElementsAppearance } from "../lib/stripe/checkout-elements-appearance";
 import { getStripe } from "../lib/stripe/stripe-client";
 import StripePaymentForm from "./StripePaymentForm";
+import { HoldTimer } from "./HoldTimer";
+import { PaymentV2, type PaymentV2Status } from "../v2/attendee/purchase/PaymentV2";
 import { formatCentsAsPrice } from "@project-flame/lib";
 
 interface PurchaseDetails {
@@ -34,6 +36,8 @@ interface PurchaseDetails {
     price_cents: number;
   };
   quantity: number;
+  /** Hold mode: when the reservation ends (B7 timer). */
+  expires_at?: string | null;
   stage_id?: string | null;
   stage_name?: string | null;
   stage_price_cents?: number | null;
@@ -49,7 +53,13 @@ interface PurchaseDetails {
   secret_code?: string | null;
 }
 
-export default function StripePurchaseFlow() {
+/**
+ * `v2` (fase 3.3, Kevin 2026-10-28): the Flame 2.0 payment screen — same logic and calls, its own
+ * view (`PaymentV2`). It also lets the buyer add a promoter here when none came with the hold
+ * (checked with /api/promoter-validate, then sent in the PaymentIntent, which is where the
+ * webhook reads it).
+ */
+export default function StripePurchaseFlow({ v2 = false }: { v2?: boolean } = {}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
@@ -61,6 +71,10 @@ export default function StripePurchaseFlow() {
     useState<PurchaseDetails | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  // B7: reservation end (moves when Pay extends it, B3) and whether it already expired.
+  const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null);
+  const [holdExpired, setHoldExpired] = useState(false);
+  const markHoldExpired = useCallback(() => setHoldExpired(true), []);
   const [processingComplete, setProcessingComplete] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [isFreePurchase, setIsFreePurchase] = useState(false);
@@ -81,6 +95,12 @@ export default function StripePurchaseFlow() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
   const [promotionalCodeId, setPromotionalCodeId] = useState<string | null>(null);
+
+  // Promoter typed on the payment screen (only when the hold has none). "valid" once checked AND
+  // carried by the current PaymentIntent.
+  const [typedPromoter, setTypedPromoter] = useState("");
+  const [typedPromoterStatus, setTypedPromoterStatus] = useState<"idle" | "validating" | "valid" | "invalid" | "error">("idle");
+  const appliedTypedPromoter = typedPromoterStatus === "valid" ? typedPromoter.trim().toUpperCase() : null;
 
   const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -129,6 +149,7 @@ export default function StripePurchaseFlow() {
       if (activeRequestRef.current !== requestId) return;
 
       setPurchaseDetails(details);
+      setHoldExpiresAt(details.mode === "hold" ? details.expires_at ?? null : null);
 
       // Calculate total price to check if it's free
       const unitPrice =
@@ -255,7 +276,7 @@ export default function StripePurchaseFlow() {
           rsvpId: purchaseDetails.rsvp_id || undefined,
           ...(typeof holdSessionId === "string" ? { holdId: holdSessionId } : {}),
           ...(purchaseDetails.stage_id && { stageId: purchaseDetails.stage_id }),
-          promoterCode: purchaseDetails.promoter_code,
+          promoterCode: purchaseDetails.promoter_code || appliedTypedPromoter || undefined,
           promoCode: code, // Send the promo code
           oldPaymentIntentId: paymentIntentId, // Send old PI ID to cancel it
         }),
@@ -331,7 +352,7 @@ export default function StripePurchaseFlow() {
           rsvpId: purchaseDetails.rsvp_id || undefined,
           ...(typeof holdSessionId === "string" ? { holdId: holdSessionId } : {}),
           ...(purchaseDetails.stage_id && { stageId: purchaseDetails.stage_id }),
-          promoterCode: purchaseDetails.promoter_code,
+          promoterCode: purchaseDetails.promoter_code || appliedTypedPromoter || undefined,
           // No promoCode property sent = reset
           oldPaymentIntentId: paymentIntentId, // Send old PI ID to cancel it
         }),
@@ -372,6 +393,61 @@ export default function StripePurchaseFlow() {
     }
   };
 
+  // Promoter typed here (v2): check it, then re-create the PaymentIntent carrying it (the
+  // webhook takes the promoter from the PI metadata). Pay waits meanwhile (B2).
+  const handleApplyPromoter = async () => {
+    const code = typedPromoter.trim().toUpperCase();
+    if (!purchaseDetails || code.length < 3) {
+      setTypedPromoterStatus(code ? "invalid" : "idle");
+      return;
+    }
+    setTypedPromoterStatus("validating");
+    try {
+      const res = await fetch(
+        `/api/promoter-validate?event_id=${encodeURIComponent(purchaseDetails.event.id)}&code=${encodeURIComponent(code)}`,
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || typeof data.valid !== "boolean") {
+        setTypedPromoterStatus("error");
+        return;
+      }
+      if (!data.valid) {
+        setTypedPromoterStatus("invalid");
+        return;
+      }
+      if (!isFreePurchase && paymentIntentId) {
+        const response = await fetch("/api/purchase/create-payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: purchaseDetails.event.id,
+            ticketTierId: purchaseDetails.ticket_tier.id,
+            quantity: purchaseDetails.quantity,
+            flow: token ? "rsvp" : "hold",
+            rsvpId: purchaseDetails.rsvp_id || undefined,
+            ...(typeof holdSessionId === "string" ? { holdId: holdSessionId } : {}),
+            ...(purchaseDetails.stage_id && { stageId: purchaseDetails.stage_id }),
+            promoterCode: code,
+            ...(appliedPromo ? { promoCode: appliedPromo } : {}),
+            oldPaymentIntentId: paymentIntentId,
+          }),
+        });
+        if (!response.ok) {
+          setTypedPromoterStatus("error");
+          return;
+        }
+        const next = await response.json();
+        setClientSecret(next.clientSecret);
+        setPaymentIntentId(next.paymentIntentId);
+        setAmounts(next.amounts);
+      }
+      setTypedPromoter(code);
+      setTypedPromoterStatus("valid");
+    } catch {
+      setTypedPromoterStatus("error");
+    }
+  };
+
   const handleFreePurchase = async () => {
     try {
       setLoading(true);
@@ -399,6 +475,7 @@ export default function StripePurchaseFlow() {
           body: JSON.stringify({
             holdSessionId: holdSessionId,
             promotional_code_id: promotionalCodeId,
+            ...(appliedTypedPromoter ? { promoter_code: appliedTypedPromoter } : {}),
           }),
         });
       }
@@ -487,6 +564,66 @@ export default function StripePurchaseFlow() {
     }
   };
 
+  if (v2) {
+    const unit = purchaseDetails ? purchaseDetails.stage_price_cents ?? purchaseDetails.ticket_tier.price_cents : 0;
+    const status: PaymentV2Status = loading ? "loading" : error || !purchaseDetails ? "error" : processingComplete ? (isFreePurchase ? "claimed" : "paid") : "ready";
+    return (
+      <PaymentV2
+        status={status}
+        error={error}
+        details={purchaseDetails}
+        amounts={amounts ? { ...amounts, currency: amounts.currency?.toUpperCase() || "USD" } : null}
+        baseCents={unit * (purchaseDetails?.quantity ?? 0)}
+        holdExpiresAt={purchaseDetails?.mode === "hold" ? holdExpiresAt : null}
+        holdExpired={holdExpired}
+        onHoldExpired={markHoldExpired}
+        promo={{
+          input: promoCode,
+          applied: appliedPromo,
+          busy: isApplyingPromo,
+          error: promoError,
+          onInput: (v) => {
+            setPromoCode(v.toUpperCase());
+            setPromoError(null);
+          },
+          onApply: () => void handleApplyPromoCode(),
+          onRemove: () => void handleRemovePromoCode(),
+        }}
+        promoter={{
+          fromHold: purchaseDetails?.promoter_code ?? null,
+          input: typedPromoter,
+          status: typedPromoterStatus,
+          onInput: (v) => {
+            setTypedPromoter(v);
+            if (typedPromoterStatus !== "validating") setTypedPromoterStatus("idle");
+          },
+          onApply: () => void handleApplyPromoter(),
+        }}
+        isFree={isFreePurchase}
+        onClaimFree={() => void handleFreePurchase()}
+        onCancel={holdSessionId ? () => void handleCancelPurchase() : undefined}
+        cancelling={cancelling}
+        payment={
+          !isFreePurchase && clientSecret && purchaseDetails
+            ? {
+                clientSecret,
+                stripePromise,
+                isRsvp: purchaseDetails.mode === "rsvp",
+                holdSessionId,
+                paymentIntentId,
+                onPaymentStarted: (end: string | null) => {
+                  if (end) setHoldExpiresAt(end);
+                },
+                onSuccess: handlePaymentSuccess,
+                onError: handlePaymentError,
+                externalError: paymentError,
+              }
+            : null
+        }
+      />
+    );
+  }
+
   // Loading state
   if (loading) {
     return (
@@ -566,6 +703,9 @@ export default function StripePurchaseFlow() {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-[600px] mx-auto flex flex-col gap-6">
+        {purchaseDetails.mode === "hold" && holdExpiresAt && !processingComplete && (
+          <HoldTimer expiresAt={holdExpiresAt} eventSlug={purchaseDetails.event.slug} onExpired={markHoldExpired} />
+        )}
         {/* Event Details */}
         <div className="flex flex-col gap-4">
           {purchaseDetails.event.image_url && (
@@ -828,6 +968,10 @@ export default function StripePurchaseFlow() {
                   isRsvp={purchaseDetails.mode === "rsvp"}
                   holdSessionId={holdSessionId}
                   paymentIntentId={paymentIntentId}
+                  onPaymentStarted={(end) => {
+                    if (end) setHoldExpiresAt(end);
+                  }}
+                  blocked={holdExpired}
                   externalError={paymentError}
                 />
               </Elements>

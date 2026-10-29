@@ -117,56 +117,37 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(screen.getByText("WHITEVIP")).toBeInTheDocument();
   });
 
-  it("checkout sheet: quantity, promoter (checked) and discount (checked) → the hold carries the promoter, /purchase gets the discount", async () => {
-    const user = userEvent.setup({ delay: null });
-    const f = mockFetch([
-      ...PROMOTER,
-      { match: (u) => u.includes("/api/purchase/validate-promo-code"), body: { valid: true, promotional_code: { code: "SAVE10" }, discount_amount_cents: 300 } },
-      { match: (u) => u.includes("/api/holds/create"), body: { hold_session_id: "h1", ticket_tier: { price_cents: 1500 } } },
-    ]);
-    open();
-    await user.click(screen.getByRole("button", { name: /General/ }));
-    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
-    const sheet = screen.getByRole("dialog", { name: "Checkout" });
-    expect(within(sheet).getByText("Hush · Red Room")).toBeInTheDocument();
-    expect(within(sheet).getByText(/limit 6 per person/)).toBeInTheDocument();
-    await user.click(within(sheet).getByRole("button", { name: "More tickets" }));
-    expect(within(sheet).getByText("2 × General · before fees")).toBeInTheDocument();
-    expect(within(sheet).getByText("$30.00")).toBeInTheDocument();
-
-    await user.type(within(sheet).getByRole("textbox", { name: "Promoter code (optional)" }), "nope");
-    await user.click(within(sheet).getByRole("button", { name: "Add" }));
-    expect(await within(sheet).findByText("That promoter code isn’t valid for this event.")).toBeInTheDocument();
-    await user.clear(within(sheet).getByRole("textbox", { name: "Promoter code (optional)" }));
-    await user.type(within(sheet).getByRole("textbox", { name: "Promoter code (optional)" }), "promo1");
-    await user.click(within(sheet).getByRole("button", { name: "Add" }));
-    expect(await within(sheet).findByText("Promoter PROMO1")).toBeInTheDocument();
-
-    await user.type(within(sheet).getByRole("textbox", { name: "Discount code" }), "save10");
-    await user.click(within(sheet).getByRole("button", { name: "Apply" }));
-    expect(await within(sheet).findByText("SAVE10 · −$3.00")).toBeInTheDocument();
-    expect(f.posts().find((c) => c.url.includes("validate-promo-code"))?.body).toEqual({ code: "save10", event_id: "e1", subtotal_cents: 3000 });
-    expect(within(sheet).getByText("$27.00")).toBeInTheDocument();
-    expect(within(sheet).getByText("We hold your tickets for 30 minutes while you check out.")).toBeInTheDocument();
-
-    await user.click(within(sheet).getByRole("button", { name: "Continue" }));
-    await waitFor(() => expect(f.posts().some((c) => c.url === "/api/holds/create")).toBe(true));
-    expect(f.posts().find((c) => c.url === "/api/holds/create")?.body).toMatchObject({ ticket_tier_id: "t1", quantity: 2, promoter_code: "PROMO1" });
-    await waitFor(() => expect(window.location.href).toBe("/purchase?session=h1&promoter=PROMO1&promo=SAVE10"));
-  });
-
-  it("a ?promoter= link arrives already applied in the sheet; an invalid discount says so", async () => {
+  it("tickets (3.3): Continue reserves right away with the quantity and the link's promoter → /purchase (no sheet)", async () => {
     st.q = "promoter=promo1";
     const user = userEvent.setup({ delay: null });
-    mockFetch([...PROMOTER, { match: (u) => u.includes("validate-promo-code"), status: 404, body: { error: "Invalid promotional code" } }]);
+    const f = mockFetch([...PROMOTER, { match: (u: string) => u.includes("/api/holds/create"), body: { hold_session_id: "h1", ticket_tier: { price_cents: 1500 } } }]);
     open();
+    // visible on the page before checkout (B10 indicator, 10-28)
+    expect(await screen.findByTestId("promoter-chip")).toHaveTextContent("Promoter PROMO1");
     await user.click(screen.getByRole("button", { name: /General/ }));
+    await user.click(screen.getByRole("button", { name: "More tickets" }));
     await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
+    expect(screen.queryByRole("dialog", { name: "Checkout" })).not.toBeInTheDocument();
+    await waitFor(() => expect(f.posts().some((c) => c.url === "/api/holds/create")).toBe(true));
+    expect(f.posts().find((c) => c.url === "/api/holds/create")?.body).toMatchObject({ ticket_tier_id: "t1", quantity: 2, promoter_code: "PROMO1" });
+    await waitFor(() => expect(window.location.href).toBe("/purchase?session=h1&promoter=PROMO1"));
+  });
+
+  it("RSVP keeps its sheet (until 3.4), with the link's promoter applied", async () => {
+    st.q = "promoter=promo1";
+    const user = userEvent.setup({ delay: null });
+    mockFetch(PROMOTER);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderV2(
+      <QueryClientProvider client={client}>
+        <EventDetail event={{ ...EVENT, requires_rsvp: true } as never} header={<h1>header</h1>} footer={null} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("promoter-chip")).toHaveTextContent("Promoter PROMO1");
+    await user.click(screen.getByRole("button", { name: /General/ }));
+    await user.click(screen.getAllByRole("button", { name: "Request to join" })[0]!);
     const sheet = screen.getByRole("dialog", { name: "Checkout" });
-    expect(await within(sheet).findByText("Promoter PROMO1")).toBeInTheDocument();
-    await user.type(within(sheet).getByRole("textbox", { name: "Discount code" }), "bad");
-    await user.click(within(sheet).getByRole("button", { name: "Apply" }));
-    expect(await within(sheet).findByText("Invalid promotional code")).toBeInTheDocument();
+    expect(within(sheet).getByText("Promoter PROMO1")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog", { name: "Checkout" })).not.toBeInTheDocument();
   });
@@ -188,13 +169,11 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     // the old inline "Continue" under the tiers and the floating pill are gone in v2
     expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Buy Tickets" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
-    expect(within(screen.getByRole("dialog", { name: "Checkout" })).getByText("3 × General · before fees")).toBeInTheDocument();
   });
 
-  it("Get tickets picks the cheapest tier on sale; the card's Checkout button opens the sheet", async () => {
+  it("Get tickets picks the cheapest tier on sale; the card's Checkout button reserves it", async () => {
     const user = userEvent.setup({ delay: null });
-    mockFetch(PROMOTER);
+    const f = mockFetch([...PROMOTER, { match: (u: string) => u.includes("/api/holds/create"), body: { hold_session_id: "h1", ticket_tier: { price_cents: 1500 } } }]);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const vip = { ...EVENT.ticket_tiers[0], id: "t2", name: "VIP", price_cents: 4000 };
     renderV2(
@@ -207,7 +186,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(screen.getByText("1 × General · before fees")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Checkout" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Checkout" }));
-    expect(within(screen.getByRole("dialog", { name: "Checkout" })).getByText("1 × General · before fees")).toBeInTheDocument();
+    await waitFor(() => expect(f.posts().find((c) => c.url === "/api/holds/create")?.body).toMatchObject({ ticket_tier_id: "t1", quantity: 1 }));
   });
 
   it("with tickets for this event the bar says You're going · View N tickets", () => {
@@ -222,41 +201,48 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(screen.getByRole("link", { name: "View 2 tickets" })).toHaveAttribute("href", "/account/ticket/tk1");
   });
 
-  it("B2: Continue waits while the promoter code is checked; a failed check says so, offers Retry and doesn't block", async () => {
+  it("an invalid promoter link says so on the page", async () => {
+    st.q = "promoter=nope1";
+    mockFetch(PROMOTER);
+    open();
+    expect(await screen.findByTestId("promoter-chip")).toHaveTextContent("Promoter code NOPE1 isn’t valid for this event");
+  });
+
+  it("B2: nothing can be reserved while the promoter code is checked; a failed check says so, offers Retry and doesn't block", async () => {
     st.q = "promoter=promo1";
     const user = userEvent.setup({ delay: null });
     const gate = { release: () => {} };
     let fail = true;
-    const calls: string[] = [];
+    const posts: Array<{ url: string; body: any }> = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
-        calls.push(url);
         if (url.startsWith("/api/promoter-validate")) {
           await new Promise<void>((r) => (gate.release = r));
           return fail ? new Response(JSON.stringify({ error: "Validation failed" }), { status: 500 }) : new Response(JSON.stringify({ valid: true, code: "PROMO1" }));
+        }
+        if (url === "/api/holds/create") {
+          posts.push({ url, body: JSON.parse(String(init?.body)) });
+          return new Response(JSON.stringify({ hold_session_id: "h1", ticket_tier: { price_cents: 1500 } }));
         }
         return new Response(JSON.stringify({ error: "unmocked" }), { status: 599 });
       }),
     );
     open();
+    expect(await screen.findByText("Checking promoter code PROMO1…")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /General/ }));
-    await user.click(screen.getByRole("button", { name: "Continue to checkout" }));
-    const sheet = screen.getByRole("dialog", { name: "Checkout" });
-    // still checking → the sheet's Continue is disabled (no hold can be created without the promoter)
-    // (the promoter's Add and the sheet's Continue both show "…" and are disabled)
-    const busy = within(sheet).getAllByRole("button", { name: "…" });
-    expect(busy).toHaveLength(2);
-    busy.forEach((b) => expect(b).toBeDisabled());
-    expect(calls.some((u) => u.includes("/api/promoter-validate?event_id=e1&code=PROMO1"))).toBe(true);
+    // still checking → both ways to reserve are disabled
+    expect(screen.getByRole("button", { name: "Checkout" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Continue to checkout" })).toBeDisabled();
     gate.release();
-    expect(await within(sheet).findByText(/We couldn’t check the code/)).toBeInTheDocument();
-    expect(within(sheet).getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(await screen.findByText(/We couldn’t check the code/)).toBeInTheDocument();
     fail = false;
-    await user.click(within(sheet).getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     gate.release();
-    expect(await within(sheet).findByText("Promoter PROMO1")).toBeInTheDocument();
+    expect(await screen.findByText("Promoter PROMO1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Checkout" }));
+    await waitFor(() => expect(posts[0]?.body).toMatchObject({ promoter_code: "PROMO1" }));
   });
 
   it("v1 (no header) keeps the inline promoter and access-code inputs", () => {

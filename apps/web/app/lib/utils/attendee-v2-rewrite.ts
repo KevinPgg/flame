@@ -10,6 +10,8 @@ const V2_SCREENS: Record<string, string> = {
   "/account": "/v2/attendee/tickets", // 2.3 My tickets
   "/discover": "/v2/attendee/explore", // 2.5 Explore (public, indexable)
   "/profile": "/v2/attendee/you", // 2.6 You
+  "/purchase": "/v2/attendee/purchase", // 3.3 payment screen (same logic, v2 view)
+  "/purchase/success": "/v2/attendee/purchase/success", // 3.3 "You're in" (B5)
 };
 
 /** Paths with a parameter: [pattern, target builder]. */
@@ -40,7 +42,7 @@ export function attendeeV2Route(pathname: string, v1: boolean): AttendeeRoute {
 }
 
 /** Public paths whose v2 screen needs a signed-in person (checked before rewriting). */
-export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account", "/profile"]);
+export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account", "/profile", "/purchase", "/purchase/success"]);
 
 export function attendeeNeedsSignIn(pathname: string): boolean {
   const path = clean(pathname);

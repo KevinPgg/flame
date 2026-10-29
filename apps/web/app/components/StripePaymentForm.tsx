@@ -19,6 +19,13 @@ interface StripePaymentFormProps {
   holdSessionId?: string | null;
   /** B3: the PaymentIntent about to be confirmed (recorded on the hold when the payment starts). */
   paymentIntentId?: string | null;
+  /** B3/B7: the reservation's new end after start-payment extended it (the timer follows). */
+  onPaymentStarted?: (expiresAt: string | null) => void;
+  /** B7: the reservation expired — the Pay button is blocked. */
+  blocked?: boolean;
+  /** Flame 2.0 payment screen (fase 3.3): its own breakdown above, a "Pay $X" pill here. */
+  variant?: "v1" | "v2";
+  payLabel?: string;
   externalError?: string | null;
 }
 
@@ -31,6 +38,10 @@ export default function StripePaymentForm({
   onBeforePayment,
   holdSessionId,
   paymentIntentId,
+  onPaymentStarted,
+  blocked = false,
+  variant = "v1",
+  payLabel,
   externalError,
 }: StripePaymentFormProps) {
   const stripe = useStripe();
@@ -58,7 +69,7 @@ export default function StripePaymentForm({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
+    if (!stripe || !elements || blocked) {
       return;
     }
 
@@ -117,6 +128,8 @@ export default function StripePaymentForm({
                 "We couldn't start the payment. Your card was not charged — please try again."
             );
           }
+          const started = await startRes.json().catch(() => ({}));
+          onPaymentStarted?.(typeof started.expires_at === "string" ? started.expires_at : null);
         } catch (startErr) {
           const message =
             startErr instanceof Error
@@ -257,6 +270,22 @@ export default function StripePaymentForm({
         </div>
       )}
 
+      {variant === "v2" ? (
+        <button
+          type="submit"
+          disabled={!isReady || processing || !stripe || !elements || blocked}
+          className="inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-v2-pill bg-v2-cream px-6 text-[15.5px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {processing ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-v2-ink/30 border-t-v2-ink" />
+              {payLabel ? "…" : "Processing..."}
+            </>
+          ) : (
+            payLabel ?? formatCentsAsPrice(amount, currency)
+          )}
+        </button>
+      ) : (
       <div className="flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <span className="text-white-50 text-sm font-poppins">Total:</span>
@@ -266,7 +295,7 @@ export default function StripePaymentForm({
         </div>
         <button
           type="submit"
-          disabled={!isReady || processing || !stripe || !elements}
+          disabled={!isReady || processing || !stripe || !elements || blocked}
           className="bg-white-100 text-dark rounded-pill px-6 py-4 font-poppins-semibold text-sm cursor-pointer border-none w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
         >
           {processing ? (
@@ -281,6 +310,7 @@ export default function StripePaymentForm({
           )}
         </button>
       </div>
+      )}
 
       <div className="flex items-center justify-center gap-2 text-white-30 text-xs font-poppins-light">
         <FiCheckCircle size={14} />
