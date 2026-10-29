@@ -25,7 +25,7 @@ function OrgCard({ org, wide, events }: { org: ExploreOrganizer; wide?: boolean;
   const bg = organizerCover(org, events);
   const cover = bg?.url;
   return (
-    <Link href={`/organizer/${org.slug}`} aria-label={t("explore.seeOrganizer", { name: org.name })} className={`block shrink-0 overflow-hidden rounded-[18px] bg-[#121212] hover:bg-[#181818] ${wide ? "w-full" : "w-[220px]"}`}>
+    <Link href={`/organizer/${org.slug}`} aria-label={t("explore.seeOrganizer", { name: org.name })} className={`isolate block shrink-0 overflow-hidden rounded-[18px] bg-[#121212] hover:bg-[#181818] ${wide ? "w-full" : "w-[220px]"}`}>
       <span className="relative block h-[96px] overflow-hidden bg-v2-ink3">
         {cover && (
           <span
@@ -38,7 +38,7 @@ function OrgCard({ org, wide, events }: { org: ExploreOrganizer; wide?: boolean;
         )}
       </span>
       <span className="block px-3.5 pb-3.5">
-        <span className="-mt-7 block w-fit rounded-[16px] border-[3px] border-[#121212]">
+        <span className="relative z-[1] -mt-7 block w-fit rounded-[16px] border-[3px] border-[#121212]">
           <OrgAvatar name={org.name} logoUrl={org.logo_url} size={52} />
         </span>
         <b className="mt-2 block truncate text-[15px] font-v2-ui-semibold">{org.name}</b>
