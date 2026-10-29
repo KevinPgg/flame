@@ -207,6 +207,30 @@ describe("buildTierSave — PATCH sends only what changed", () => {
   });
 });
 
+describe("questions per ticket (RSVP, Kevin 2026-10-29)", () => {
+  it("reads the tier setting; off by default", () => {
+    expect(edit(GENERAL).perTicket).toBe(false);
+    expect(edit({ ...GENERAL, registration_per_ticket: true }).perTicket).toBe(true);
+    expect(newTierEditor("x").perTicket).toBe(false);
+  });
+
+  it("PATCH sends it only when it changed", () => {
+    expect(buildTierSave(edit(GENERAL, (x) => (x.perTicket = true)), EVENT, GENERAL).body).toEqual({ id: "t1", registration_per_ticket: true });
+    const on = { ...GENERAL, registration_per_ticket: true };
+    expect(buildTierSave(edit(on), EVENT, on).changed).toBe(false);
+    expect(buildTierSave(edit(on, (x) => (x.perTicket = false)), EVENT, on).body).toEqual({ id: "t1", registration_per_ticket: false });
+  });
+
+  it("POST carries it only when on; never for events without RSVP", () => {
+    const s = newTierEditor("T");
+    Object.assign(s.draft, { price: "0", quantity: "5" });
+    expect(buildTierSave(s, EVENT, null).body).not.toHaveProperty("registration_per_ticket");
+    s.perTicket = true;
+    expect(buildTierSave(s, EVENT, null).body).toMatchObject({ registration_per_ticket: true });
+    expect(buildTierSave(s, { ...EVENT, requires_rsvp: false }, null).body).not.toHaveProperty("registration_per_ticket");
+  });
+});
+
 describe("buildTierSave — POST for a new tier", () => {
   it("simple tier with defaults", () => {
     const s = newTierEditor("Tier 4");

@@ -51,6 +51,8 @@ export interface EditorTier {
   is_hidden?: boolean | null;
   is_manually_sold_out?: boolean | null;
   registration_form_fields?: string[] | null;
+  /** RSVP: questions answered once per ticket (each guest) instead of once per request. */
+  registration_per_ticket?: boolean | null;
   ticket_stages?: EditorStage[] | null;
 }
 
@@ -66,6 +68,8 @@ export interface EditorEvent {
 export interface TierEditorState {
   draft: TierDraft;
   soldOut: boolean;
+  /** RSVP tiers: ask the questions for every ticket (guest). Default false = once per request. */
+  perTicket?: boolean;
 }
 
 const tzOf = (e: Pick<EditorEvent, "timezone">) => e.timezone || "America/Guayaquil";
@@ -135,12 +139,13 @@ export function tierEditorFromTier(tier: EditorTier, event: EditorEvent): TierEd
       questions: event.requires_rsvp ? tierQuestions(tier, event) : [],
     },
     soldOut: tier.is_manually_sold_out === true,
+    perTicket: tier.registration_per_ticket === true,
   };
 }
 
 /** A new tier for an existing event: "Tier N", asks no questions until the organizer adds them. */
 export function newTierEditor(name: string): TierEditorState {
-  return { draft: { ...newTierDraft(name), key: draftKey("t") }, soldOut: false };
+  return { draft: { ...newTierDraft(name), key: draftKey("t") }, soldOut: false, perTicket: false };
 }
 
 export function validateTierEditor(
@@ -268,6 +273,9 @@ export function buildTierSave(
     quantity_total: quantityTotal,
     ...(stages ? { useStages: true, stages } : { price_cents: parsePriceInput(t.price) ?? 0 }),
     ...(formFields !== undefined ? { registration_form_fields: formFields } : {}),
+    // Only sent when it matters (RSVP; on create only when on), so tiers that never use it
+    // don't depend on the column.
+    ...(event.requires_rsvp && (original || state.perTicket) ? { registration_per_ticket: state.perTicket === true } : {}),
   };
 
   let body: Record<string, unknown>;
@@ -295,6 +303,7 @@ export function buildTierSave(
       is_manually_sold_out: original.is_manually_sold_out === true,
       quantity_total: original.quantity_total,
       price_cents: original.price_cents,
+      registration_per_ticket: original.registration_per_ticket === true,
     };
     const sameValue = (k: string, v: unknown) => {
       const b = before[k];

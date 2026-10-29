@@ -51,8 +51,23 @@ type CoverEvent = {
   organizations?: { slug?: string | null } | null;
 };
 
+/**
+ * Latest flyer per organization (Kevin 2026-10-29: an organizer without upcoming events shows
+ * its last event's flyer). Rows: that organization's published events, any order.
+ */
+export function latestFlyers(rows: Array<{ organization_id?: string | null; image_url?: string | null; starts_at?: string | null }>): Record<string, string> {
+  const best: Record<string, { url: string; at: number }> = {};
+  for (const r of rows) {
+    if (!r.organization_id || !r.image_url) continue;
+    const at = r.starts_at ? Date.parse(r.starts_at) : NaN;
+    const cur = best[r.organization_id];
+    if (!cur || (Number.isFinite(at) && !(at <= cur.at))) best[r.organization_id] = { url: r.image_url, at: Number.isFinite(at) ? at : -Infinity };
+  }
+  return Object.fromEntries(Object.entries(best).map(([k, v]) => [k, v.url]));
+}
+
 export function organizerCover(
-  org: { id?: string | null; slug: string; logo_url?: string | null; cover_image_url?: string | null },
+  org: { id?: string | null; slug: string; logo_url?: string | null; cover_image_url?: string | null; last_flyer_url?: string | null },
   events: CoverEvent[],
   now: number = Date.now(),
 ): { url: string; kind: "flyer" | "logo" | "cover" } | null {
@@ -62,6 +77,7 @@ export function organizerCover(
     .filter((e) => !(ts(e.ends_at) <= now))
     .sort((a, b) => ts(a.starts_at) - ts(b.starts_at));
   if (mine[0]?.image_url) return { url: mine[0].image_url, kind: "flyer" };
+  if (org.last_flyer_url) return { url: org.last_flyer_url, kind: "flyer" };
   if (org.logo_url) return { url: org.logo_url, kind: "logo" };
   if (org.cover_image_url) return { url: org.cover_image_url, kind: "cover" };
   return null;

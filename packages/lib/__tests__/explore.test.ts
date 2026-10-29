@@ -1,6 +1,6 @@
 /** Fase 2.5: Explore search and featured row. */
 import { describe, it, expect } from "vitest";
-import { searchExplore, featuredFirst, normalizeSearch, walletDayTime, organizerCover } from "../src";
+import { searchExplore, featuredFirst, normalizeSearch, walletDayTime, organizerCover, latestFlyers } from "../src";
 
 const ev = (name: string, extra: Record<string, unknown> = {}) => ({ name, venue: "Club Uno", city: "Quito", organizations: { name: "Sonar" }, ...extra });
 
@@ -51,5 +51,26 @@ describe("organizerCover (organizer rows)", () => {
     expect(organizerCover(org, [], now)).toEqual({ url: "logo.png", kind: "logo" });
     expect(organizerCover({ slug: "x", cover_image_url: "cover.png" }, [], now)).toEqual({ url: "cover.png", kind: "cover" });
     expect(organizerCover({ slug: "x" }, [], now)).toBeNull();
+  });
+});
+
+describe("organizer card without upcoming events (Kevin 2026-10-29)", () => {
+  it("latestFlyers keeps the most recent flyer per organization", () => {
+    expect(
+      latestFlyers([
+        { organization_id: "o1", image_url: "old.jpg", starts_at: "2026-01-01T00:00:00Z" },
+        { organization_id: "o1", image_url: "new.jpg", starts_at: "2026-09-01T00:00:00Z" },
+        { organization_id: "o2", image_url: null, starts_at: "2026-09-01T00:00:00Z" },
+        { organization_id: "o2", image_url: "o2.jpg", starts_at: "2025-09-01T00:00:00Z" },
+      ]),
+    ).toEqual({ o1: "new.jpg", o2: "o2.jpg" });
+  });
+
+  it("next event's flyer › latest event's flyer › logo", () => {
+    const org = { id: "o1", slug: "kora", logo_url: "logo.png", last_flyer_url: "last.jpg" };
+    expect(organizerCover(org, [])).toEqual({ url: "last.jpg", kind: "flyer" });
+    expect(organizerCover({ ...org, last_flyer_url: null }, [])).toEqual({ url: "logo.png", kind: "logo" });
+    const next = { image_url: "next.jpg", organization_id: "o1", starts_at: "2099-01-01T00:00:00Z", ends_at: "2099-01-02T00:00:00Z" };
+    expect(organizerCover(org, [next])).toEqual({ url: "next.jpg", kind: "flyer" });
   });
 });

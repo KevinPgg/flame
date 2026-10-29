@@ -101,6 +101,12 @@ export interface TicketTier {
    */
   registration_form_fields?: string[] | null;
   /**
+   * RSVP tiers: `true` → the questions are answered for every ticket (guest 1 at the top level of
+   * `registration_data`, guests 2..N in `registration_data._guests`). `false`/missing (default) →
+   * once per request, as before. Column added 2026-10-29 (`20261029120000_tier_registration_per_ticket`).
+   */
+  registration_per_ticket?: boolean | null;
+  /**
    * Organizer toggle that forces `isTierAvailable()` to return `false` regardless
    * of capacity. Attendees see the standard "Sold Out" label; the organizer
    * dashboard surfaces an additional "Closed" indicator so the manual override
