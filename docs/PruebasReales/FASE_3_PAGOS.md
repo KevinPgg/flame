@@ -96,3 +96,24 @@ Evento RSVP con preguntas en el formulario del organizador (ej. Nombre obligator
 
 ## Pendiente para la salida (fase 5)
 - B11: quitar la política `"Anyone can look up promoter codes for validation"` de `promoter_links` cuando las versiones viejas de la app ya no estén en uso.
+
+## 3.5 · Cierre (2026-10-29)
+
+**Organizador · 🌐 PC (y 📱 en la app)** — tier con 10 cupos, 2 vendidos, 1 RSVP aprobada de 2 y 1 RSVP pendiente.
+- [ ] Editar el tier a 3 cupos → aviso "no caben…" → Reducir → error "Cannot reduce capacity below 4: 2 sold, 2 in approved…". Nada cambia (la RSVP pendiente sigue pendiente).
+- [ ] Editar a 4 → Reducir → OK: la RSVP **pendiente** pasa a Rechazada (le llega el correo), la **aprobada** sigue Aprobada y con tickets.
+- [ ] Con una persona en la pantalla de pago (📱 o 🌐 celular) que ya tocó **Pagar** (Stripe procesando, o la hoja de 3DS abierta): reducir el tier desde la PC → la compra termina bien y recibe tickets (antes: cobro y reembolso).
+- [ ] RSVP pagada pendiente de un evento ya terminado (en Studio: `events.ends_at` en el pasado): el panel no muestra Aprobar; forzar la API (`PATCH /api/organizer/rsvps/{id}/approve`) → 409 `EVENT_ENDED`, sin cobro en Stripe.
+- [ ] Compras (Desglose/Compras) → Exportar → columnas "Guest 2 · …" para compras de RSVP con invitados.
+
+**Asistente · 📱 app (Android si lo tienes)**
+- [ ] Tier oculto con código de acceso → en la pantalla de pago aparece la fila del código.
+- [ ] Android: en la pantalla de pago, botón atrás del sistema → vuelve al evento y la reserva se libera (desaparece "compra en curso").
+
+**Interruptores · 🌐 local**
+- [ ] `ATTENDEE_V1=true` → `/events/…` y `/purchase` son la versión de siempre y se puede comprar de punta a punta (con reloj v1).
+- [ ] 📱 `EXPO_PUBLIC_ATTENDEE_V1=false` → el evento usa la hoja de checkout de siempre; compra completa.
+
+**Punta a punta de la fase (con `stripe listen` encendido)**
+- [ ] 🌐 y 📱: comprar con promotor por enlace, descuento y reloj visible → tickets en "Mis tickets"; el promotor aparece en Compras del organizador.
+- [ ] 🌐 y 📱: RSVP pagada con 2 invitados → aprobar → tickets; el organizador ve las respuestas de ambos invitados.

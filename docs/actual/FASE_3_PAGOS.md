@@ -197,3 +197,23 @@ Principio: **la lógica de cobro no cambia** (mismos endpoints, mismo webhook, m
 - [Probable] Los crons existentes solo exportan `POST`; Vercel llama con `GET`. El nuevo exporta ambos. Vale la pena revisar los otros (fuera de esta entrega).
 
 **Tests:** lib 408 (+3 guests, +2 bloques/raw, +1 export); web 939 ✓ (+1 RSVP por invitado, RSVP hoja, +2 cron; 13 ✗ heredados); app 179 (+2 `RsvpSheet`); tsc web 0, lib 0, app 40 heredados.
+
+## 8. 3.5 cierre (2026-10-29)
+
+**Abiertos de la fase 1 que eran de esta fase — arreglados:**
+- `force-reduce` (`api/organizer/tiers/[tierId]/force-reduce`) [Seguro, también en producción]: rechazaba también las RSVPs **aprobadas** (tarjeta ya cobrada → persona cobrada, rechazada y sin reembolso) y borraba reservas con **pago en curso** (B3 → cobro + reembolso automático sin tickets). Ahora: solo rechaza RSVPs **pendientes**; no toca reservas que empezaron a pagar hace menos de 20 min (misma ventana que `cleanup_abandoned_payments`); y no deja bajar la capacidad por debajo de lo comprometido = vendidos + RSVPs aprobadas + pagos en curso → 400 `BELOW_COMMITTED` con el detalle, sin escribir nada. Texto del aviso en el editor de tiers (web y app, `eventForm.forceDetail`) actualizado.
+- `approve` de RSVP (`api/organizer/rsvps/[id]/approve`) [Seguro]: la pantalla ya ocultaba "Aprobar" en eventos terminados, pero la API aceptaba y **cobraba**. Ahora responde 409 `EVENT_ENDED` antes de tocar nada (misma regla que la UI: terminado ⇔ `ends_at` ≤ ahora).
+
+**Paridad web/app (v2):**
+- Exportación de **compras** con columnas de invitados 2..N (`withGuestExportColumns`) en web (`PurchasesTab`) y app (`organizer-xlsx-export`), igual que la de pendientes. Cierra el pendiente [Probable] de §7.
+- Pantalla de pago de la app: fila del **código de acceso** (tiers ocultos) como en la web; en Android el botón **atrás** del sistema libera la reserva (y queda bloqueado mientras se procesa el pago).
+
+**Interruptores (revisados en código):**
+- Web `ATTENDEE_V1=true`: `/purchase` y `/purchase/success` vuelven a la versión v1 (la reescritura de middleware no aplica); el evento v1 sigue con su compra de siempre. Lo que **no** depende del interruptor (corre en ambas): B2, B10, B3, B4, B12, reloj v1 (`HoldTimer`), cron de conciliación, `force-reduce`, `approve`.
+- App `EXPO_PUBLIC_ATTENDEE_V1=false`: "Ir al pago" y la hoja RSVP v2 no se usan (solo con `v2`); la compra en curso flotante solo con el asistente v2; `/checkout/[holdId]` solo se abre desde v2.
+
+**Decisión pendiente de Kevin (no tocado):** [Seguro] en producción `monitor-payment-authorizations` y `cleanup-past-event-rsvps` solo exportan `POST`, y Vercel Cron llama con `GET` → hoy esos crons **no corren**. Agregar `GET` los enciende y cambia el comportamiento de producción (avisos de autorizaciones por vencer, limpieza de RSVPs de eventos pasados), por eso no lo hice sin tu visto bueno. `event-reminders` sí tiene `GET`.
+
+**Tests:** web 944 ✓ (+3 `force-reduce-committed`, +2 `rsvp-approve-ended`; 13 ✗ heredados); lib 408; app 180 (+ `EventForms` 13 ✓); tsc web 0, app 40 heredados.
+
+**Fuera de la fase (siguen anotados):** datos por ticket (entrega aparte con migración), Android App Links (huella SHA-256), B11 en la salida, B8/B9.
