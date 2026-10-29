@@ -217,3 +217,27 @@ Principio: **la lógica de cobro no cambia** (mismos endpoints, mismo webhook, m
 **Tests:** web 944 ✓ (+3 `force-reduce-committed`, +2 `rsvp-approve-ended`; 13 ✗ heredados); lib 408; app 180 (+ `EventForms` 13 ✓); tsc web 0, app 40 heredados.
 
 **Fuera de la fase (siguen anotados):** datos por ticket (entrega aparte con migración), Android App Links (huella SHA-256), B11 en la salida, B8/B9.
+
+## 9. Ronda de pruebas de Kevin (2026-10-29)
+
+**Hallazgos y causa** [Seguro salvo donde se indica]
+- **B4 "una segunda reserva borra la primera"**: B4 solo protege una reserva **cuyo pago empezó** (tocar Pagar). La primera pestaña de Kevin no había tocado Pagar → el RPC la reemplazó en silencio (comportamiento heredado). Lo que faltaba era **avisar**.
+- **"El hold se cancela solo"**: en la app la flecha atrás y el botón atrás de Android llamaban a `/api/holds/cancel` (decisión de la 3.3/3.5). [Probable] eso es lo que vio Kevin al volver a la app. Ya no existe ningún camino automático.
+- **PaymentIntent cancelado con descuento**: aplicar un descuento recrea el PaymentIntent (cancela el anterior). Pagar no estaba bloqueado mientras se aplicaba (web v2, v1 y app), y otro dispositivo con la misma reserva quedaba con el anterior → `PaymentSheet cannot set up a PaymentIntent in status 'canceled'`.
+- **Reloj de más de 30 min**: `mark_hold_payment_started` suma los minutos al vencimiento **actual** → 29:xx pasaba a 39:xx.
+- **Bloqueo de 20 min tras cerrar la hoja de pago**: la marca "pago en curso" quedaba puesta; el B4 bloqueaba volver a reservar ese tier y "compra en curso" no lo mostraba.
+- **CRON_SECRET**: no estaba en `.env.local`; en cmd `$CRON_SECRET` no se expande. Guía corregida.
+- Aviso `import-in-the-middle 2.0.6 vs 3.3.1`: de Sentry/OpenTelemetry en dev, no relacionado.
+- Android "Failed to launch intent://": probado con el modo celular del navegador de PC; solo funciona en un Android real (esperado).
+
+**Cambios**
+- `POST /api/holds/create`: `check_existing` → 409 `HOLD_EXISTS` con la reserva existente (cualquier dispositivo); `replace_existing` → reemplaza. Clientes viejos (sin el campo, ej. app de producción y v1) siguen igual.
+- Web v2 y app: aviso "Ya tienes una reserva de N entradas (quedan mm:ss)" → **Ir a mi reserva / Reemplazar reserva / Cancelar**.
+- Atrás ya no libera la reserva (app: flecha y Android). **"Cancelar reserva"** explícito con confirmación (web v2 y app).
+- `POST /api/holds/start-payment`: (1) completa hasta 10 min restantes en vez de sumar 10 (el reloj nunca pasa de lo mostrado); (2) `abort: true` quita la marca de pago en curso **solo si Stripe confirma** que no se está cobrando (`requires_payment_method/confirmation/action`, `canceled`). Web: al rechazo/fallo 3DS; app: al cerrar la hoja o error.
+- Pagar bloqueado mientras se aplica un código (web v2, v1, app). App: si el PaymentIntent fue cancelado en otro lado, crea uno nuevo y sigue.
+- RSVP: **preguntas por solicitud por defecto**; interruptor por tier "Preguntas por cada entrada" (editor de tier web y app). Migración `20261029120000_tier_registration_per_ticket.sql` (`ticket_tiers.registration_per_ticket boolean default false`) — **Kevin debe aplicarla antes de probar** (las consultas de eventos la leen). `/api/rsvp` solo guarda `_guests` si el tier lo pide. Al crear un evento nuevo el interruptor no aparece (se edita después).
+- Explorar → Organizadores: sin eventos próximos, fondo = flyer de su **último** evento (`latestFlyers`), luego foto de perfil.
+- Guía de pruebas reescrita (`PruebasReales/FASE_3_PAGOS.md`): preparación, glosario (reserva, pago en curso, vendido vs aprobado), comandos de Windows.
+
+**Tests:** web 956 ✓ (13 ✗ heredados); lib 413; app 184; tsc web 0, app 40 heredados.

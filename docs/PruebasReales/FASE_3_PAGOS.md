@@ -1,119 +1,153 @@
 # Pruebas reales · Fase 3 (pagos)
 
-Entorno: local con Stripe en modo prueba (tarjeta `4242 4242 4242 4242`, cualquier fecha futura y CVC). En cada prueba se indica el dispositivo. Los arreglos de la 3.1 aplican **también a la v1** (no dependen del interruptor del asistente).
+Reescrita el 2026-10-29 tras la ronda de Kevin. `[x]` = ya probado y sigue valiendo; `[ ]` = falta o **cambió** y hay que repetirlo.
+Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
 
-## 3.1 · Arreglos B2, B10, B3, B4
+---
 
-### B10 · El promotor se valida por el servidor y se ve antes del checkout
-- [x] 🌐 Teléfono y PC: abrir `/events/<slug>?promoter=CODIGO` → debajo de los tiers, **antes** de elegir nada: "Comprobando el código de promotor CODIGO…" y luego la etiqueta verde **"Promotor CODIGO"** con ✕.
-- [x] 🌐 Con un código que no existe (`?promoter=NOEXISTE`) → etiqueta roja "El código de promotor NOEXISTE no es válido para este evento".
-- [x] 🌐 PC (DevTools → Red): se ve la llamada a `/api/promoter-validate?event_id=…&code=CODIGO` y **ninguna** a `…/rest/v1/promoter_links`.
-- [x] 📱 Celular (app): abrir el evento desde el enlace del promotor → la misma etiqueta verde en la pantalla del evento, antes de la hoja de pago; la hoja también lo tiene aplicado.
+## 0. Preparación (una vez por sesión de pruebas)
 
-### Abrir el enlace en la app (desde el navegador del celular)
-Una página web no puede ver qué apps tienes instaladas; la comprobación la hace el teléfono:
-- [x] 📱 Android, Chrome, con la app instalada: abrir `https://<tu-ngrok o dominio>/events/<slug>?promoter=CODIGO` → aparece abajo "¿Abrir en la app de Flame?" → **Abrir en la app** → se abre la app en ese evento y con la etiqueta "Promotor CODIGO".
-- [ ] 📱 Android sin la app (o desinstalada): **Abrir en la app** → vuelves a la misma página con el aviso "No pudimos abrir la app en este teléfono. Puedes seguir aquí." `//Por validar, probé desde navegadro con pantlalla reducidasa un error "Failed to launch 'intent://events/acto-acto-pide-contacto?promoter=PIRILIN#Intent;scheme=project-flame;package=com.projectflame.app;S.browser_fallback_url=http%3A%2F%2Flocalhost%3A3000%2Fevents%2Facto-acto-pide-contacto%3Fpromoter%3DPIRILIN%26noapp%3D1;end' because the scheme does not have a registered handler."`
-- [x] 📱 Android/iPhone: **Seguir en el navegador** → el aviso desaparece y no vuelve mientras sigas en esa pestaña.
-- [ ] 📱 iPhone, Safari, con la app instalada: **Abrir en la app** → Safari pregunta "¿Abrir en Flame?" → Abrir → la app en el evento. Sin la app: Safari muestra un error de dirección y al volver la página dice que no pudo abrirla.
-- [x] 💻 PC: el aviso no aparece.
-- Nota: con la app de la tienda/TestFlight en iPhone, tocar un enlace `flme.co/events/…` en WhatsApp o Instagram ya abre la app sola (enlaces universales, ya configurados). En Android eso **no** está configurado todavía (ver "Pendiente").
+1. **Migración nueva** (preguntas por entrada, §4): `supabase migration up` (o `supabase db reset` si no te importa la base local). Sin ella, la web y la app fallan al cargar eventos. Archivo: `supabase/migrations/20261029120000_tier_registration_per_ticket.sql`.
+2. **Variables** en `apps/web/.env.local` (reinicia `pnpm dev` después de cambiarlas):
+   - `CRON_SECRET=flme-local-cron` — **cualquier texto**; es la clave que exige el cron de conciliación (§4.3). Sin ella responde `{"error":"CRON_SECRET not configured"}` (lo que te salió el 10-29).
+   - `ATTENDEE_V1` **sin definir** (o `false`) para probar la v2.
+3. **Stripe**: en otra terminal `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. **Sin esto se cobra pero no se crean tickets** (caso del 10-28). Solo se apaga a propósito en las pruebas que lo piden.
+4. **Tarjetas de prueba** (cualquier fecha futura y CVC): `4242 4242 4242 4242` aprueba · `4000 0000 0000 0002` rechazada · `4000 0027 6000 3184` pide autenticación 3DS (ventana para aprobar/fallar).
+5. **Supabase Studio local**: `http://127.0.0.1:54323` → Table Editor. Las horas de la base están en **UTC** (Guayaquil = UTC − 5).
+6. Ten a mano **dos sesiones de la misma cuenta**: PC + celular (o dos pestañas).
 
-### B2 · El promotor no se pierde por comprar rápido
-- [x] 🌐 PC: DevTools → Red → "Slow 3G". Abrir el enlace del promotor, elegir tier y abrir el checkout enseguida → "Continuar" queda en "…" (deshabilitado) hasta que el promotor aparece; comprar → en el panel del organizador la venta tiene el promotor.
-- [x] 🌐 PC: DevTools → bloquear la URL `/api/promoter-validate` (Network request blocking) → en la página y en la hoja: "No pudimos validar el código (puedes comprar igual) · Reintentar". Continuar está habilitado. Desbloquear y tocar Reintentar → aparece "Promotor CODIGO".
-- [x] 📱 Celular: con el enlace del promotor y red lenta (o modo avión un instante), el botón de pagar de la hoja dice "Checking promoter code…" y no responde hasta terminar; si falla: "We couldn’t check the code (you can still pay) · Retry".
+**Glosario corto**
+- **Reserva (hold)**: al tocar "Ir al pago" se apartan tus entradas por **30 min**; nadie más las compra. Tabla `holds`, columna `expires_at` = cuándo vence.
+- **Pago en curso**: al tocar **Pagar**, la reserva se marca (`payment_in_progress = true`) para que no venza ni se borre mientras Stripe cobra. Si cierras la hoja de pago o la tarjeta es rechazada, la marca se quita sola.
+- **RSVP**: solicitud que el organizador aprueba. Estados: *pendiente* (en revisión; si es pagada, la tarjeta solo está **autorizada**) → *aprobada* (se **cobró**; los tickets se crean cuando llega el webhook de Stripe, normalmente en segundos) → *comprada* (tiene tickets; cuenta como **vendido**). Si `stripe listen` está apagado, se queda en *aprobada* sin tickets: eso arregla la conciliación (§4.3).
 
-### B3 + reloj · La reserva de 30 minutos
-**Ojo:** solo en eventos con **tickets** (sin RSVP). Un evento RSVP no reserva nada ni pasa por `/purchase`: ahí no hay reloj.
+---
 
-**Qué es:** al tocar Continuar se **reservan** tus tickets por 30 minutos (nadie más puede comprarlos). La hora en que vence esa reserva se guarda en la base, en la tabla `holds`, columna `expires_at` (fecha y hora de vencimiento). Antes, si la reserva vencía mientras Stripe cobraba, podías quedar cobrado y reembolsado sin tickets. Ahora, al tocar **Pagar**, la reserva se marca "pago en curso" y se alarga 10 minutos.
+## 1. Promotor (B10, B2)
 
-**Lo que ves en la web (`/purchase`):** arriba de la página, fijo, **"Tickets reservados por 29:41"** contando hacia atrás. En los últimos 5 minutos se pone amarillo con "Te quedan menos de 5 minutos para pagar". Al llegar a 0: "Tu reserva venció · Volver a elegir" y el botón de pagar se bloquea. Al tocar Pagar, el reloj **sube 10 minutos** (es el alargue del servidor).
-**En la app** todavía no hay reloj: la reserva se crea en el mismo toque de "Pagar" y enseguida se abre la hoja de Stripe, que tapa la pantalla. El reloj de la app llega con la pantalla de pago (3.3).
+- [x] 🌐📱 / 💻 `/events/<slug>?promoter=CODIGO` → antes de elegir nada: "Comprobando…" y luego la etiqueta verde **Promotor CODIGO**.
+- [x] 🌐📱 `?promoter=NOEXISTE` → etiqueta roja "no es válido para este evento".
+- [x] 💻 DevTools → Red: llamada a `/api/promoter-validate`, ninguna a `…/rest/v1/promoter_links`.
+- [x] 📱 Desde el enlace del promotor, la misma etiqueta en el evento de la app.
+- [x] 💻 Red lenta (Slow 3G): "Ir al pago" queda en espera hasta que aparece el promotor; la venta queda con el promotor.
+- [x] 💻 Bloquear `/api/promoter-validate` → "No pudimos validar el código · Reintentar", sin bloquear la compra.
 
-- [x] 🌐 PC: elegir tier → Continuar → en `/purchase` aparece el reloj cerca de 30:00 y baja cada segundo.
-- [x] 🌐 PC: tocar **Pagar** con `4242…` → antes de que termine, el reloj sube ~10 minutos; la compra termina con tickets.
-- [ ] 🌐 PC, **simular el vencimiento** (no hace falta esperar 30 min): con `/purchase` abierto, en Supabase Studio local (`http://127.0.0.1:54323` → Table Editor → `holds`) buscar la fila de tu reserva (la más reciente con tu usuario y sin `order_id`) y cambiar `expires_at` a **2 minutos en el futuro** (hora UTC). Recargar `/purchase` → el reloj muestra ~02:00 en amarillo. Pagar antes de que llegue a 0 → **tickets emitidos** (esto antes podía terminar en reembolso).
-- [ ] 🌐 PC: repetir pero dejar que llegue a 0 → "Tu reserva venció", el botón Pagar no responde y **no** aparece ningún cobro en Stripe. "Volver a elegir" lleva al evento.
-- [ ] Verificación en la base tras pagar: en `holds`, tu reserva tiene `payment_in_progress = true`, `payment_started_at` con la hora del pago y `datafast_checkout_id = stripe:pi_…` (el id del pago en Stripe).
-- [ ] 📱 Celular: compra normal con `4242…` → tickets; en `holds` la misma marca. Con la reserva vencida a mano no se puede (en la app la reserva nace al tocar Pagar).
-- [ ] Tarjeta rechazada (`4000 0000 0000 0002`) y reintentar con `4242…` antes de 10 minutos → funciona y el reloj **no** vuelve a subir.
+**Abrir el enlace en la app** (solo en un teléfono **real**; el modo "pantalla de celular" del navegador de la PC no puede abrir apps y da el error `Failed to launch 'intent://…'` que viste — es esperado ahí):
+- [x] 📱 Android con la app: "¿Abrir en la app de Flame?" → Abrir en la app → la app en ese evento.
+- [ ] 📱 Android **real** sin la app: Abrir en la app → vuelves a la página con "No pudimos abrir la app…".
+- [ ] 📱 iPhone con la app: Safari pregunta "¿Abrir en Flame?" → la app en el evento.
+- [x] 📱 Seguir en el navegador → el aviso no vuelve en esa pestaña. 💻 PC: el aviso no aparece.
 
-### B4 · Una segunda reserva no borra un pago en curso
-- [ ] 🌐 PC: pestaña A → elegir tier → `/purchase` → tocar Pagar con una tarjeta 3DS (`4000 0027 6000 3184`) y dejar abierta la ventana de autenticación. Pestaña B (misma cuenta, mismo tier) → Continuar → "Ya tienes un pago en curso para este ticket…" (no crea reserva). Volver a A, autenticar → **tickets emitidos**.
-- [ ] 🌐 PC: abandonar una compra en `/purchase` **sin** tocar Pagar y volver a comprar el mismo tier → funciona como siempre (la reserva abandonada se reemplaza).
-- [ ] 📱 Celular + 🌐 PC con la misma cuenta: empezar a pagar en uno (hoja de Stripe abierta en el celular después de tocar pagar) e intentar reservar el mismo tier en el otro → el segundo recibe el aviso.
+---
 
-## 3.3 · Pantalla de pago nueva (3.2 unida)
-Con `stripe listen` corriendo (si no, el pago se cobra pero los tickets no se crean: ver el caso del 10-28).
+## 2. Reserva, reloj y pantalla de pago (B3, B7, 3.3)
 
-**Web · 🌐 teléfono y PC**
-- [ ] Evento → elegir tier → −/+ → **Ir al pago** (o "Continuar al pago" abajo) → se abre directamente `/purchase` (sin hoja intermedia) con: reloj "Tickets reservados por 29:xx", flyer y datos del evento, "2 × Tier", desglose (Tickets, Comisión de servicio con ⓘ, Total), formulario de tarjeta y **Pagar $X**.
-- [ ] Con enlace de promotor: en el pedido "Promotor CODIGO ✓" y sin campo. Sin enlace: campo "Código de promotor (opcional)" → código malo = aviso; bueno = aparece en el pedido y el campo desaparece. Pagar → en el panel del organizador la venta tiene ese promotor.
-- [ ] Descuento: aplicar → línea "Descuento CODIGO −$X", el total y el botón Pagar bajan; Quitar → vuelve.
-- [ ] Pagar con 4242 → "Pago recibido" → `/purchase/success`: "You’re in" con el evento, N tickets, **Ver tickets** (abre el QR), Compartir, Listo.
-- [ ] **B5:** pagar con `stripe listen` **apagado** → la página de éxito NO muestra error: a los ~10 s "Pago recibido · tus tickets se están preparando" con "Ir a mis tickets". Encender `stripe listen` y reenviar el evento → al rato "You’re in".
-- [ ] Ticket gratis: Ir al pago → "Gratis: no hace falta pagar" + **Obtener ticket gratis** → "Tu ticket gratis está listo".
-- [ ] "Cancelar y liberar los tickets" → vuelve al evento y el tier recupera el cupo.
-- [ ] RSVP: "Solicitar" sigue abriendo la hoja de siempre (la 3.4 la cambia).
-- [ ] `ATTENDEE_V1=true`: `/purchase` es la página de siempre.
+### 2.1 Reloj de 30 minutos
+- [x] 💻 Ir al pago → `/purchase` con "Tickets reservados por 29:xx" bajando.
+- [ ] 💻 / 📱 Tocar **Pagar** → el reloj **ya no sube por encima de lo que mostraba** (antes saltaba +10 min y pasaba de 30:00). Solo si quedaban menos de 10 min sube hasta **10:00** justas, para que alcance a terminar el pago.
+  - Cómo forzarlo: en Studio pon `expires_at` de tu reserva a 3 min en el futuro, recarga, toca Pagar → el reloj pasa a ~10:00.
+- [x] 💻 Reserva vencida a mano (en Studio, `expires_at` 1–2 min en el futuro y esperar) → "Tu reserva venció · Volver a elegir", Pagar bloqueado, ningún cobro en Stripe.
+- [x] Tarjeta rechazada y reintento con 4242 → funciona.
 
-**App · 📱 celular**
-- [ ] Evento → tier → −/+ → **Ir al pago** → pantalla "Checkout" (sin la isla de pestañas) con reloj, evento, pedido, promotor (✓ o campo), descuento, desglose y **Pagar $X** abajo.
-- [ ] Pagar → se abre la hoja de Stripe → 4242 → "You’re in" · "Tus tickets se están preparando" → **Ver tickets** abre Mis tickets (el ticket aparece cuando el webhook lo crea).
-- [ ] Cerrar la hoja de Stripe sin pagar → vuelves a la pantalla de pago, el reloj sigue, puedes pagar de nuevo.
-- [ ] **Volver** (flecha) → vuelves al evento y la reserva se libera (en la base `holds` ya no está).
-- [ ] Promotor escrito en la pantalla y descuento → igual que en la web; la venta queda con ese promotor.
-- [ ] Reserva vencida (en Studio poner `expires_at` 1 min en el futuro y esperar) → "Tu reserva venció · Volver a elegir" y Pagar bloqueado.
-- [ ] Ticket gratis → "Obtener ticket gratis" → "You’re in".
-- [ ] RSVP: "Solicitar" sigue con la hoja de siempre.
+### 2.2 Descuento y pago (corregido el 10-29)
+Lo que te pasó: aplicaste un descuento y en ese momento tocaste Pagar en el celular. Aplicar un descuento **reemplaza** el pago en Stripe (cancela el anterior y crea otro); el celular intentó pagar con el anterior → `PaymentSheet cannot set up a PaymentIntent in status 'canceled'`. Arreglo: **Pagar se bloquea mientras se aplica un código** (web y app), y si el pago fue reemplazado en otro dispositivo, la app crea uno nuevo y sigue sola.
+- [ ] 💻 Escribir un descuento y tocar Aplicar → mientras dice "…", **Pagar está deshabilitado**; al terminar, Pagar muestra el total con descuento y paga bien.
+- [ ] 📱 Lo mismo en la app.
+- [ ] 📱 + 💻 con la **misma reserva** abierta en los dos (abre la compra en curso en ambos): aplicar un descuento en la PC y luego tocar Pagar en el celular → la hoja de Stripe se abre sin error (con el monto sin descuento del celular; es correcto: cada pantalla paga lo que muestra).
+- [x] Promotor escrito en la pantalla de pago y descuento → la venta queda con ese promotor; "You’re in" y Ver tickets.
+- [x] 💻 Pagar con `stripe listen` apagado → nunca error: "Pago recibido · tus tickets se están preparando". Encenderlo y reenviar → "You’re in".
+- [x] Ticket gratis → Obtener ticket gratis → listo.
+- Aviso de la consola `The package resolves to a different version (2.0.6 / 3.3.1)…`: es de `import-in-the-middle` (Sentry/OpenTelemetry en modo dev), no del descuento. No afecta pagos.
 
-## Compra en curso y tarjetas de organizador (10-28 noche)
-- [ ] 🌐 Evento con tickets → Ir al pago → en `/purchase` **no** se ve el aviso. Ir a Inicio/Explorar (o cerrar la pestaña y volver a abrir flme) → abajo "COMPRA EN CURSO · White Party · 2 × Tier · quedan 27:10" + **Continuar** → vuelve a la misma pantalla de pago con el reloj.
-- [ ] 📱 Igual en la app: Ir al pago → flecha atrás **no** (esa libera la reserva): sal con el gesto/cerrar la app y vuelve a abrirla → el aviso sobre la isla; en el detalle de un evento, sobre la barra de compra. **Continuar** abre la pantalla de pago.
-- [ ] ✕ oculta el aviso; pagar, "Cancelar y liberar" o el vencimiento lo hacen desaparecer solos.
-- [ ] Iniciar el pago (tocar Pagar) y salir: el aviso **no** aparece (el pago puede estar en camino).
-- [ ] 🌐📱 Explorar → "Organizadores": cada tarjeta lleva de fondo el flyer del próximo evento de ese organizador; uno sin eventos vigentes muestra su foto de perfil difuminada.
+### 2.3 Salir, volver y cancelar (cambió el 10-29)
+Ahora **solo el botón "Cancelar reserva" libera la reserva**, y pide confirmación. Atrás (flecha, botón de Android, gesto), cambiar de pestaña, ir a Inicio/Explorar o cambiar de app **no** la tocan: la reserva sigue y aparece "Compra en curso" para volver.
+- [ ] 📱 En la pantalla de pago: flecha atrás → vuelves al evento; arriba de la barra aparece **COMPRA EN CURSO · quedan mm:ss · Continuar** → vuelve a la misma pantalla y el reloj siguió.
+- [ ] 📱 Android: botón atrás del sistema → igual que la flecha (la reserva **no** se libera).
+- [ ] 📱 Cambiar de app (WhatsApp) y volver → sigues en la pantalla de pago; en la consola del servidor **no** aparece `POST /api/holds/cancel`.
+- [ ] 📱 / 💻 **Cancelar reserva** (abajo, subrayado) → "¿Cancelar esta reserva? Las entradas se liberan…" → Cancelar reserva → vuelves al evento, el cupo se recupera y desaparece la compra en curso. Con "Atrás"/"Cancelar" en el aviso no pasa nada.
+- [ ] 📱 Tocar Pagar y **cerrar la hoja de Stripe** sin pagar → vuelves a la pantalla; sales con la flecha → la compra en curso **sí** aparece (antes no, y además quedabas bloqueado 20 min para volver a comprar ese tier).
+- [x] 💻 `/purchase` no muestra el aviso de compra en curso; Inicio/Explorar sí.
 
-## 3.4 · RSVP
-Evento RSVP con preguntas en el formulario del organizador (ej. Nombre obligatorio, Instagram opcional) y un tier gratis y otro pagado.
+---
 
-**Web · 🌐 / App · 📱**
-- [ ] Elegir tier → **Solicitar** → hoja "Solicitar entrada" con el nombre del organizador, las preguntas, "Invitados" con −/+, promotor y "No se te cobra ahora…" (pagado) o "Este evento es gratis".
-- [ ] Subir a 3 invitados → aparecen "Invitado 1 de 3", "2 de 3", "3 de 3", cada uno con las preguntas. Dejar vacío un obligatorio → "Obligatorio" en ese campo y no se envía.
-- [ ] Gratis: **Enviar solicitud** → "Solicitud enviada". En el panel del organizador (detalle de la solicitud): las respuestas del invitado 1 como siempre y bloques "Invitado 2", "Invitado 3".
-- [ ] Pagado: Enviar → autorización de tarjeta (web: ventana de pago; app: hoja de Stripe). En la web el promotor del enlace aparece **aplicado** (ya no "None"). Aprobar en el panel → tickets.
-- [ ] 📱 Pagado: el código de descuento en la hoja baja el monto autorizado.
-- [ ] Organizador: "Exportar pendientes" → el Excel trae columnas "Guest 2 · …" para las solicitudes con invitados.
+## 3. Una segunda reserva (B4 + aviso nuevo)
 
-**Conciliación (🌐 local)**
-- [ ] Con `stripe listen` **apagado**: aprobar una RSVP pagada → queda "Aprobada" y sin tickets (como el 10-28). Esperar 15 min (o, en Studio, poner `approved_at` 20 min atrás) y llamar al cron: `curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/reconcile-rsvp-payments` → responde `{"created":1,…}`, la RSVP pasa a "Pagada" y aparecen los tickets. Llamarlo otra vez → `created: 0` (no duplica).
+Qué protege cada cosa:
+- **B4** (3.1) protege una reserva **cuyo pago ya empezó** (tocaste Pagar). En tu prueba la primera pestaña solo tenía la pantalla abierta, sin tocar Pagar: por eso se reemplazó. Era el comportamiento previsto, sin aviso.
+- **Nuevo (10-29)**: cualquier reserva activa del mismo tier, en cualquier dispositivo, **pregunta antes** de reemplazarse.
 
-## Pendiente
-- **Datos por ticket** en compras pagadas (formulario del organizador por cada entrada): entrega aparte con migración (decisión de Kevin 10-28).
-- **Android App Links** (que un enlace `flme.co/events/…` abra la app directo, como ya pasa en iPhone): hace falta agregar `intentFilters` con `autoVerify` en `app.json` y publicar `/.well-known/assetlinks.json` con la huella SHA-256 del certificado de firma (de Play Console o del keystore). Requiere una compilación nueva de la app. Kevin decide cuándo (producción se centra en iOS).
+- [ ] 💻 Pestaña A: Ir al pago (no pagues). Pestaña B, mismo tier → Ir al pago → aviso **"Ya tienes una reserva de N entradas de este tier (quedan mm:ss)"** con: **Ir a mi reserva** (abre la de A) · **Reemplazar reserva** (crea la nueva; la de A ya no se puede pagar) · Cancelar.
+- [ ] 📱 + 💻: reserva en el celular, luego mismo tier en la PC → el mismo aviso. Y al revés (PC primero, celular después) → aviso nativo con los mismos tres botones.
+- [ ] Reemplazar con otra cantidad (ej. de 2 a 4) → la pantalla de pago muestra 4; en `holds` hay **una** reserva tuya de ese tier.
+- [ ] 💻 Pestaña A: Pagar con la tarjeta 3DS y deja abierta la autenticación. Pestaña B, mismo tier → "Ya tienes un pago en curso para este ticket…" (no ofrece reemplazar). Autenticar en A → tickets.
+- [ ] Otro tier del mismo evento → no pregunta (las reservas son por tier).
 
-## Pendiente para la salida (fase 5)
-- B11: quitar la política `"Anyone can look up promoter codes for validation"` de `promoter_links` cuando las versiones viejas de la app ya no estén en uso.
+---
 
-## 3.5 · Cierre (2026-10-29)
+## 4. RSVP
 
-**Organizador · 🌐 PC (y 📱 en la app)** — tier con 10 cupos, 2 vendidos, 1 RSVP aprobada de 2 y 1 RSVP pendiente.
-- [ ] Editar el tier a 3 cupos → aviso "no caben…" → Reducir → error "Cannot reduce capacity below 4: 2 sold, 2 in approved…". Nada cambia (la RSVP pendiente sigue pendiente).
-- [ ] Editar a 4 → Reducir → OK: la RSVP **pendiente** pasa a Rechazada (le llega el correo), la **aprobada** sigue Aprobada y con tickets.
-- [ ] Con una persona en la pantalla de pago (📱 o 🌐 celular) que ya tocó **Pagar** (Stripe procesando, o la hoja de 3DS abierta): reducir el tier desde la PC → la compra termina bien y recibe tickets (antes: cobro y reembolso).
-- [ ] RSVP pagada pendiente de un evento ya terminado (en Studio: `events.ends_at` en el pasado): el panel no muestra Aprobar; forzar la API (`PATCH /api/organizer/rsvps/{id}/approve`) → 409 `EVENT_ENDED`, sin cobro en Stripe.
-- [ ] Compras (Desglose/Compras) → Exportar → columnas "Guest 2 · …" para compras de RSVP con invitados.
+### 4.1 Preguntas: por solicitud (por defecto) o por entrada (opción del tier) — cambió el 10-29
+Configuración: Organizador → evento RSVP → Tiers → editar tier → interruptor **"Preguntas por cada entrada"** (apagado por defecto). Al crear un evento nuevo el interruptor no está; se activa después editando el tier.
+- [ ] 💻 / 📱 Tier con el interruptor **apagado**: Solicitar → subir a 3 invitados → las preguntas aparecen **una sola vez** (sin "Invitado 1 de 3"). Enviar → el organizador ve una sola respuesta.
+- [ ] Encender el interruptor en ese tier y guardar → Solicitar con 3 invitados → "Invitado 1 de 3", "2 de 3", "3 de 3", cada uno con las preguntas; un obligatorio vacío → "Obligatorio" y no se envía.
+- [ ] Organizador: detalle de la solicitud con bloques "Invitado 2", "Invitado 3"; Exportar pendientes con columnas "Guest 2 · …".
+- [x] Pagado: autorización de tarjeta; en la web el promotor del enlace aparece aplicado. 📱 El descuento baja el monto autorizado.
 
-**Asistente · 📱 app (Android si lo tienes)**
-- [ ] Tier oculto con código de acceso → en la pantalla de pago aparece la fila del código.
-- [ ] Android: en la pantalla de pago, botón atrás del sistema → vuelve al evento y la reserva se libera (desaparece "compra en curso").
+### 4.2 Aprobar
+- [x] Aprobar una RSVP pagada → tickets (con `stripe listen` encendido).
+- [ ] RSVP de un evento **terminado**: en Studio pon `events.ends_at` en el pasado → el panel no muestra Aprobar. (Prueba técnica opcional: llamar la API `PATCH /api/organizer/rsvps/{id}/approve` con la sesión del organizador → 409 `EVENT_ENDED`, sin cobro en Stripe).
 
-**Interruptores · 🌐 local**
-- [ ] `ATTENDEE_V1=true` → `/events/…` y `/purchase` son la versión de siempre y se puede comprar de punta a punta (con reloj v1).
-- [ ] 📱 `EXPO_PUBLIC_ATTENDEE_V1=false` → el evento usa la hoja de checkout de siempre; compra completa.
+### 4.3 Conciliación (RSVP aprobada que se quedó sin tickets)
+Requisito: `CRON_SECRET` en `.env.local` (§0) y el servidor reiniciado.
+1. Apaga `stripe listen`.
+2. Aprueba una RSVP **pagada** → queda "Aprobada" y sin tickets.
+3. Espera 15 min, o en Studio → `rsvps` → esa fila → `approved_at` 20 min antes de ahora (UTC).
+4. Llama al cron. En **cmd** de Windows (`$CRON_SECRET` no funciona en cmd; pon el valor tal cual):
+   `curl -H "Authorization: Bearer flme-local-cron" http://localhost:3000/api/cron/reconcile-rsvp-payments`
+   En **PowerShell** usa `curl.exe` (no `curl`) con la misma línea.
+- [ ] Responde `{"checked":1,"created":1,…}`; la RSVP pasa a comprada y aparecen los tickets.
+- [ ] Llamarlo otra vez → `"created":0` (no duplica).
+- [ ] Sin la cabecera (o con otro valor) → 401.
 
-**Punta a punta de la fase (con `stripe listen` encendido)**
-- [ ] 🌐 y 📱: comprar con promotor por enlace, descuento y reloj visible → tickets en "Mis tickets"; el promotor aparece en Compras del organizador.
-- [ ] 🌐 y 📱: RSVP pagada con 2 invitados → aprobar → tickets; el organizador ve las respuestas de ambos invitados.
+---
+
+## 5. Organizador: reducir capacidad (`force-reduce`, 3.5)
+
+**Vendido vs aprobado en un tier RSVP:** *vendido* = RSVP que ya tiene tickets (comprada) o tickets de una compra normal; *aprobada* = ya cobrada pero todavía sin tickets (solo pasa unos segundos, o mientras el webhook no llega). Por eso, para ver una "aprobada" quieta hay que apagar `stripe listen`.
+
+Preparación (evento RSVP, tier pagado de 10 cupos):
+1. Con `stripe listen` encendido: 1 RSVP de 2 invitados → Aprobar → queda **comprada** = 2 vendidos.
+2. Apaga `stripe listen`: otra RSVP de 2 → Aprobar → queda **aprobada** (2 cobrados sin tickets).
+3. Una tercera RSVP de 1 → déjala **pendiente**.
+
+- [ ] 💻 Editar el tier a 3 cupos → aviso "no caben…" → Reducir → error **"Cannot reduce capacity below 4: 2 sold, 2 in approved (already charged) RSVPs and 0 being paid right now."** Nada cambia.
+- [ ] Editar a 4 → Reducir → OK: la **pendiente** pasa a Rechazada (correo), la **aprobada** sigue Aprobada. Enciende `stripe listen` y reenvía el evento (o corre la conciliación §4.3) → recibe sus tickets.
+- [ ] Evento con tickets (no RSVP): alguien con la hoja 3DS abierta (ya tocó Pagar); desde la PC reducir el tier a lo vendido → error "being paid right now"; tras pagar, la compra termina con tickets.
+- [ ] Compras → Exportar → columnas "Guest 2 · …" para compras que vinieron de RSVP con invitados.
+
+---
+
+## 6. Compra en curso y tarjetas de organizador
+- [x] 🌐 / 📱 Salir de la pantalla de pago (Inicio/Explorar, cerrar y volver a abrir) → "COMPRA EN CURSO · … · Continuar" → misma pantalla con el reloj.
+- [x] ✕ oculta el aviso; pagar o vencer lo quitan solos.
+- [ ] 🌐 / 📱 Explorar → Organizadores: con evento próximo → su flyer; **sin eventos próximos → el flyer de su último evento** (nuevo 10-29); sin ningún evento con flyer → su foto de perfil difuminada.
+- [x] 💻 / 📱 El logo del organizador queda sobre la portada y pasa **por debajo** de las barras al hacer scroll (arreglo 10-29).
+
+---
+
+## 7. Interruptores (la v1 sigue funcionando)
+- [ ] 💻 `ATTENDEE_V1=true` y reiniciar → `/events/…` y `/purchase` son la versión de siempre (con su reloj); comprar de punta a punta. (Ahí no hay aviso de reemplazo: la v1 reemplaza en silencio como siempre).
+- [ ] 📱 `EXPO_PUBLIC_ATTENDEE_V1=false` → hoja de checkout de siempre; compra completa.
+
+## 8. Punta a punta (para cerrar la fase)
+- [x] 🌐 y 📱 compra con promotor por enlace, descuento y reloj → tickets; promotor en Compras.
+- [x] 🌐 y 📱 RSVP pagada con 2 invitados (tier "por entrada") → aprobar → tickets; el organizador ve ambos.
+- [ ] Repetir las dos con lo cambiado hoy (sin tocar atrás para cancelar; descuento antes de pagar).
+
+---
+
+## Pendiente (fuera de esta fase)
+- **Datos por ticket** en compras pagadas: entrega aparte (el interruptor "por entrada" de §4.1 se podrá reutilizar).
+- **Android App Links** (enlaces que abren la app directo): requiere la huella SHA-256 y una compilación nueva.
+- **B11** (salida, fase 5): quitar la política pública de `promoter_links`.
+- **Crons de producción solo-POST** (`monitor-payment-authorizations`, `cleanup-past-event-rsvps`): hoy no corren; decisión de Kevin.
