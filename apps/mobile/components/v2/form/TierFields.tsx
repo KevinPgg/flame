@@ -37,6 +37,7 @@ export function TierFields({
   sold = 0,
   stagesLocked = false,
   soldOut,
+  perTicket,
   reusableLabel,
 }: {
   tier: TierDraft;
@@ -54,6 +55,8 @@ export function TierFields({
   sold?: number;
   stagesLocked?: boolean;
   soldOut?: { checked: boolean; onChange: (next: boolean) => void };
+  /** RSVP tiers (tier editor): ask the questions for every ticket instead of once per request. */
+  perTicket?: { checked: boolean; onChange: (next: boolean) => void };
   reusableLabel?: string;
 }) {
   const { t } = useI18n();
@@ -169,6 +172,7 @@ export function TierFields({
             <SwitchRow title={t("eventForm.hide")} hint={t("eventForm.hideHint")} checked={tier.hidden} onChange={(hidden) => set(hidden ? { hidden } : { hidden, accessCode: "" })} />
             {soldOut ? <SwitchRow title={t("eventForm.soldOutToggle")} hint={t("eventForm.soldOutHint")} checked={soldOut.checked} onChange={soldOut.onChange} /> : null}
             <SwitchRow title={t("eventForm.stagesToggle")} hint={stagesLocked ? t("eventForm.stagesLockedExisting") : t("eventForm.stagesHint")} checked={tier.useStages} onChange={toggleStages} disabled={stagesLocked} />
+            {requiresRsvp && perTicket ? <SwitchRow title={t("eventForm.perTicketToggle")} hint={t("eventForm.perTicketHint")} checked={perTicket.checked} onChange={perTicket.onChange} /> : null}
           </Group>
         </View>
         <FieldError message={errorText(`${p}.salesStart`)} />

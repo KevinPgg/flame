@@ -40,7 +40,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
 }
 
-function setup(o: { details?: Record<string, unknown>; presentCode?: string } = {}) {
+function setup(o: { details?: Record<string, unknown>; presentCode?: string; initErrors?: string[] } = {}) {
   const log: string[] = [];
   const posts: Array<{ url: string; body: any }> = [];
   const apiGet = jest.fn(async (url: string) => {
@@ -58,9 +58,10 @@ function setup(o: { details?: Record<string, unknown>; presentCode?: string } = 
   });
   const apiGetPublic = jest.fn(async (url: string) => ({ valid: url.includes("code=JUAN") }));
   const stripe = {
-    initPaymentSheet: jest.fn(async () => {
-      log.push("initPaymentSheet");
-      return {};
+    initPaymentSheet: jest.fn(async (p: Record<string, unknown>): Promise<{ error?: { message: string } }> => {
+      log.push(`initPaymentSheet ${String(p.paymentIntentClientSecret)}`);
+      const err = o.initErrors?.shift();
+      return err ? { error: { message: err } } : {};
     }),
     presentPaymentSheet: jest.fn(async () => {
       log.push("presentPaymentSheet");
@@ -82,7 +83,7 @@ describe("usePaymentScreen (app)", () => {
       await result.current.pay();
     });
     expect(result.current.step).toBe("paid");
-    const order = ["GET /api/holds/validate", "POST /api/holds/start-payment", "initPaymentSheet", "presentPaymentSheet"];
+    const order = ["GET /api/holds/validate", "POST /api/holds/start-payment", "initPaymentSheet pi_1_secret", "presentPaymentSheet"];
     expect(log.filter((l) => order.includes(l))).toEqual(order);
     expect(posts.find((p) => p.url === "/api/holds/start-payment")?.body).toEqual({ hold_id: HOLD, payment_intent_id: "pi_1" });
     expect(result.current.expiresAt).not.toBe(before); // the countdown follows the +10 min
@@ -97,6 +98,33 @@ describe("usePaymentScreen (app)", () => {
     });
     expect(result.current.step).toBe("ready");
     expect(log).not.toContain("POST /api/holds/cancel");
+  });
+
+  it("closing the sheet also clears the 'payment in progress' mark (the server checks with Stripe) — Kevin 10-29", async () => {
+    const { posts, deps } = setup({ presentCode: "Canceled" });
+    const { result } = await renderHook(() => usePaymentScreen(HOLD, deps), { wrapper });
+    await waitFor(() => expect(result.current.step).toBe("ready"));
+    await act(async () => {
+      await result.current.pay();
+    });
+    expect(posts.filter((p) => p.url === "/api/holds/start-payment").map((p) => p.body)).toEqual([
+      { hold_id: HOLD, payment_intent_id: "pi_1" },
+      { hold_id: HOLD, payment_intent_id: "pi_1", abort: true },
+    ]);
+  });
+
+  it("the payment was replaced elsewhere (cancelled PaymentIntent): a fresh one is made and the sheet opens with it", async () => {
+    const { log, posts, deps } = setup({ initErrors: ["PaymentSheet cannot set up a PaymentIntent in status 'canceled'"] });
+    const { result } = await renderHook(() => usePaymentScreen(HOLD, deps), { wrapper });
+    await waitFor(() => expect(result.current.step).toBe("ready"));
+    await act(async () => {
+      await result.current.pay();
+    });
+    expect(result.current.step).toBe("paid");
+    expect(log.filter((l) => l.startsWith("initPaymentSheet"))).toEqual(["initPaymentSheet pi_1_secret", "initPaymentSheet pi_1_secret"]);
+    const created = posts.filter((p) => p.url === "/api/purchase/create-payment-intent");
+    expect(created).toHaveLength(2);
+    expect(created[1]?.body.oldPaymentIntentId).toBeUndefined();
   });
 
   it("promoter typed here: checked by the server, then the payment is re-created carrying it; the discount keeps it", async () => {
@@ -162,6 +190,23 @@ describe("PaymentScreenView (app)", () => {
     await renderV2(<Screen />);
     expect(await screen.findByTestId("order-access-code")).toBeTruthy();
     expect(screen.getByText("WHITEVIP")).toBeTruthy();
+  });
+
+  it("'Cancel reservation' is its own button (back never releases the reservation)", async () => {
+    const { deps } = setup();
+    const onBack = jest.fn();
+    const onCancel = jest.fn();
+    function Screen() {
+      const s = usePaymentScreen(HOLD, deps);
+      return <PaymentScreenView s={s} onBack={onBack} onDone={jest.fn()} onViewTickets={jest.fn()} onCancelReservation={onCancel} />;
+    }
+    await renderV2(<Screen />);
+    await screen.findByText("Pay $33.99");
+    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId("cancel-reservation"));
+    expect(onCancel).toHaveBeenCalled();
   });
 
   it("the island hides on the payment screen too", () => {

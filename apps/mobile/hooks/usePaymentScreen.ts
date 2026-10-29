@@ -191,9 +191,16 @@ export function usePaymentScreen(
   );
 
   const pay = useCallback(async () => {
-    if (!pi?.clientSecret || step !== "ready" || promoter.status === "validating") return;
+    // A discount / promoter being applied replaces the PaymentIntent: wait for it (Kevin 10-29:
+    // paying in that moment used the old, already-cancelled one).
+    if (!pi?.clientSecret || step !== "ready" || promoter.status === "validating" || promo.busy) return;
     setPayError(null);
     setStep("paying");
+    let usedPi = pi.paymentIntentId;
+    // Nothing is being charged (sheet closed, card declined): stop counting as "payment in
+    // progress" so the buyer isn't locked out of this tier for 20 minutes. The server asks Stripe.
+    const releaseMark = () =>
+      void post<unknown>("/api/holds/start-payment", { hold_id: holdId, payment_intent_id: usedPi, abort: true }, getToken).catch(() => {});
     try {
       await get<unknown>(`/api/holds/validate?session=${encodeURIComponent(holdId)}`, getToken);
       // B3: mark the reservation "payment in progress" (+10 min) before Stripe takes over.
@@ -201,18 +208,30 @@ export function usePaymentScreen(
       if (started?.expires_at) setExpiresAt(started.expires_at);
       const stripe = await getStripe();
       if (!stripe) throw new Error("Stripe is not available. Please use a development build for payments.");
-      const init = await stripe.initPaymentSheet({
-        paymentIntentClientSecret: pi.clientSecret,
-        merchantDisplayName: "Flame",
-        returnURL: "project-flame://stripe-redirect",
-        style: "alwaysDark",
-        applePay: { merchantCountryCode: "US" },
-        allowsDelayedPaymentMethods: false,
-        link: { display: "never" },
-      });
+      const initWith = (secret: string) =>
+        stripe.initPaymentSheet({
+          paymentIntentClientSecret: secret,
+          merchantDisplayName: "Flame",
+          returnURL: "project-flame://stripe-redirect",
+          style: "alwaysDark",
+          applePay: { merchantCountryCode: "US" },
+          allowsDelayedPaymentMethods: false,
+          link: { display: "never" },
+        });
+      let init = await initWith(pi.clientSecret);
+      if (init.error && /cancel/i.test(init.error.message)) {
+        // The PaymentIntent was replaced elsewhere (a code applied on another device or tab):
+        // make a fresh one for this reservation, with what this screen shows, and go on.
+        const fresh = await createPi({ promoCode: promo.applied, promoterCode });
+        setPi(fresh);
+        if (!fresh.clientSecret) throw new Error("Something went wrong. Please try again.");
+        usedPi = fresh.paymentIntentId;
+        init = await initWith(fresh.clientSecret);
+      }
       if (init.error) throw new Error(init.error.message);
       const res = await stripe.presentPaymentSheet();
       if (res.error) {
+        releaseMark();
         // Closed the sheet: nothing charged, the reservation stays (the countdown keeps going).
         if (res.error.code === "Canceled") {
           setStep("ready");
@@ -227,7 +246,7 @@ export function usePaymentScreen(
       setPayError(e instanceof ApiError || e instanceof Error ? e.message : "Something went wrong. Please try again.");
       setStep("ready");
     }
-  }, [pi, step, promoter.status, get, post, getToken, getStripe, holdId, queryClient]);
+  }, [pi, step, promoter.status, promo.busy, promo.applied, promoterCode, createPi, get, post, getToken, getStripe, holdId, queryClient]);
 
   const claimFree = useCallback(async () => {
     if (step !== "ready" || promoter.status === "validating") return;
@@ -252,7 +271,8 @@ export function usePaymentScreen(
     }
   }, [step, promoter.status, post, holdId, promo.promotionalCodeId, promoterCode, getToken, queryClient]);
 
-  /** Release the tickets (back / cancel). Fire and forget: the reservation expires anyway. */
+  /** Release the tickets — only from the explicit, confirmed "Cancel reservation" (Kevin 10-29:
+   *  back, switching tabs or apps never release it). Fire and forget: it expires anyway. */
   const cancel = useCallback(() => {
     if (step === "paid" || step === "claimed" || step === "paying") return;
     post<unknown>("/api/holds/cancel", { holdSessionId: holdId }, getToken)

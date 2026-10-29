@@ -74,9 +74,12 @@ export function RsvpSheet({
   const [promoterInput, setPromoterInput] = useState(promoterCode);
   const [promoInput, setPromoInput] = useState("");
 
+  // One block per guest only when the tier asks per ticket; by default once per request (Kevin
+  // 2026-10-29). Keeps what was typed when the number changes.
+  const blocks = (tier as { registration_per_ticket?: boolean | null }).registration_per_ticket === true ? Math.max(1, quantity) : 1;
   useEffect(() => {
-    setAnswers((prev) => Array.from({ length: Math.max(1, quantity) }, (_, i) => prev[i] ?? {}));
-  }, [quantity]);
+    setAnswers((prev) => Array.from({ length: blocks }, (_, i) => prev[i] ?? {}));
+  }, [blocks]);
   useEffect(() => setPromoterInput(promoterCode), [promoterCode]);
 
   const isFree = tier.displayPrice === 0;

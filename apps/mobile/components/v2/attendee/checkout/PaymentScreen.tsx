@@ -6,7 +6,7 @@
  * creates them), View tickets / Done. Logic in hooks/usePaymentScreen.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -48,7 +48,7 @@ function Timer({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => v
   );
 }
 
-export function PaymentScreenView({ s, onBack, onDone, onViewTickets }: { s: Screen; onBack: () => void; onDone: () => void; onViewTickets: () => void }) {
+export function PaymentScreenView({ s, onBack, onDone, onViewTickets, onCancelReservation }: { s: Screen; onBack: () => void; onDone: () => void; onViewTickets: () => void; onCancelReservation?: () => void }) {
   const { t, locale } = useI18n();
   const insets = useSafeAreaInsets();
   const [expired, setExpired] = useState(false);
@@ -103,7 +103,7 @@ export function PaymentScreenView({ s, onBack, onDone, onViewTickets }: { s: Scr
   const when = walletDayTime(d.event.starts_at, d.event.timezone ?? null, locale);
   const tier = [d.ticket_tier.name, d.stage_name].filter(Boolean).join(" · ");
   const total = s.amounts?.total ?? s.baseCents;
-  const waitingPromoter = s.promoter.status === "validating";
+  const waitingPromoter = s.promoter.status === "validating" || s.promo.busy;
   const busy = s.step === "paying";
 
   return (
@@ -286,6 +286,12 @@ export function PaymentScreenView({ s, onBack, onDone, onViewTickets }: { s: Scr
               <Text style={{ color: c.errorText }} className="font-v2-ui text-[13px]">{s.payError}</Text>
             </View>
           ) : null}
+
+          {onCancelReservation && !expired ? (
+            <Pressable onPress={onCancelReservation} disabled={busy} accessibilityRole="button" testID="cancel-reservation" className="self-center py-2">
+              <Text className="font-v2-ui text-[13.5px] text-v2-c70 underline">{t("checkout.cancelReservation")}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -309,12 +315,27 @@ export function PaymentScreenView({ s, onBack, onDone, onViewTickets }: { s: Scr
 export function PaymentScreen({ holdId }: { holdId: string }) {
   const s = usePaymentScreen(holdId);
   const router = useRouter();
-  const back = () => {
-    s.cancel(); // release the tickets (nothing was charged)
+  const { t } = useI18n();
+  // Kevin 2026-10-29: back (arrow, Android button, swipe) only navigates. The reservation keeps
+  // running and "purchase in progress" brings the buyer back; releasing it is explicit.
+  const leave = () => {
     if (router.canGoBack()) router.back();
     else router.replace("/" as Href);
   };
-  // Android's back button behaves like the arrow: it releases the reservation (3.5 parity).
+  const back = leave;
+  const cancelReservation = () =>
+    Alert.alert(t("checkout.cancelReservationTitle"), t("checkout.cancelReservationDetail"), [
+      { text: t("common.back"), style: "cancel" },
+      {
+        text: t("checkout.cancelReservation"),
+        style: "destructive",
+        onPress: () => {
+          s.cancel();
+          leave();
+        },
+      },
+    ]);
+  // Android's back button behaves like the arrow (navigates, keeps the reservation).
   const backRef = useRef(back);
   backRef.current = back;
   const step = s.step;
@@ -331,6 +352,7 @@ export function PaymentScreen({ holdId }: { holdId: string }) {
     <PaymentScreenView
       s={s}
       onBack={back}
+      onCancelReservation={cancelReservation}
       onDone={() => router.replace("/" as Href)}
       onViewTickets={() => router.replace("/(tabs)/dashboard" as Href)}
     />

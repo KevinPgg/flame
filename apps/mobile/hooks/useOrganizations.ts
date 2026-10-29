@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
-import type { OrganizationPublic } from "@project-flame/lib";
+import { latestFlyers, type OrganizationPublic } from "@project-flame/lib";
 import { isProductionBuild, INTERNAL_ORG_IDS } from "../lib/internal";
 
 /**
@@ -9,7 +9,7 @@ import { isProductionBuild, INTERNAL_ORG_IDS } from "../lib/internal";
  * Internal orgs (FLAME) are excluded from production builds.
  */
 export function useOrganizations() {
-  return useQuery<OrganizationPublic[]>({
+  return useQuery<Array<OrganizationPublic & { last_flyer_url?: string | null }>>({
     queryKey: ["organizations", "approved"],
     queryFn: async () => {
       let query = supabase
@@ -29,7 +29,23 @@ export function useOrganizations() {
         throw error;
       }
 
-      return (data ?? []) as OrganizationPublic[];
+      const orgs = (data ?? []) as OrganizationPublic[];
+      if (orgs.length === 0) return orgs;
+      // Kevin 2026-10-29: an organizer without upcoming events shows its latest event's flyer.
+      const { data: evs, error: evError } = await supabase
+        .from("events")
+        .select("organization_id, image_url, starts_at")
+        .in("organization_id", orgs.map((o) => o.id))
+        .eq("status", "published")
+        .not("image_url", "is", null)
+        .order("starts_at", { ascending: false })
+        .limit(1000);
+      if (evError) {
+        console.error("[useOrganizations] latest flyers query failed:", evError);
+        return orgs;
+      }
+      const flyers = latestFlyers(evs ?? []);
+      return orgs.map((o) => ({ ...o, last_flyer_url: flyers[o.id] ?? null }));
     },
     staleTime: 5 * 60 * 1000,
   });

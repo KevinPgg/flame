@@ -240,6 +240,7 @@ export function TierEditor({ eventId, tierId, organization }: { eventId: string;
           sold={sold}
           stagesLocked={!isNew}
           soldOut={isNew ? undefined : { checked: state.soldOut, onChange: (soldOut) => setState((s) => (s ? { ...s, soldOut } : s)) }}
+          perTicket={{ checked: state.perTicket === true, onChange: (perTicket) => setState((s) => (s ? { ...s, perTicket } : s)) }}
         />
 
         {!isNew && (

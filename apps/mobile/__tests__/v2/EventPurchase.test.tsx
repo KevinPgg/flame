@@ -75,7 +75,7 @@ describe("TierList (app)", () => {
     await renderV2(<Harness onSelect={jest.fn()} />);
     expect(screen.getByText("Tickets")).toBeTruthy();
     expect(screen.getAllByText(/On sale · max/)).toHaveLength(2);
-    expect(screen.getByText("Opens next · max 20")).toBeTruthy();
+    expect(screen.getByText("soon · max 20")).toBeTruthy(); // Kevin 10-29 copy (event.opensNext)
     expect(screen.queryByText("Select")).toBeNull();
     expect(screen.queryByRole("button", { name: "Checkout" })).toBeNull();
     expect(screen.getByText("Unlocked")).toBeTruthy();

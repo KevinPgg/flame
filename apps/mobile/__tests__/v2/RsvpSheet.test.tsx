@@ -16,14 +16,14 @@ const EVENT = {
 } as never;
 const TIER = { id: "t5", name: "Tier 5", displayPrice: 1200, price_cents: 1200, status: "available", registration_form_fields: null, per_user_limit: 5 } as never;
 
-function Harness({ onSend }: { onSend: (a: Record<string, unknown> | null) => void }) {
+function Harness({ onSend, tier = TIER }: { onSend: (a: Record<string, unknown> | null) => void; tier?: never }) {
   const [q, setQ] = useState(1);
   return (
     <RsvpSheet
       visible
       onClose={jest.fn()}
       event={EVENT}
-      tier={TIER}
+      tier={tier}
       quantity={q}
       maxQuantity={5}
       onQuantity={setQ}
@@ -46,9 +46,21 @@ describe("RsvpSheet (app)", () => {
     expect(rsvpAnswersPayload([{ name: "A" }, { name: "B" }])).toEqual({ name: "A", _guests: [{ name: "B" }] });
   });
 
-  it("one block per guest; required answers checked; sends guest 1 + _guests; promoter shown; not charged now", async () => {
+  it("by default (Kevin 10-29) the questions are answered once per request, whatever the guests", async () => {
     const onSend = jest.fn();
     await renderV2(<Harness onSend={onSend} />);
+    await fireEvent.press(screen.getByRole("button", { name: "More tickets" }));
+    expect(screen.queryByText("Guest 2 of 2")).toBeNull();
+    const names = screen.getAllByLabelText("Full name");
+    expect(names).toHaveLength(1);
+    await fireEvent.changeText(names[0]!, "Ana");
+    await fireEvent.press(screen.getByRole("button", { name: "Send request" }));
+    expect(onSend).toHaveBeenCalledWith({ name: "Ana" });
+  });
+
+  it("tier set per ticket: one block per guest; required answers checked; sends guest 1 + _guests; promoter shown; not charged now", async () => {
+    const onSend = jest.fn();
+    await renderV2(<Harness onSend={onSend} tier={{ ...(TIER as object), registration_per_ticket: true } as never} />);
     expect(screen.getByText("Promoter PIRILIN")).toBeTruthy();
     expect(screen.getByText(/You won’t be charged now/)).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "More tickets" }));

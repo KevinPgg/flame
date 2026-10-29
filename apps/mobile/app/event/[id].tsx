@@ -39,6 +39,7 @@ import {
   normalizeTicketTierSecretCode,
   formatCentsAsPrice,
   myEventState,
+  holdCountdown,
   type TicketTier,
 } from "@project-flame/lib";
 import { useCheckout, getStageId } from "../../hooks/useCheckout";
@@ -335,7 +336,7 @@ export default function EventDetailScreen() {
   // (promoter, discount, countdown and Pay live there). RSVP keeps its sheet until 3.4.
   const [reserving, setReserving] = useState(false);
   const [reserveError, setReserveError] = useState<string | null>(null);
-  const reserveAndPay = useCallback(async () => {
+  const reserveAndPay = useCallback(async (replaceExisting = false) => {
     if (!selectedTier || !event || reserving) return;
     // B2: never reserve while the promoter code is being checked.
     if (checkoutState.promoterStatus === "validating") return;
@@ -354,12 +355,29 @@ export default function EventDetailScreen() {
           ...(stageId !== undefined ? { stage_id: stageId } : {}),
           ...(secret ? { secret_code: secret } : {}),
           ...(promoterCode ? { promoter_code: promoterCode } : {}),
+          // Kevin 2026-10-29: ask before replacing a reservation of this tier (this or another device).
+          check_existing: true,
+          ...(replaceExisting ? { replace_existing: true } : {}),
         },
         getToken,
       );
       router.push(`/checkout/${hold.hold_session_id}` as Href);
     } catch (err) {
       const code = err instanceof ApiError ? err.code : undefined;
+      const existing = code === "HOLD_EXISTS" ? ((err as ApiError).details as { id?: string; quantity?: number; expires_at?: string } | undefined) : undefined;
+      if (existing?.id) {
+        const id = existing.id;
+        Alert.alert(
+          t("checkout.replaceTitle", { count: existing.quantity ?? 1, time: holdCountdown(existing.expires_at)?.label ?? "" }),
+          t("checkout.replaceDetail"),
+          [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("checkout.replaceGoTo"), onPress: () => router.push(`/checkout/${id}` as Href) },
+            { text: t("checkout.replaceConfirm"), style: "destructive", onPress: () => void reserveAndPayRef.current(true) },
+          ],
+        );
+        return;
+      }
       setReserveError(
         code === "PAYMENT_IN_PROGRESS"
           ? t("checkout.paymentInProgress")
@@ -371,6 +389,8 @@ export default function EventDetailScreen() {
       setReserving(false);
     }
   }, [selectedTier, event, reserving, checkoutState, quantity, getToken, router, t]);
+  const reserveAndPayRef = useRef(reserveAndPay);
+  reserveAndPayRef.current = reserveAndPay;
 
   const handleContinueToCheckout = useCallback(() => {
     if (!selectedTier) return;

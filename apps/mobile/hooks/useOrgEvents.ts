@@ -52,6 +52,8 @@ export interface OrgEventTier {
   /** Per-tier subset of event-level registration form field IDs. See
    *  packages/lib/src/utils/registration-form.ts for semantics. */
   registration_form_fields?: string[] | null;
+  /** RSVP: questions per ticket (each guest) instead of once per request. */
+  registration_per_ticket?: boolean | null;
   /** W4-C1 (May 2026): organizer toggle. When true, isTierAvailable() returns
    *  false regardless of capacity so attendees see "Sold Out". The organizer
    *  dashboard surfaces a separate "Marked as Sold Out" indicator. */
@@ -120,6 +122,7 @@ const EVENT_FIELDS = `
     order_index,
     secret_code,
     registration_form_fields,
+    registration_per_ticket,
     is_manually_sold_out,
     is_hidden,
     description,

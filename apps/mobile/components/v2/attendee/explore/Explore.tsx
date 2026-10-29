@@ -25,9 +25,9 @@ import type { FeedEvent } from "../home/EventFeedCard";
 import { EventTile } from "../EventTile";
 import { Button, ErrorBox, Icon, OrgAvatar } from "../../ui";
 
-type Org = { id: string; name: string; slug: string; logo_url?: string | null; cover_image_url?: string | null; city?: string | null };
+type Org = { id: string; name: string; slug: string; logo_url?: string | null; cover_image_url?: string | null; city?: string | null; last_flyer_url?: string | null };
 
-/** Background: the flyer of the organizer's next event, else its photo (Kevin 2026-10-28). */
+/** Background: the flyer of the organizer's next event, else its latest one, else its photo (Kevin 2026-10-28/29). */
 function OrgCard({ org, width, events }: { org: Org; width: number; events: FeedEvent[] }) {
   const { t } = useI18n();
   const router = useRouter();
