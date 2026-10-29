@@ -12,6 +12,7 @@ export function ConfirmDialog({
   busy,
   onConfirm,
   onCancel,
+  secondary,
 }: {
   open: boolean;
   message: string;
@@ -21,6 +22,8 @@ export function ConfirmDialog({
   busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** A third, non-destructive way out (e.g. "Go to my reservation"). */
+  secondary?: { label: string; onClick: () => void };
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
@@ -41,7 +44,7 @@ export function ConfirmDialog({
     >
       <p className="text-[15px] leading-relaxed">{message}</p>
       {detail && <p className="mt-2 text-[13px] leading-relaxed text-v2-c70">{detail}</p>}
-      <div className="mt-5 flex justify-end gap-2">
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
@@ -49,6 +52,15 @@ export function ConfirmDialog({
         >
           {t("common.cancel")}
         </button>
+        {secondary && (
+          <button
+            type="button"
+            onClick={secondary.onClick}
+            className="h-9 rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink"
+          >
+            {secondary.label}
+          </button>
+        )}
         <button
           type="button"
           disabled={busy}

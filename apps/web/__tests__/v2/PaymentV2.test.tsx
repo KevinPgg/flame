@@ -121,6 +121,54 @@ describe("payment screen v2 (/purchase)", () => {
     expect(calls.filter((c) => c.url === "/api/purchase/create-payment-intent")[1]?.body).toMatchObject({ promoCode: "SAVE10", promoterCode: "PIRILIN" });
   });
 
+  it("Pay waits while a discount is being applied (it replaces the payment) — Kevin 10-29", async () => {
+    const user = userEvent.setup({ delay: null });
+    const gate = { release: () => {} };
+    stub((url, body) => {
+      if (url.startsWith("/api/holds/details")) return json(DETAILS);
+      if (url === "/api/purchase/create-payment-intent") {
+        if (!body?.promoCode) return json(PI("pi_1"));
+        return undefined;
+      }
+    });
+    // the discount call hangs until released
+    const orig = globalThis.fetch as unknown as (i: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+    vi.stubGlobal("fetch", vi.fn(async (i: RequestInfo | URL, init?: RequestInit) => {
+      const b = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      if (String(i) === "/api/purchase/create-payment-intent" && b?.promoCode) {
+        await new Promise<void>((r) => (gate.release = r));
+        return json(PI("pi_2", { discount: 300, total: 3069 }));
+      }
+      return orig(i, init);
+    }));
+    renderV2(<StripePurchaseFlow v2 />);
+    await user.type(await screen.findByRole("textbox", { name: "Discount code" }), "save10");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByRole("button", { name: "Pay $33.99" })).toBeDisabled();
+    await act(async () => gate.release());
+    expect(await screen.findByRole("button", { name: "Pay $30.69" })).toBeEnabled();
+  });
+
+  it("back only navigates; releasing the reservation is an explicit, confirmed 'Cancel reservation'", async () => {
+    const user = userEvent.setup({ delay: null });
+    const calls = stub((url) => {
+      if (url.startsWith("/api/holds/details")) return json(DETAILS);
+      if (url === "/api/purchase/create-payment-intent") return json(PI("pi_1"));
+      if (url === "/api/holds/cancel") return json({ ok: true });
+    });
+    const back = vi.spyOn(history, "back").mockImplementation(() => {});
+    renderV2(<StripePurchaseFlow v2 />);
+    await user.click(await screen.findByRole("button", { name: "Back" }));
+    expect(back).toHaveBeenCalled();
+    expect(calls.some((c) => c.url === "/api/holds/cancel")).toBe(false);
+    await user.click(screen.getAllByRole("button", { name: "Cancel reservation" })[0]!);
+    expect(screen.getByText("Cancel this reservation?")).toBeInTheDocument();
+    expect(calls.some((c) => c.url === "/api/holds/cancel")).toBe(false);
+    const dialogButtons = screen.getAllByRole("button", { name: "Cancel reservation" });
+    await user.click(dialogButtons[dialogButtons.length - 1]!);
+    await waitFor(() => expect(calls.find((c) => c.url === "/api/holds/cancel")?.body).toEqual({ holdSessionId: HOLD }));
+  });
+
   it("expired reservation: says so, Pay is blocked, 'Choose again' goes back to the event", async () => {
     stub((url) => {
       if (url.startsWith("/api/holds/details")) return json({ ...DETAILS, expires_at: new Date(Date.now() + 1500).toISOString() });

@@ -971,7 +971,7 @@ export default function StripePurchaseFlow({ v2 = false }: { v2?: boolean } = {}
                   onPaymentStarted={(end) => {
                     if (end) setHoldExpiresAt(end);
                   }}
-                  blocked={holdExpired}
+                  blocked={holdExpired || isApplyingPromo}
                   externalError={paymentError}
                 />
               </Elements>

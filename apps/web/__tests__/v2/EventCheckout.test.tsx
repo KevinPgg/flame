@@ -153,12 +153,41 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(screen.queryByRole("dialog", { name: "Request to join" })).not.toBeInTheDocument();
   });
 
-  it("RSVP (3.4): the organizer's questions once per guest; required ones checked; guest 1 at the top + _guests", async () => {
+  it("RSVP by default (Kevin 10-29): the questions once per request, whatever the number of guests", async () => {
     st.mutate = vi.fn();
     const user = userEvent.setup({ delay: null });
     mockFetch(PROMOTER);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const free = { ...EVENT.ticket_tiers[0], price_cents: 0 };
+    renderV2(
+      <QueryClientProvider client={client}>
+        <EventDetail
+          event={{ ...EVENT, requires_rsvp: true, ticket_tiers: [free], registration_form_config: [{ id: "name", label: "Full name", type: "text", required: true }] } as never}
+          header={<h1>header</h1>}
+          footer={null}
+        />
+      </QueryClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: /General/ }));
+    await user.click(screen.getAllByRole("button", { name: "Request to join" })[0]!);
+    const sheet = screen.getByRole("dialog", { name: "Request to join" });
+    await user.click(within(sheet).getByRole("button", { name: "More tickets" }));
+    expect(within(sheet).queryByText("Guest 1 of 2")).not.toBeInTheDocument();
+    const names = within(sheet).getAllByLabelText("Full name");
+    expect(names).toHaveLength(1);
+    await user.type(names[0]!, "Ana");
+    await user.click(within(sheet).getByRole("button", { name: "Send request" }));
+    await waitFor(() => expect(st.mutate).toHaveBeenCalled());
+    expect(st.mutate.mock.calls[0][0]).toMatchObject({ quantity: 2, registration_data: { name: "Ana" } });
+    expect(st.mutate.mock.calls[0][0].registration_data._guests).toBeUndefined();
+  });
+
+  it("RSVP tier set to 'questions for every ticket': once per guest; required ones checked; guest 1 at the top + _guests", async () => {
+    st.mutate = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    mockFetch(PROMOTER);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const free = { ...EVENT.ticket_tiers[0], price_cents: 0, registration_per_ticket: true };
     renderV2(
       <QueryClientProvider client={client}>
         <EventDetail
@@ -223,6 +252,29 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(screen.getAllByRole("button", { name: "Checkout" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Checkout" }));
     await waitFor(() => expect(f.posts().find((c) => c.url === "/api/holds/create")?.body).toMatchObject({ ticket_tier_id: "t1", quantity: 1 }));
+  });
+
+  it("a reservation of this tier already exists (this or another device): asks before replacing it", async () => {
+    const user = userEvent.setup({ delay: null });
+    const existing = { id: "old-hold", quantity: 3, expires_at: new Date(Date.now() + 12 * 60_000).toISOString() };
+    const f = mockFetch([
+      ...PROMOTER,
+      {
+        match: (u: string, init?: RequestInit) => u.includes("/api/holds/create") && !String(init?.body).includes("replace_existing"),
+        status: 409,
+        body: { error: "You already have a reservation for this ticket.", code: "HOLD_EXISTS", hold: existing, details: existing },
+      },
+      { match: (u: string) => u.includes("/api/holds/create"), body: { hold_session_id: "h2", ticket_tier: { price_cents: 1500 } } },
+    ]);
+    open();
+    await user.click(screen.getByRole("button", { name: "Get tickets" }));
+    await user.click(screen.getByRole("button", { name: "Checkout" }));
+    expect(await screen.findByText(/You already have a reservation of 3 tickets for this tier \(1[12]:\d\d left\)/)).toBeInTheDocument();
+    expect(f.posts().filter((c) => c.url === "/api/holds/create")[0]?.body).toMatchObject({ check_existing: true });
+    expect(screen.getByRole("button", { name: "Go to my reservation" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Replace reservation" }));
+    await waitFor(() => expect(f.posts().filter((c) => c.url === "/api/holds/create")).toHaveLength(2));
+    expect(f.posts().filter((c) => c.url === "/api/holds/create")[1]?.body).toMatchObject({ check_existing: true, replace_existing: true });
   });
 
   it("with tickets for this event the bar says You're going · View N tickets", () => {

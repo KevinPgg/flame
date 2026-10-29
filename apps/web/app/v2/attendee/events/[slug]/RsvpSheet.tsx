@@ -2,7 +2,8 @@
 
 /**
  * Flame 2.0 RSVP sheet, web (fase 3.4, prototype `ACTS.rsvp`): the event, "Request to join",
- * the organizer's questions ONE BLOCK PER GUEST ("Guest 2 of 3"), the number of guests, the
+ * the organizer's questions (once per request, or ONE BLOCK PER GUEST "Guest 2 of 3" when the
+ * tier is set to ask per ticket — Kevin 2026-10-29), the number of guests, the
  * promoter (✓ from the link or a field), when it's charged, and "Send request". Guest 1's answers
  * go at the top level of registration_data (as always) and the others in `_guests` (Kevin's
  * "compatible" choice; the server validates each guest). Paid RSVPs then go to the existing card
@@ -21,7 +22,8 @@ export type RsvpSheetProps = {
   open: boolean;
   onClose: () => void;
   event: { name: string; image_url: string | null; starts_at: string; timezone: string | null; venue: string | null; currency: string; organizer: string };
-  tier: { name: string; unitCents: number; stageName?: string | null };
+  /** perTicket: the organizer set this tier to ask the questions for every guest (default once). */
+  tier: { name: string; unitCents: number; stageName?: string | null; perTicket?: boolean };
   quantity: number;
   maxQuantity: number;
   onQuantity: (n: number) => void;
@@ -51,10 +53,12 @@ export function RsvpSheet(p: RsvpSheetProps) {
   const [answers, setAnswers] = useState<Answers[]>([{}]);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
 
-  // One block per guest; keep what was typed when the number changes.
+  // One block per guest when the tier asks per ticket, else one for the whole request (Kevin
+  // 2026-10-29: per request is the default); keep what was typed when the number changes.
+  const blocks = p.tier.perTicket ? Math.max(1, p.quantity) : 1;
   useEffect(() => {
-    setAnswers((prev) => Array.from({ length: Math.max(1, p.quantity) }, (_, i) => prev[i] ?? {}));
-  }, [p.quantity]);
+    setAnswers((prev) => Array.from({ length: blocks }, (_, i) => prev[i] ?? {}));
+  }, [blocks]);
 
   useEffect(() => {
     if (!p.open) return;

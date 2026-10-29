@@ -14,6 +14,7 @@ import type { Stripe } from "@stripe/stripe-js";
 import { formatCentsAsPrice, holdCountdown, walletDayTime } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { Icon } from "../../components/Icon";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import StripePaymentForm from "../../../components/StripePaymentForm";
 import { flameCheckoutElementsAppearance } from "../../../lib/stripe/checkout-elements-appearance";
 
@@ -95,6 +96,9 @@ function Timer({ expiresAt, onExpired }: { expiresAt: string; onExpired: () => v
 export function PaymentV2(p: PaymentV2Props) {
   const { t, locale } = useI18n();
   const [feeOpen, setFeeOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  // Back only navigates: the reservation keeps running ("purchase in progress" brings it back).
+  // Releasing it is always an explicit, confirmed "Cancel reservation" (Kevin 2026-10-29).
   const back = useCallback(() => history.back(), []);
 
   if (p.status === "loading") {
@@ -320,7 +324,7 @@ export function PaymentV2(p: PaymentV2Props) {
               paymentIntentId={p.payment.paymentIntentId}
               onPaymentStarted={p.payment.onPaymentStarted}
               // B7: expired reservation; B2: wait for a promoter being checked.
-              blocked={p.holdExpired || waitingPromoter}
+              blocked={p.holdExpired || waitingPromoter || p.promo.busy}
               externalError={p.payment.externalError}
             />
           </Elements>
@@ -328,10 +332,22 @@ export function PaymentV2(p: PaymentV2Props) {
       ) : null}
 
       {p.onCancel && (
-        <button type="button" onClick={p.onCancel} disabled={p.cancelling} className="self-center text-[13.5px] text-v2-c70 underline hover:text-v2-cream disabled:opacity-50">
-          {p.cancelling ? "…" : t("checkout.cancel")}
+        <button type="button" onClick={() => setConfirmCancel(true)} disabled={p.cancelling} className="self-center text-[13.5px] text-v2-c70 underline hover:text-v2-cream disabled:opacity-50">
+          {p.cancelling ? "…" : t("checkout.cancelReservation")}
         </button>
       )}
+      <ConfirmDialog
+        open={confirmCancel}
+        message={t("checkout.cancelReservationTitle")}
+        detail={t("checkout.cancelReservationDetail")}
+        confirmLabel={t("checkout.cancelReservation")}
+        busy={p.cancelling}
+        onConfirm={() => {
+          setConfirmCancel(false);
+          p.onCancel?.();
+        }}
+        onCancel={() => setConfirmCancel(false)}
+      />
     </div>
   );
 }

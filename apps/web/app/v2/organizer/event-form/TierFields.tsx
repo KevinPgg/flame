@@ -36,6 +36,7 @@ export function TierFields({
   sold = 0,
   stagesLocked = false,
   soldOut,
+  perTicket,
   reusableLabel,
 }: {
   tier: TierDraft;
@@ -56,6 +57,8 @@ export function TierFields({
   stagesLocked?: boolean;
   /** Tier editor: the "Mark as sold out" switch. */
   soldOut?: { checked: boolean; onChange: (next: boolean) => void };
+  /** RSVP tiers (tier editor): ask the questions for every ticket instead of once per request. */
+  perTicket?: { checked: boolean; onChange: (next: boolean) => void };
   reusableLabel?: string;
 }) {
   const { t } = useI18n();
@@ -289,6 +292,14 @@ export function TierFields({
             onChange={toggleStages}
             disabled={stagesLocked}
           />
+          {requiresRsvp && perTicket && (
+            <SwitchRow
+              title={t("eventForm.perTicketToggle")}
+              hint={t("eventForm.perTicketHint")}
+              checked={perTicket.checked}
+              onChange={perTicket.onChange}
+            />
+          )}
         </Group>
         <FieldError path={`${p}.salesStart`} message={errorText(`${p}.salesStart`)} />
         <FieldError path={`${p}.salesEnd`} message={errorText(`${p}.salesEnd`)} />

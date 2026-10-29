@@ -28,6 +28,7 @@ import {
   normalizeTicketTierSecretCode,
   filterFieldsForTier,
   myEventState,
+  holdCountdown,
 } from "@project-flame/lib";
 import { useRsvpSubmission, type ApiError } from "../lib/hooks/useRsvp";
 import { useMultipleTicketAvailability } from "../lib/hooks/useTicketAvailability";
@@ -42,6 +43,7 @@ import { AccessCodeSheet } from "../v2/attendee/events/[slug]/CheckoutSheet";
 import { RsvpSheet, type RsvpField } from "../v2/attendee/events/[slug]/RsvpSheet";
 import { TierCard, BuyBar, buyBtn, type TierState } from "../v2/attendee/events/[slug]/TierCard";
 import { Icon as V2Icon } from "../v2/components/Icon";
+import { ConfirmDialog } from "../v2/components/ConfirmDialog";
 import { useI18n } from "../lib/i18n";
 
 /** Event shape for EventDetail; extends shared Event with nested relations. */
@@ -135,6 +137,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
     "success" | "error" | null
   >(null);
   const [creatingHold, setCreatingHold] = useState(false);
+  // Kevin 2026-10-29: a reservation of this tier already exists (this or another device) → ask.
+  const [existingHold, setExistingHold] = useState<{ id: string; quantity: number; expires_at: string; secretCode?: string | null; formData?: RegistrationData } | null>(null);
   // W4-C3 (Jun 2026): access-code unlocks hidden tiers in-page; no pre-checkout
   // modal. `verifiedSecretCode` is the code the user typed in the access-code
   // input — re-sent in the checkout payload so the server can re-verify the
@@ -851,7 +855,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   // If needed for direct purchase events, add form collection logic here similar to handleRsvpSubmit.
   const handleDirectPurchase = async (
     secretCode?: string | null,
-    formData?: RegistrationData
+    formData?: RegistrationData,
+    replaceExisting = false
   ) => {
     setIsFreeClaimSuccess(false); // Reset success state
     if (!selectedTier || !isSignedIn) return;
@@ -880,6 +885,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           ...(codeToUse && { secret_code: codeToUse }), // Include secret_code if verified
           ...(dataToUse && { registration_data: dataToUse }), // Include form data if provided
           ...(effectivePromoterCode && { promoter_code: effectivePromoterCode }), // Include validated promoter code
+          // v2: ask before replacing a reservation of this tier (any device); v1 keeps the old silent replace.
+          ...(v2Frame && { check_existing: true, ...(replaceExisting && { replace_existing: true }) }),
         }),
       });
 
@@ -887,14 +894,21 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         // Try to parse JSON error, fall back to text
         let errorMessage = "Failed to create reservation";
         let errorCode: string | undefined;
+        let errorHold: { id: string; quantity: number; expires_at: string } | undefined;
 
         try {
           const data = await response.json();
           errorMessage = data.error || errorMessage;
           errorCode = data.code;
+          errorHold = data.hold;
         } catch {
           const text = await response.text();
           errorMessage = text || errorMessage;
+        }
+
+        if (errorCode === "HOLD_EXISTS" && errorHold && v2Frame) {
+          setExistingHold({ ...errorHold, secretCode, formData });
+          return;
         }
 
         // B4: a payment for this ticket is already running in another tab / device.
@@ -2045,6 +2059,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             name: selectedTierData.name,
             unitCents: getEffectivePrice(selectedTier, selectedStageId),
             stageName: selectedStageData?.name ?? null,
+            perTicket: (selectedTierData as { registration_per_ticket?: boolean | null }).registration_per_ticket === true,
           }}
           quantity={selectedQuantity}
           maxQuantity={getMaxQuantityForTier(selectedTierData)}
@@ -2088,6 +2103,29 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           onUnlock={(v) => void validateAccessCode(v)}
           status={accessCodeStatus}
           error={accessCodeError}
+        />
+      )}
+      {v2Frame && (
+        <ConfirmDialog
+          open={existingHold !== null}
+          message={tv2("checkout.replaceTitle", { count: existingHold?.quantity ?? 0, time: holdCountdown(existingHold?.expires_at)?.label ?? "" })}
+          detail={tv2("checkout.replaceDetail")}
+          confirmLabel={tv2("checkout.replaceConfirm")}
+          busy={creatingHold}
+          secondary={{
+            label: tv2("checkout.replaceGoTo"),
+            onClick: () => {
+              const id = existingHold?.id;
+              setExistingHold(null);
+              if (id) window.location.href = `/purchase?session=${encodeURIComponent(id)}`;
+            },
+          }}
+          onConfirm={() => {
+            const h = existingHold;
+            setExistingHold(null);
+            void handleDirectPurchase(h?.secretCode, h?.formData, true);
+          }}
+          onCancel={() => setExistingHold(null)}
         />
       )}
 

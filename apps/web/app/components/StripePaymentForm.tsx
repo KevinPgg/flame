@@ -158,6 +158,18 @@ export default function StripePaymentForm({
         }
       }
 
+      // The card was declined / authentication failed: nothing is being charged, so the
+      // reservation stops counting as "payment in progress" right away (otherwise the buyer is
+      // locked out of buying this tier again for 20 minutes). The server checks with Stripe.
+      const releaseMark = () => {
+        if (isRsvp || !holdSessionId || !paymentIntentId) return;
+        void fetch("/api/holds/start-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hold_id: holdSessionId, payment_intent_id: paymentIntentId, abort: true }),
+        }).catch(() => {});
+      };
+
       // Confirm the payment
       console.log("[StripePaymentForm] Confirming payment...");
       const { error, paymentIntent } = await stripe.confirmPayment({
@@ -185,6 +197,7 @@ export default function StripePaymentForm({
         });
         setErrorMessage(error.message || "Payment failed");
         setProcessing(false);
+        releaseMark();
         onError(error.message || "Payment failed");
       } else if (paymentIntent && paymentIntent.status === "requires_action") {
         // Handle 3DS or other actions manually if confirmPayment returns this status
@@ -205,6 +218,7 @@ export default function StripePaymentForm({
         if (actionError) {
           setErrorMessage(actionError.message || "Authentication failed");
           setProcessing(false);
+          releaseMark();
           onError(actionError.message || "Authentication failed");
         } else if (
           confirmationIntent &&
@@ -214,6 +228,7 @@ export default function StripePaymentForm({
             "Authentication failed. Please try another payment method.";
           setErrorMessage(message);
           setProcessing(false);
+          releaseMark();
           onError(message);
         } else if (
           confirmationIntent &&

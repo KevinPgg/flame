@@ -23,6 +23,10 @@ vi.mock("@/app/lib/auth", () => ({
   },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
+const pi = vi.hoisted(() => ({ status: "requires_payment_method", holdId: "11111111-1111-4111-8111-111111111111" as string | null }));
+vi.mock("@/app/lib/stripe/stripe", () => ({
+  stripe: { paymentIntents: { retrieve: vi.fn(async () => ({ status: pi.status, metadata: { holdId: pi.holdId } })) } },
+}));
 
 import { POST as startPayment } from "@/app/api/holds/start-payment/route";
 import { POST as createHold } from "@/app/api/holds/create/route";
@@ -73,13 +77,20 @@ beforeEach(() => {
 });
 
 describe("POST /api/holds/start-payment (B3)", () => {
-  it("marks the hold with the PaymentIntent and extends it 10 minutes", async () => {
+  it("marks the hold and tops it up to 10 minutes left (5 left → +5), never past the clock shown", async () => {
     db([hold()]);
     state.rpcResult.mark_hold_payment_started = { success: true, new_expiration: "2026-10-28T20:00:00Z" };
     const res = await start();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, expires_at: "2026-10-28T20:00:00Z", extended: true });
-    expect(state.rpcs).toEqual([{ name: "mark_hold_payment_started", args: { p_hold_id: HOLD, p_checkout_id: "stripe:pi_123abc", p_extend_minutes: 10 } }]);
+    expect(state.rpcs).toEqual([{ name: "mark_hold_payment_started", args: { p_hold_id: HOLD, p_checkout_id: "stripe:pi_123abc", p_extend_minutes: 5 } }]);
+  });
+
+  it("with 10 minutes or more left it only marks (extend 0): the 30-minute clock never grows", async () => {
+    db([hold({ expires_at: iso(25 * MIN) })]);
+    state.rpcResult.mark_hold_payment_started = { success: true, new_expiration: "x" };
+    await start();
+    expect(state.rpcs[0].args.p_extend_minutes).toBe(0);
   });
 
   it("sign-in, a valid body and the buyer's own hold are required", async () => {
@@ -126,6 +137,72 @@ describe("POST /api/holds/start-payment (B3)", () => {
     state.rpcResult.mark_hold_payment_started = { success: false, error: "Hold has expired" };
     const res = await start();
     expect(res.status).toBe(410);
+  });
+});
+
+describe("POST /api/holds/start-payment abort (sheet closed / card declined)", () => {
+  const abort = () => start({ hold_id: HOLD, payment_intent_id: "pi_123abc", abort: true });
+  beforeEach(() => {
+    pi.status = "requires_payment_method";
+    pi.holdId = HOLD;
+  });
+
+  it("clears the mark when Stripe says nothing is moving", async () => {
+    const d = db([hold({ payment_in_progress: true, payment_started_at: iso(-1 * MIN) })]);
+    const res = await abort();
+    expect(await res.json()).toMatchObject({ ok: true, cleared: true });
+    const w = d.writes().find((x: any) => x.table === "holds" && x.op === "update");
+    expect(w.filters).toEqual(expect.arrayContaining([`id=${HOLD}`, "user_id=u1"]));
+    expect(state.rpcs).toEqual([]);
+  });
+
+  it("keeps the mark when the money may be moving (processing / succeeded)", async () => {
+    for (const st of ["processing", "succeeded", "requires_capture"]) {
+      pi.status = st;
+      const d = db([hold({ payment_in_progress: true, payment_started_at: iso(-1 * MIN) })]);
+      expect(await (await abort()).json()).toMatchObject({ cleared: false });
+      expect(d.writes()).toEqual([]);
+    }
+  });
+
+  it("refuses a PaymentIntent of another reservation", async () => {
+    pi.holdId = "99999999-9999-4999-8999-999999999999";
+    db([hold({ payment_in_progress: true, payment_started_at: iso(-1 * MIN) })]);
+    expect((await abort()).status).toBe(400);
+  });
+});
+
+describe("POST /api/holds/create — asks before replacing (Kevin 2026-10-29)", () => {
+  const body = { event_id: EVENT, ticket_tier_id: TIER, quantity: 2, check_existing: true };
+
+  it("an active reservation of the same tier (any device) → 409 HOLD_EXISTS with its details", async () => {
+    db([hold({ quantity: 3, stage_name: null })]);
+    const res = await createHold(post("/api/holds/create", body));
+    expect(res.status).toBe(409);
+    const j = await res.json();
+    expect(j.code).toBe("HOLD_EXISTS");
+    expect(j.hold).toMatchObject({ id: HOLD, quantity: 3 });
+    expect(state.rpcs.map((r) => r.name)).not.toContain("atomic_create_hold_with_stage_validation");
+  });
+
+  it("confirmed (replace_existing) → replaced as before", async () => {
+    db([hold()]);
+    state.rpcResult.cleanup_expired_holds = [{ deleted_count: 0, affected_tier_ids: [] }];
+    await createHold(post("/api/holds/create", { ...body, replace_existing: true }));
+    expect(state.rpcs.map((r) => r.name)).toContain("atomic_create_hold_with_stage_validation");
+  });
+
+  it("old clients (no check_existing) keep the old silent replacement", async () => {
+    db([hold()]);
+    state.rpcResult.cleanup_expired_holds = [{ deleted_count: 0, affected_tier_ids: [] }];
+    await createHold(post("/api/holds/create", { event_id: EVENT, ticket_tier_id: TIER, quantity: 1 }));
+    expect(state.rpcs.map((r) => r.name)).toContain("atomic_create_hold_with_stage_validation");
+  });
+
+  it("a paying hold still answers PAYMENT_IN_PROGRESS first", async () => {
+    db([hold({ payment_in_progress: true, payment_started_at: iso(-2 * MIN) })]);
+    const res = await createHold(post("/api/holds/create", body));
+    expect((await res.json()).code).toBe("PAYMENT_IN_PROGRESS");
   });
 });
 

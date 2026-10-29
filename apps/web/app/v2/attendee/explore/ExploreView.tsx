@@ -19,7 +19,7 @@ import { OrgAvatar } from "../../components/OrgAvatar";
 import { ErrorBox } from "../../components/ErrorBox";
 import { EventTile } from "../EventTile";
 
-/** Background: the flyer of the organizer's next event, else its photo (Kevin 2026-10-28). */
+/** Background: the flyer of the organizer's next event, else its latest one, else its photo (Kevin 2026-10-28/29). */
 function OrgCard({ org, wide, events }: { org: ExploreOrganizer; wide?: boolean; events: HomeEvent[] }) {
   const { t } = useI18n();
   const bg = organizerCover(org, events);
