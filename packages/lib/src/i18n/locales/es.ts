@@ -270,6 +270,10 @@ export const es: Messages = {
     share: "Compartir",
     done: "Listo",
     noPayment: "Gratis: no hace falta pagar.",
+    inProgress: "Compra en curso",
+    inProgressLine: "{quantity} × {tier} · quedan {time}",
+    continue2: "Continuar",
+    hide: "Ocultar",
   },
   accessCode: {
     title: "Código de acceso",
@@ -285,6 +289,19 @@ export const es: Messages = {
     open: "Abrir en la app",
     stay: "Seguir en el navegador",
     notInstalled: "No pudimos abrir la app en este teléfono. Puedes seguir aquí.",
+  },
+  rsvpSheet: {
+    title: "Solicitar entrada",
+    lead: "{org} revisa cada solicitud. Te avisamos en ambos casos.",
+    questions: "{org} pide esto para cada invitado.",
+    guest: "Invitado {i} de {n}",
+    guests: "Invitados",
+    guestsHint: "Contándote · máx. {n}",
+    optional: "opcional",
+    required: "Obligatorio",
+    notChargedNow: "No se te cobra ahora. Si te aprueban, se cobra a tu tarjeta.",
+    free: "Este evento es gratis.",
+    send: "Enviar solicitud",
   },
   settings: {
     title: "Ajustes",
@@ -507,6 +524,7 @@ export const es: Messages = {
     notFound: "Este evento no está disponible para este organizador.",
   },
   rsvps: {
+    guestN: "Invitado {n}",
     title: "RSVPs",
     lede: "Revisa y gestiona las solicitudes de tickets de tus eventos.",
     current: "Actuales y próximos",

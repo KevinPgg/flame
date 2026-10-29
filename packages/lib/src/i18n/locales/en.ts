@@ -272,6 +272,10 @@ export const en = {
     share: "Share",
     done: "Done",
     noPayment: "Free — no payment needed.",
+    inProgress: "Purchase in progress",
+    inProgressLine: "{quantity} × {tier} · {time} left",
+    continue2: "Continue",
+    hide: "Hide",
   },
   accessCode: {
     title: "Access code",
@@ -287,6 +291,19 @@ export const en = {
     open: "Open in the app",
     stay: "Stay in the browser",
     notInstalled: "We couldn’t open the app on this phone. You can keep going here.",
+  },
+  rsvpSheet: {
+    title: "Request to join",
+    lead: "{org} reviews every request. You’ll get a notification either way.",
+    questions: "{org} asks this for each guest.",
+    guest: "Guest {i} of {n}",
+    guests: "Guests",
+    guestsHint: "Including you · max {n}",
+    optional: "optional",
+    required: "Required",
+    notChargedNow: "You won’t be charged now. If approved, we charge your card.",
+    free: "This event is free.",
+    send: "Send request",
   },
   settings: {
     title: "Settings",
@@ -509,6 +526,7 @@ export const en = {
     notFound: "This event isn’t available for this organizer.",
   },
   rsvps: {
+    guestN: "Guest {n}",
     title: "RSVPs",
     lede: "Review and manage ticket requests for your events.",
     current: "Current & upcoming",

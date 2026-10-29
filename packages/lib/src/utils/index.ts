@@ -82,6 +82,7 @@ export {
   normalizeRegistrationExportColumns,
   purchaseExportColumnWidths,
   registrationValuesForExportColumns,
+  withGuestExportColumns,
 } from "./pending-rsvp-export";
 export type {
   PendingRsvpExportSheetRow,
@@ -97,6 +98,8 @@ export {
   isFieldVisibleForTier,
   filterFieldsForTier,
   getActiveEventFormFields,
+  validateRsvpGuests,
+  RSVP_GUESTS_KEY,
 } from "./registration-form";
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle } from "./home-feed";
 export type { FeedDay, FeedEventTime, PriceSummary } from "./home-feed";
@@ -114,7 +117,7 @@ export {
   myEventState,
   holdCountdown,
 } from "./wallet";
-export { normalizeSearch, searchExplore, featuredFirst } from "./explore";
+export { normalizeSearch, searchExplore, featuredFirst, organizerCover } from "./explore";
 export type { HoldCountdown, MyEventState, Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./wallet";
 export { lowestPriceInfo } from "./availability";
 export type { LowestPriceInfo, PriceableTier } from "./availability";

@@ -165,7 +165,8 @@ export function registrationEntries(
   }
   return {
     fromConfig: false,
-    entries: Object.entries(data ?? {}).map(([k, v]) => ({
+    // Internal keys (`_guests`, `_promotional_code_id`) aren't answers.
+    entries: Object.entries(data ?? {}).filter(([k]) => !k.startsWith("_")).map(([k, v]) => ({
       key: k,
       label: k,
       required: false,
@@ -173,6 +174,21 @@ export function registrationEntries(
       value: toValue(v),
     })),
   };
+}
+
+/**
+ * Fase 3.4: answers of guests 2..N (`registration_data._guests`), one block per guest, with the
+ * same labels as the requester's. Empty when the RSVP has no extra guests' answers.
+ */
+export function rsvpGuestBlocks(
+  config: RegistrationField[] | null | undefined,
+  data: Record<string, unknown> | null | undefined
+): Array<{ guest: number; entries: RegistrationEntry[] }> {
+  const guests = data && Array.isArray(data._guests) ? (data._guests as unknown[]) : [];
+  return guests.map((g, i) => ({
+    guest: i + 2,
+    entries: registrationEntries(config, g && typeof g === "object" ? (g as Record<string, unknown>) : {}).entries,
+  }));
 }
 
 /** Events in the RSVP section: RSVP-only events, split current/past, searched by name. */

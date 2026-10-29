@@ -201,3 +201,16 @@ describe("purchaseExportColumnWidths", () => {
     expect(purchaseExportColumnWidths(cols)).toHaveLength(8);
   });
 });
+
+import { withGuestExportColumns as wg, registrationValuesForExportColumns as rv } from "../src";
+describe("export with guests (3.4)", () => {
+  const cols = [{ id: "name", label: "Full name" }];
+  it("adds 'Guest N · label' columns up to the most guests in any row and fills them", () => {
+    const data = [{ name: "Ana", _guests: [{ name: "Beto" }, { name: "Cami" }] }, { name: "Dani" }];
+    const all = wg(cols, data);
+    expect(all.map((c) => c.label)).toEqual(["Full name", "Guest 2 · Full name", "Guest 3 · Full name"]);
+    expect(rv(all, data[0])).toEqual(["Ana", "Beto", "Cami"]);
+    expect(rv(all, data[1])).toEqual(["Dani", "", ""]);
+    expect(wg(cols, [{ name: "x" }])).toEqual(cols);
+  });
+});

@@ -87,7 +87,38 @@ export function registrationValuesForExportColumns(
     return columns.map(() => "");
   }
   const data = registrationData as Record<string, unknown>;
-  return columns.map(col => formatRegistrationValueForExport(data[col.id]));
+  return columns.map(col => formatRegistrationValueForExport(answerAt(data, col.id)));
+}
+
+/** "_guests.0.name" → guest 2's "name" (fase 3.4); plain ids → top level as always. */
+function answerAt(data: Record<string, unknown>, id: string): unknown {
+  const m = /^_guests\.(\d+)\.(.+)$/.exec(id);
+  if (!m) return data[id];
+  const guests = data._guests;
+  if (!Array.isArray(guests)) return undefined;
+  const g = guests[Number(m[1])];
+  return g && typeof g === "object" ? (g as Record<string, unknown>)[m[2]!] : undefined;
+}
+
+/**
+ * Fase 3.4: RSVPs can carry answers for guests 2..N (`registration_data._guests`). Adds one
+ * column per field for each extra guest present in any row ("Guest 2 · Full name"), after the
+ * requester's columns. Rows without guests leave them empty.
+ */
+export function withGuestExportColumns(
+  columns: RegistrationExportColumn[],
+  rows: Array<Record<string, unknown> | null | undefined>,
+): RegistrationExportColumn[] {
+  if (columns.length === 0) return columns;
+  const extra = rows.reduce<number>((n, r) => {
+    const g = r && Array.isArray((r as Record<string, unknown>)._guests) ? ((r as Record<string, unknown>)._guests as unknown[]).length : 0;
+    return Math.max(n, g);
+  }, 0);
+  const out = [...columns];
+  for (let i = 0; i < extra; i++) {
+    for (const c of columns) out.push({ id: `_guests.${i}.${c.id}`, label: `Guest ${i + 2} · ${c.label}` });
+  }
+  return out;
 }
 
 /**

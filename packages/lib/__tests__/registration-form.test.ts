@@ -117,3 +117,25 @@ describe("getActiveEventFormFields", () => {
     expect(getActiveEventFormFields(allArchived)).toEqual([]);
   });
 });
+
+import { validateRsvpGuests as vg } from "../src";
+describe("validateRsvpGuests (3.4: answers per guest, compatible)", () => {
+  const fields = [
+    { id: "name", label: "Full name", type: "text" as const, required: true },
+    { id: "ced", label: "Cédula", type: "number" as const, required: true },
+    { id: "ig", label: "Instagram", type: "text" as const, required: false },
+  ];
+  it("not sent (older clients) → fine, nothing to add", () => {
+    expect(vg(fields, { name: "A", ced: "1" }, 3)).toEqual({ guests: null, missing: [], error: null });
+  });
+  it("one block per extra guest; keeps only the form's fields; names what's missing", () => {
+    const r = vg(fields, { name: "A", _guests: [{ name: "B", ced: "2", extra: "x" }, { name: "", ig: "@c" }] }, 3);
+    expect(r.guests).toEqual([{ name: "B", ced: "2" }, { name: "", ig: "@c" }]);
+    expect(r.missing).toEqual(["Guest 3: Full name", "Guest 3: Cédula"]);
+    expect(r.error).toBeNull();
+  });
+  it("wrong count or not a list → error", () => {
+    expect(vg(fields, { _guests: [{ name: "B", ced: "2" }] }, 3).error).toMatch(/don’t match/);
+    expect(vg(fields, { _guests: "nope" }, 2).error).toMatch(/list/);
+  });
+});

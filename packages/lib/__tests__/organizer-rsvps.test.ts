@@ -146,3 +146,23 @@ describe("RSVP event lists", () => {
     expect(rsvpEventLists(events, "fiesta", now).current.map((e) => e.id)).toEqual(["b"]);
   });
 });
+
+import { rsvpGuestBlocks, registrationEntries as regEntries } from "../src";
+describe("RSVP guests for the organizer (3.4)", () => {
+  const config = [
+    { id: "name", label: "Full name", type: "text", required: true },
+    { id: "ig", label: "Instagram", type: "text", required: false },
+  ] as never;
+  it("one block per extra guest with the same labels", () => {
+    const blocks = rsvpGuestBlocks(config, { name: "Ana", _guests: [{ name: "Beto", ig: "@b" }, { name: "Cami" }] });
+    expect(blocks.map((b) => b.guest)).toEqual([2, 3]);
+    expect(blocks[0]!.entries.map((e) => [e.label, e.value])).toEqual([
+      ["Full name", { kind: "text", text: "Beto" }],
+      ["Instagram", { kind: "text", text: "@b" }],
+    ]);
+    expect(rsvpGuestBlocks(config, { name: "Ana" })).toEqual([]);
+  });
+  it("raw view (no form) hides internal keys", () => {
+    expect(regEntries(null, { a: "1", _guests: [], _promotional_code_id: "x" }).entries.map((e) => e.key)).toEqual(["a"]);
+  });
+});

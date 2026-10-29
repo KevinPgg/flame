@@ -37,3 +37,32 @@ export function featuredFirst<E extends { is_featured?: boolean | null }>(events
   const rest = events.filter((e) => !e.is_featured);
   return [...featured, ...rest].slice(0, limit);
 }
+
+/**
+ * Background of an organizer card in the organizer rows (Kevin 2026-10-28): the flyer of the
+ * organizer's latest event — the next one that hasn't ended (the lists hold upcoming events) —
+ * and, without one, the organizer's profile photo; then its cover.
+ */
+type CoverEvent = {
+  starts_at: string;
+  ends_at?: string | null;
+  image_url?: string | null;
+  organization_id?: string | null;
+  organizations?: { slug?: string | null } | null;
+};
+
+export function organizerCover(
+  org: { id?: string | null; slug: string; logo_url?: string | null; cover_image_url?: string | null },
+  events: CoverEvent[],
+  now: number = Date.now(),
+): { url: string; kind: "flyer" | "logo" | "cover" } | null {
+  const ts = (s?: string | null) => (s ? Date.parse(s) : NaN);
+  const mine = events
+    .filter((e) => e.image_url && (e.organizations?.slug === org.slug || (!!org.id && e.organization_id === org.id)))
+    .filter((e) => !(ts(e.ends_at) <= now))
+    .sort((a, b) => ts(a.starts_at) - ts(b.starts_at));
+  if (mine[0]?.image_url) return { url: mine[0].image_url, kind: "flyer" };
+  if (org.logo_url) return { url: org.logo_url, kind: "logo" };
+  if (org.cover_image_url) return { url: org.cover_image_url, kind: "cover" };
+  return null;
+}
