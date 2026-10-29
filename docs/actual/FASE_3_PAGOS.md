@@ -1,6 +1,6 @@
 # Fase 3 · Pagos: arreglos previos y flujo nuevo
 
-Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-28: 3.0 análisis y plan; **3.1 hecha en código** (B2, B10, B3, B4 — §5), pruebas reales pendientes.
+Documento vivo de la fase 3 (checkout y códigos). Estado al 2026-10-28: 3.0 análisis y plan; **3.1 hecha** (B2, B10, B3, B4 — §5); **3.2 unida a la 3.3 y hecha en código** (pantalla de pago nueva web y app, B5, B7 — §6); pruebas reales pendientes. Siguiente: 3.4 (RSVP).
 
 Fuente de verdad del comportamiento actual: **`Flme_comp/`** (producción). Diagnósticos de origen: `sesiones/2026-07-09-analisis-stripe-holds-promotor-bug.md` y `sesiones/2026-07-09-auditoria-bugs-holds-promoter.md` (B1–B10). Aquí se re-verificó cada uno contra `Flme_comp` y contra la copia de trabajo.
 
@@ -135,3 +135,35 @@ Principio: **la lógica de cobro no cambia** (mismos endpoints, mismo webhook, m
 **Tests:** web `holds-payment` 9 (start-payment: marca y alarga, sesión/cuerpo/dueño, vencida/usada, no re-alarga en 10 min, tope de 60 min, respuesta de la base; create: 409 con pago en curso, reemplaza la abandonada, no bloquea por otro usuario); `StripePaymentStart` 2 (orden validate → submit → start-payment → confirm; si falla no confirma); `EventCheckout` +1 (B2 web: espera, error con Reintentar, no bloquea) y los existentes migrados a `/api/promoter-validate`. App `CheckoutFixes` 4 (B10, B2, B3 orden, B3 fallo libera la reserva). Totales: web 918 ✓ (13 ✗ heredados: 6 `create-payment-intent`, 7 `purchase-page.integration` — fallan igual con los archivos de `HEAD` —, y `payment-protection` necesita Supabase real); app 167/167; lib 399/399; tsc web 0, lib 0, app 40 (heredados).
 
 **No verificado:** un pago real de punta a punta (ver `PruebasReales/FASE_3_PAGOS.md`).
+
+### 5.1 Ronda de Kevin (10-28 tarde)
+- **Caso real "se perdieron 3 entradas" (RSVP pagada):** no era un bug: `stripe listen` estaba cerrado, el webhook `payment_intent.succeeded` nunca llegó al servidor local y la RSVP quedó "Aprobada" con el cobro capturado. Se recuperó reenviando el evento (`stripe events resend evt_…`). **Riesgo de producto anotado para la 3.4:** nada detecta una RSVP aprobada con pago capturado y sin pedido si el webhook falla más allá de los reintentos de Stripe (3 días) → propuesta: cron de conciliación.
+- **B10 visible:** etiqueta del promotor en la página del evento (web `EventDetail`, app `PromoterChip`) antes del checkout: verde / comprobando / no válido / no se pudo comprobar · Reintentar.
+- **Abrir en la app:** aviso en la web de teléfonos (`OpenInApp`): Android con `intent://…;package=com.projectflame.app;S.browser_fallback_url=…` (Chrome abre la app si está instalada, si no vuelve con `noapp=1` y se avisa); iOS con `project-flame://` y aviso si la página sigue visible. Lleva el `?promoter=`. iOS ya tenía enlaces universales; **Android App Links pendiente** (huella del certificado).
+- **B7 adelantado en la web:** reloj de la reserva en `/purchase` (`HoldTimer`, regla `holdCountdown` en lib): aviso a 5 min, bloqueo de Pagar a 0 con "Volver a elegir", y sigue el alargue de B3 (`start-payment` devuelve el nuevo vencimiento). `holds/details` ahora devuelve `expires_at`. En la app llega con la pantalla de pago (3.3).
+- Tests: lib 400; web 923 ✓ (+4 `EventPromoterAndApp`, +2 `EventCheckout`; 13 ✗ heredados); app 168 (+1 `PromoterChip`); tsc web 0, lib 0, app 40.
+
+## 6. 3.2 + 3.3 hechas (2026-10-28) — pantalla de pago nueva
+
+**Decisiones de Kevin (10-28):** (1) la 3.2 se une a la 3.3: la cantidad y "Ir al pago" ya están en la tarjeta del tier, así que no hay hoja intermedia; "Ir al pago" **reserva y abre la pantalla de pago**. (2) Los **datos por ticket** (formulario del organizador para compras pagadas) **quedan fuera** de esta entrega: hoy las compras pagadas no los guardan; necesitan migración (respuestas en la reserva y en cada ticket) + webhook → entrega aparte.
+
+**Flujo nuevo (tickets, no RSVP):** tarjeta → −/+ → **Ir al pago** (o "Continuar al pago" en la barra) → `POST /api/holds/create` (con el promotor del enlace si es válido) → pantalla de pago:
+- reloj de la reserva (B7) con aviso a 5 min y bloqueo de Pagar a 0 ("Tu reserva venció · Volver a elegir"); sigue el alargue de B3;
+- evento (flyer, fecha, lugar), **pedido** (cantidad × tier, código de acceso ✓, promotor ✓);
+- **promotor**: si la reserva no trae uno, un campo para agregarlo: se valida con `/api/promoter-validate` y el PaymentIntent se **re-crea llevándolo** (el webhook toma el promotor de la metadata del PI; el servidor da prioridad al de la reserva). Pagar espera mientras se valida (B2);
+- **descuento** (lógica de siempre, re-crea el PI), **desglose** (tickets, descuento, comisión de servicio con ⓘ, total) y "Precio final…";
+- **Pagar $X**: web = formulario de Stripe (validate → start-payment → confirm); app = `validate` → `start-payment` → PaymentSheet nativo. Gratis → "Obtener ticket gratis" (`complete-hold-free`, con el promotor escrito si lo hay).
+- **Éxito:** web `/purchase/success` v2 "You're in" con Ver tickets / Compartir / Listo. **B5:** sigue buscando el pedido ~2 min con espera creciente y desde los 10 s dice "Pago recibido · tus tickets se están preparando" con "Ir a mis tickets"; **nunca** muestra error por un webhook lento. App: "You're in" honesto (los tickets los crea el webhook) con Ver tickets / Listo.
+- **Volver** (app) libera la reserva (`holds/cancel`); cerrar la hoja de Stripe **no** la libera (se puede reintentar mientras el reloj corre).
+
+**Dónde vive:** web `/purchase` y `/purchase/success` se sirven en v2 por la reescritura de URL (misma URL; `ATTENDEE_V1=true` vuelve a la v1). La lógica es la de `StripePurchaseFlow` (misma función, prop `v2`, vista `v2/attendee/purchase/PaymentV2.tsx`); `holds/details` ahora devuelve `expires_at`, `timezone` y `currency` del evento. App: ruta nueva `app/checkout/[holdId].tsx` → `PaymentScreen` + `hooks/usePaymentScreen.ts` (mismas llamadas que la web). La isla de pestañas se oculta en `/checkout/`.
+
+**Qué NO cambió:** endpoints de cobro, webhook, metadata, comisiones. RSVP sigue con su hoja (web `CheckoutSheet`, app `CheckoutMainSheet`) hasta la 3.4. La v1 (`ATTENDEE_V1` / `EXPO_PUBLIC_ATTENDEE_V1`) intacta.
+
+**Riesgos / pendientes:**
+- [Probable] Si el comprador cierra la hoja de Stripe (app) **después** de tocar Pagar, la reserva queda marcada "pago en curso" hasta 20 min: si vuelve al evento sin usar "Volver" e intenta reservar el mismo tier, recibe "Ya tienes un pago en curso". "Volver" en la pantalla de pago libera la reserva y lo evita.
+- [Seguro] El botón atrás de Android (hardware) no libera la reserva (vence sola a los 30 min). Se puede agregar si molesta.
+- [Seguro] Gratis sin enlace: el promotor se puede escribir en la pantalla de pago (también para gratis).
+- Datos por ticket: entrega aparte (migración).
+
+**Tests:** web `PaymentV2` 7 (reloj, pedido, desglose, Pagar $X; promotor escrito → validado y PI re-creado; promotor de la reserva + descuento; reserva vencida bloquea; B5 espera creciente, mensaje honesto a los 10 s, "You're in" cuando llega el pedido, nunca error a los 2 min), `EventCheckout` reescrito (Ir al pago reserva directo con cantidad y promotor; RSVP mantiene su hoja; B2 bloquea reservar mientras valida), `attendee-lib` +1 (reescrituras `/purchase`). App `PaymentScreen` 6 (orden validate → start-payment → PaymentSheet; cerrar Stripe no libera; promotor escrito + descuento; gratis; vista; isla oculta). Totales: web 931 ✓ (13 ✗ heredados); app 174/174; lib 400/400; tsc web 0, lib 0, app 40 heredados.
