@@ -489,7 +489,8 @@ export {
   directionsUrl,
   walletDayTime,
   myEventState,
+  holdCountdown,
 } from "./utils";
 export { normalizeSearch, searchExplore, featuredFirst } from "./utils";
-export type { MyEventState, Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./utils";
+export type { HoldCountdown, MyEventState, Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./utils";
 export type { FeedDay, FeedEventTime, PriceSummary, LowestPriceInfo, PriceableTier } from "./utils";

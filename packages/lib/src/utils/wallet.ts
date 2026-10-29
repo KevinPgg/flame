@@ -230,3 +230,17 @@ export function walletDayTime(startsAt: string, timezone: string | null | undefi
     time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone }).format(d),
   };
 }
+
+/**
+ * Countdown of a ticket reservation (hold) on the payment screen (B7, brought forward 10-28):
+ * "12:34" left, a warning in the last 5 minutes, expired at 0.
+ */
+export type HoldCountdown = { seconds: number; label: string; warn: boolean; expired: boolean };
+
+export function holdCountdown(expiresAt: string | null | undefined, now: number = Date.now()): HoldCountdown | null {
+  const end = expiresAt ? Date.parse(expiresAt) : NaN;
+  if (!Number.isFinite(end)) return null;
+  const seconds = Math.max(0, Math.floor((end - now) / 1000));
+  const label = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  return { seconds, label, warn: seconds > 0 && seconds <= 300, expired: seconds === 0 };
+}

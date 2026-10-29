@@ -1,6 +1,6 @@
 /** Fase 2.3: My tickets and the QR ticket, shared by web and app. */
 import { describe, it, expect } from "vitest";
-import { buildWallet, myEventState, walletWhen, eventTicketSlides, ticketPrice, ticketQr, ticketStage, walletOrganizer, directionsUrl, type UserTicket } from "../src";
+import { buildWallet, holdCountdown, myEventState, walletWhen, eventTicketSlides, ticketPrice, ticketQr, ticketStage, walletOrganizer, directionsUrl, type UserTicket } from "../src";
 
 const GYE = "America/Guayaquil";
 const NOW = new Date("2026-10-27T20:00:00Z"); // Tue 15:00 in Guayaquil
@@ -160,5 +160,16 @@ describe("myEventState (event page bottom bar)", () => {
     expect(myEventState(rows, "later", NOW)).toMatchObject({ tickets: [], request: { state: "pending", quantity: 2 } });
     expect(myEventState(rows, "old", NOW)).toEqual({ tickets: [], request: null });
     expect(myEventState([], "soon", NOW)).toEqual({ tickets: [], request: null });
+  });
+});
+
+describe("holdCountdown (payment screen timer)", () => {
+  const now = Date.parse("2026-10-28T20:00:00Z");
+  it("mm:ss left, warning in the last 5 minutes, expired at 0", () => {
+    expect(holdCountdown("2026-10-28T20:12:34Z", now)).toEqual({ seconds: 754, label: "12:34", warn: false, expired: false });
+    expect(holdCountdown("2026-10-28T20:05:00Z", now)).toMatchObject({ label: "05:00", warn: true });
+    expect(holdCountdown("2026-10-28T19:59:00Z", now)).toEqual({ seconds: 0, label: "00:00", warn: false, expired: true });
+    expect(holdCountdown(null, now)).toBeNull();
+    expect(holdCountdown("nope", now)).toBeNull();
   });
 });
