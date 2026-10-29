@@ -40,7 +40,7 @@ export function activeAttendeeTab(pathname: string): AttendeeTab | null {
  * Get tickets / Continue to checkout / View tickets there instead, as in the prototype.
  */
 export function hidesAttendeeTabBar(pathname: string): boolean {
-  return pathname.startsWith("/event/");
+  return pathname.startsWith("/event/") || pathname.startsWith("/checkout/");
 }
 
 export function AttendeeTabBar() {

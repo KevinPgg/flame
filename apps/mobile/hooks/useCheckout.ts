@@ -1051,7 +1051,7 @@ export function useCheckout({
  * For stage-expanded entries (tier.stageId is set), returns it directly.
  * Falls back to shared findFirstAvailableStage (waterfall logic) for non-expanded tiers.
  */
-function getStageId(tier: TicketTierWithStatus): string | undefined {
+export function getStageId(tier: TicketTierWithStatus): string | undefined {
   if (tier.stageId) return tier.stageId;
   return findFirstAvailableStage(tier).stageId;
 }

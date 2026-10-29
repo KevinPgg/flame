@@ -41,7 +41,7 @@ import {
   myEventState,
   type TicketTier,
 } from "@project-flame/lib";
-import { useCheckout } from "../../hooks/useCheckout";
+import { useCheckout, getStageId } from "../../hooks/useCheckout";
 import { apiPost, ApiError } from "../../lib/api";
 import { useOptionalAuth } from "../../hooks/useOptionalAuth";
 import { useUserTickets } from "../../hooks/useUserTickets";
@@ -50,6 +50,7 @@ import { EventHeader } from "../../components/v2/attendee/event/EventHeader";
 import { MoreFromOrganizer, useOrganizerFromFeed } from "../../components/v2/attendee/event/MoreFromOrganizer";
 import { AccessCode } from "../../components/v2/attendee/event/AccessCode";
 import { TierList } from "../../components/v2/attendee/event/TierList";
+import { PromoterChip } from "../../components/v2/attendee/event/PromoterChip";
 import { BuyBar, BUY_BAR_HEIGHT, EventTopBar, EVENT_TOP_BAR_HEIGHT, type BuyBarProps } from "../../components/v2/attendee/event/EventChrome";
 import { useI18n } from "../../lib/i18n";
 import type { Href } from "expo-router";
@@ -330,6 +331,47 @@ export default function EventDetailScreen() {
     setAccessCodeError(null);
   }, []);
 
+  // Fase 3.3 (3.2 merged, Kevin 10-28): tickets → reserve here and open the payment screen
+  // (promoter, discount, countdown and Pay live there). RSVP keeps its sheet until 3.4.
+  const [reserving, setReserving] = useState(false);
+  const [reserveError, setReserveError] = useState<string | null>(null);
+  const reserveAndPay = useCallback(async () => {
+    if (!selectedTier || !event || reserving) return;
+    // B2: never reserve while the promoter code is being checked.
+    if (checkoutState.promoterStatus === "validating") return;
+    setReserving(true);
+    setReserveError(null);
+    try {
+      const stageId = getStageId(selectedTier);
+      const promoterCode = checkoutState.promoterStatus === "valid" && checkoutState.promoterCode.trim() ? checkoutState.promoterCode.trim().toUpperCase() : undefined;
+      const secret = normalizeTicketTierSecretCode(checkoutState.secretCode);
+      const hold = await apiPost<{ hold_session_id: string }>(
+        "/api/holds/create",
+        {
+          event_id: event.id,
+          ticket_tier_id: selectedTier.tierId ?? selectedTier.id,
+          quantity,
+          ...(stageId !== undefined ? { stage_id: stageId } : {}),
+          ...(secret ? { secret_code: secret } : {}),
+          ...(promoterCode ? { promoter_code: promoterCode } : {}),
+        },
+        getToken,
+      );
+      router.push(`/checkout/${hold.hold_session_id}` as Href);
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : undefined;
+      setReserveError(
+        code === "PAYMENT_IN_PROGRESS"
+          ? t("checkout.paymentInProgress")
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setReserving(false);
+    }
+  }, [selectedTier, event, reserving, checkoutState, quantity, getToken, router, t]);
+
   const handleContinueToCheckout = useCallback(() => {
     if (!selectedTier) return;
 
@@ -368,6 +410,11 @@ export default function EventDetailScreen() {
       }
     }
 
+    if (v2 && !isRsvp) {
+      void reserveAndPay();
+      return;
+    }
+
     // W4-C3 (Jun 2026): no pre-checkout code modal. Hidden tiers are unlocked
     // by entering the access code in the inline input below the tier list,
     // which populates `checkoutState.secretCode`. The hold/RSVP routes
@@ -384,6 +431,8 @@ export default function EventDetailScreen() {
     isLoadingUserTickets,
     router,
     checkoutState,
+    v2,
+    reserveAndPay,
   ]);
 
   const handleShare = useCallback(async () => {
@@ -514,10 +563,11 @@ export default function EventDetailScreen() {
         kicker: isRsvp ? `${quantity} × ${name}` : t("tickets.beforeFees", { quantity, tier: name }),
         value: money(selectedTier.displayPrice * quantity),
         cta: {
-          label: isSignedIn === false ? t("checkout.signInToContinue") : isRsvp ? t("event.requestToJoin") : t("checkout.continueToCheckout"),
+          label: reserving ? "…" : isSignedIn === false ? t("checkout.signInToContinue") : isRsvp ? t("event.requestToJoin") : t("checkout.continueToCheckout"),
           onPress: handleContinueToCheckout,
-          // Wait for Clerk before routing (W8-M1), and for the RSVP duplicate check.
-          disabled: isSignedIn === undefined || (isRsvp && isLoadingUserTickets),
+          // Wait for Clerk before routing (W8-M1), for the RSVP duplicate check, for the hold being
+          // created and for the promoter code being checked (B2).
+          disabled: isSignedIn === undefined || (isRsvp && isLoadingUserTickets) || reserving || checkoutState.promoterStatus === "validating",
         },
       };
     }
@@ -539,7 +589,7 @@ export default function EventDetailScreen() {
           }
         : { label: t("event.soldOut"), tone: "dark", disabled: true },
     };
-  }, [v2, event, mine, hasTicketTiers, selectedTier, quantity, isRsvp, isSignedIn, isLoadingUserTickets, displayedTiers, selectedTierId, handleSelectTier, handleContinueToCheckout, scrollToTiersV2, router, t]);
+  }, [v2, event, mine, hasTicketTiers, selectedTier, quantity, isRsvp, isSignedIn, isLoadingUserTickets, displayedTiers, selectedTierId, handleSelectTier, handleContinueToCheckout, scrollToTiersV2, router, t, reserving, checkoutState.promoterStatus]);
 
   // --- Loading state ---
   if (isLoading && !event) {
@@ -698,7 +748,7 @@ export default function EventDetailScreen() {
                   onSelect={handleSelectTier}
                   onQuantity={handleQuantityChange}
                   onCheckout={handleContinueToCheckout}
-                  checkoutDisabled={isSignedIn === undefined || (isRsvp && isLoadingUserTickets)}
+                  checkoutDisabled={isSignedIn === undefined || (isRsvp && isLoadingUserTickets) || reserving || checkoutState.promoterStatus === "validating"}
                 />
               ) : (
               <TicketSelection
@@ -729,6 +779,23 @@ export default function EventDetailScreen() {
                 }
               />
               )}
+              {v2 && checkoutState.promoterCode.trim() && checkoutState.promoterStatus !== "idle" ? (
+                <View className="mt-4">
+                  <PromoterChip
+                    code={checkoutState.promoterCode}
+                    status={checkoutState.promoterStatus}
+                    onRetry={() => checkoutState.validatePromoter(checkoutState.promoterCode)}
+                    onClear={checkoutState.clearPromoter}
+                  />
+                </View>
+              ) : null}
+              {v2 && reserveError ? (
+                <View className="mx-4 mt-4 rounded-[12px] px-3 py-2" style={{ backgroundColor: "rgba(255,138,122,0.1)" }}>
+                  <Text accessibilityRole="alert" style={{ color: "#FF8A7A" }} className="font-v2-ui text-[13px]">
+                    {reserveError}
+                  </Text>
+                </View>
+              ) : null}
               {v2 ? (
                 <View className="mt-4">
                   <AccessCode
