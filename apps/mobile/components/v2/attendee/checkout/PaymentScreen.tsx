@@ -5,8 +5,8 @@
  * (Stripe's PaymentSheet). After paying: "You're in" — tickets are being prepared (the webhook
  * creates them), View tickets / Done. Logic in hooks/usePaymentScreen.
  */
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -146,6 +146,15 @@ export function PaymentScreenView({ s, onBack, onDone, onViewTickets }: { s: Scr
                 <Text className="font-v2-ui text-[15px] text-v2-cream">{`${d.quantity} × ${tier}`}</Text>
                 <Text className="font-v2-ui-semibold text-[15px] text-v2-cream">{money(s.baseCents)}</Text>
               </View>
+              {d.secret_code ? (
+                <View className="flex-row justify-between" testID="order-access-code">
+                  <Text className="font-v2-ui text-[14px] text-v2-c70">{t("accessCode.title")}</Text>
+                  <View className="flex-row items-center gap-1.5">
+                    <Icon name="check" size={14} color={c.good} />
+                    <Text style={{ color: c.good }} className="font-v2-ui-semibold text-[14px]">{d.secret_code}</Text>
+                  </View>
+                </View>
+              ) : null}
               {s.promoterCode ? (
                 <View className="flex-row justify-between" testID="order-promoter">
                   <Text className="font-v2-ui text-[14px] text-v2-c70">{t("checkout.promoter")}</Text>
@@ -305,6 +314,19 @@ export function PaymentScreen({ holdId }: { holdId: string }) {
     if (router.canGoBack()) router.back();
     else router.replace("/" as Href);
   };
+  // Android's back button behaves like the arrow: it releases the reservation (3.5 parity).
+  const backRef = useRef(back);
+  backRef.current = back;
+  const step = s.step;
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (step === "paying") return true; // don't leave mid-payment
+      if (step === "paid" || step === "claimed") return false;
+      backRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step]);
   return (
     <PaymentScreenView
       s={s}

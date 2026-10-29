@@ -153,6 +153,17 @@ describe("PaymentScreenView (app)", () => {
     expect(screen.getByText(/covers secure payments/)).toBeTruthy();
   });
 
+  it("an access code that unlocked the tier shows in the order (parity with the web)", async () => {
+    const { deps } = setup({ details: { secret_code: "WHITEVIP" } });
+    function Screen() {
+      const s = usePaymentScreen(HOLD, deps);
+      return <PaymentScreenView s={s} onBack={jest.fn()} onDone={jest.fn()} onViewTickets={jest.fn()} />;
+    }
+    await renderV2(<Screen />);
+    expect(await screen.findByTestId("order-access-code")).toBeTruthy();
+    expect(screen.getByText("WHITEVIP")).toBeTruthy();
+  });
+
   it("the island hides on the payment screen too", () => {
     expect(hidesAttendeeTabBar("/checkout/h-1")).toBe(true);
   });

@@ -144,8 +144,11 @@ export async function exportPurchasesXlsx(params: {
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
-  const registrationColumns: RegistrationExportColumn[] =
-    normalizeRegistrationExportColumns(params.registrationFormConfig ?? undefined);
+  // Fase 3.4: RSVP purchases may carry their guests' answers → "Guest N · …" columns.
+  const registrationColumns: RegistrationExportColumn[] = withGuestExportColumns(
+    normalizeRegistrationExportColumns(params.registrationFormConfig ?? undefined),
+    sorted.map((p) => (p.registrationData ?? null) as Record<string, unknown> | null),
+  );
   const regCols = registrationColumns.length > 0 ? registrationColumns : undefined;
 
   const wsData = buildPurchaseExportAoa(

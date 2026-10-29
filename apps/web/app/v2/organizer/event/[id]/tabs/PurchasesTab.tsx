@@ -10,6 +10,7 @@ import {
   normalizeRegistrationExportColumns,
   purchaseExportColumnWidths,
   registrationValuesForExportColumns,
+  withGuestExportColumns,
   type AttendanceComp,
   type AttendanceTransfer,
 } from "@project-flame/lib";
@@ -73,11 +74,13 @@ export default function PurchasesTab({
           return new Date(d).toLocaleString("en-US");
         }
       };
-      const columns = normalizeRegistrationExportColumns(
-        freshEvent.registration_form_config ?? event.registration_form_config ?? undefined
-      );
       const list = [...(freshEvent.purchases ?? [])].sort(
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      // Fase 3.4: RSVP purchases may carry their guests' answers → "Guest N · …" columns.
+      const columns = withGuestExportColumns(
+        normalizeRegistrationExportColumns(freshEvent.registration_form_config ?? event.registration_form_config ?? undefined),
+        list.map((p) => (p.registrationData ?? null) as Record<string, unknown> | null)
       );
       const name = freshEvent.name || event.name;
       const aoa = buildPurchaseExportAoa(
