@@ -17,9 +17,9 @@ export function OrgAvatar({
     >
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- small logo; storage host differs per env
-        <img src={logoUrl} alt="" width={size} height={size} className="h-full w-full object-cover" />
+        <img style={{zIndex: 100}} src={logoUrl} alt="" width={size} height={size} className="h-full w-full object-cover" />
       ) : (
-        <span className="font-v2-display-bold" style={{ fontSize: Math.round(size * 0.42) }}>
+        <span className="font-v2-display-bold" style={{ fontSize: Math.round(size * 0.42), zIndex: 100 }}>
           {name.trim().charAt(0).toUpperCase() || "?"}
         </span>
       )}
