@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { faqs, featuredFirst, searchExplore } from "@project-flame/lib";
+import { faqs, featuredFirst, organizerCover, searchExplore } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { useUserRole } from "../../../lib/hooks/useUserRole";
 import type { HomeEvent } from "../../../lib/home-events";
@@ -19,13 +19,23 @@ import { OrgAvatar } from "../../components/OrgAvatar";
 import { ErrorBox } from "../../components/ErrorBox";
 import { EventTile } from "../EventTile";
 
-function OrgCard({ org, wide }: { org: ExploreOrganizer; wide?: boolean }) {
+/** Background: the flyer of the organizer's next event, else its photo (Kevin 2026-10-28). */
+function OrgCard({ org, wide, events }: { org: ExploreOrganizer; wide?: boolean; events: HomeEvent[] }) {
   const { t } = useI18n();
-  const cover = org.cover_image_url || org.logo_url;
+  const bg = organizerCover(org, events);
+  const cover = bg?.url;
   return (
     <Link href={`/organizer/${org.slug}`} aria-label={t("explore.seeOrganizer", { name: org.name })} className={`block shrink-0 overflow-hidden rounded-[18px] bg-[#121212] hover:bg-[#181818] ${wide ? "w-full" : "w-[220px]"}`}>
       <span className="relative block h-[96px] overflow-hidden bg-v2-ink3">
-        {cover && <span aria-hidden className={`absolute inset-0 bg-cover bg-center ${org.cover_image_url ? "" : "scale-125 blur-[30px] brightness-[.6]"}`} style={{ backgroundImage: `url("${cover}")` }} />}
+        {cover && (
+          <span
+            aria-hidden
+            data-testid="org-card-bg"
+            data-kind={bg?.kind}
+            className={`absolute inset-0 bg-cover bg-center ${bg?.kind === "flyer" ? "brightness-[.7]" : bg?.kind === "logo" ? "scale-125 blur-[30px] brightness-[.6]" : ""}`}
+            style={{ backgroundImage: `url("${cover}")` }}
+          />
+        )}
       </span>
       <span className="block px-3.5 pb-3.5">
         <span className="-mt-7 block w-fit rounded-[16px] border-[3px] border-[#121212]">
@@ -120,7 +130,7 @@ export default function ExploreView({ events, organizers, failed }: { events: Ho
                 <h2 className="mb-3 font-v2-display-bold text-[20px] tracking-[-0.02em]">{t("explore.organizers")}</h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {result.organizers.map((o) => (
-                    <OrgCard key={o.id} org={o} wide />
+                    <OrgCard key={o.id} org={o} wide events={events} />
                   ))}
                 </div>
               </section>
@@ -156,7 +166,7 @@ export default function ExploreView({ events, organizers, failed }: { events: Ho
               <h2 className="mb-3 font-v2-display-bold text-[22px] tracking-[-0.03em]">{t("explore.organizers")}</h2>
               <div className="v2-no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 lg:-mx-8 lg:px-8" style={{ scrollbarWidth: "none" }}>
                 {organizers.map((o) => (
-                  <OrgCard key={o.id} org={o} />
+                  <OrgCard key={o.id} org={o} events={events} />
                 ))}
               </div>
             </section>

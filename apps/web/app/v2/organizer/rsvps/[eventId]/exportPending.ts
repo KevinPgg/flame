@@ -3,6 +3,7 @@ import {
   formatCentsAsPrice,
   normalizeRegistrationExportColumns,
   registrationValuesForExportColumns,
+  withGuestExportColumns,
   rsvpAmountCents,
   rsvpGuestName,
   rsvpTicketLabel,
@@ -34,8 +35,12 @@ export async function exportPendingRsvps(event: {
       return new Date(iso).toLocaleString("en-US");
     }
   };
-  const columns = normalizeRegistrationExportColumns(
-    (fresh.registration_form_config ?? undefined) as Parameters<typeof normalizeRegistrationExportColumns>[0]
+  // Fase 3.4: plus "Guest N · …" columns for RSVPs that carry their guests' answers.
+  const columns = withGuestExportColumns(
+    normalizeRegistrationExportColumns(
+      (fresh.registration_form_config ?? undefined) as Parameters<typeof normalizeRegistrationExportColumns>[0]
+    ),
+    pending.map((r) => (r.registration_data ?? null) as Record<string, unknown> | null)
   );
   const rows = buildPendingRsvpExportAoa(
     event.name,

@@ -10,7 +10,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderV2, mockFetch } from "./helpers";
 
-const st = vi.hoisted(() => ({ q: "", tickets: [] as unknown[] }));
+const st = vi.hoisted(() => ({ q: "", tickets: [] as unknown[], mutate: null as any }));
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => ({ isSignedIn: true, userId: "u1" }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
 }));
 vi.mock("next/image", () => ({ default: (p: { alt: string }) => <img alt={p.alt} /> }));
-vi.mock("../../app/lib/hooks/useRsvp", () => ({ useRsvpSubmission: () => ({ mutate: vi.fn(), isPending: false }) }));
+vi.mock("../../app/lib/hooks/useRsvp", () => ({ useRsvpSubmission: () => ({ mutate: st.mutate ?? (st.mutate = vi.fn()), isPending: false }) }));
 vi.mock("../../app/lib/hooks/useTicketAvailability", () => ({
   useMultipleTicketAvailability: () => ({ results: [], hasDataChanged: false, isLoading: false }),
 }));
@@ -133,7 +133,7 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     await waitFor(() => expect(window.location.href).toBe("/purchase?session=h1&promoter=PROMO1"));
   });
 
-  it("RSVP keeps its sheet (until 3.4), with the link's promoter applied", async () => {
+  it("RSVP (3.4): the request sheet with the link's promoter applied", async () => {
     st.q = "promoter=promo1";
     const user = userEvent.setup({ delay: null });
     mockFetch(PROMOTER);
@@ -146,10 +146,46 @@ describe("event page purchase block, Flame 2.0 (web)", () => {
     expect(await screen.findByTestId("promoter-chip")).toHaveTextContent("Promoter PROMO1");
     await user.click(screen.getByRole("button", { name: /General/ }));
     await user.click(screen.getAllByRole("button", { name: "Request to join" })[0]!);
-    const sheet = screen.getByRole("dialog", { name: "Checkout" });
+    const sheet = screen.getByRole("dialog", { name: "Request to join" });
     expect(within(sheet).getByText("Promoter PROMO1")).toBeInTheDocument();
+    expect(within(sheet).getByText(/You won’t be charged now/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog", { name: "Checkout" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Request to join" })).not.toBeInTheDocument();
+  });
+
+  it("RSVP (3.4): the organizer's questions once per guest; required ones checked; guest 1 at the top + _guests", async () => {
+    st.mutate = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    mockFetch(PROMOTER);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const free = { ...EVENT.ticket_tiers[0], price_cents: 0 };
+    renderV2(
+      <QueryClientProvider client={client}>
+        <EventDetail
+          event={{ ...EVENT, requires_rsvp: true, ticket_tiers: [free], registration_form_config: [{ id: "name", label: "Full name", type: "text", required: true }, { id: "ig", label: "Instagram", type: "text", required: false }] } as never}
+          header={<h1>header</h1>}
+          footer={null}
+        />
+      </QueryClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: /General/ }));
+    await user.click(screen.getAllByRole("button", { name: "Request to join" })[0]!);
+    const sheet = screen.getByRole("dialog", { name: "Request to join" });
+    expect(within(sheet).getByText("This event is free.")).toBeInTheDocument();
+    await user.click(within(sheet).getByRole("button", { name: "More tickets" }));
+    expect(within(sheet).getByText("Guest 1 of 2")).toBeInTheDocument();
+    expect(within(sheet).getByText("Guest 2 of 2")).toBeInTheDocument();
+    const names = within(sheet).getAllByLabelText("Full name");
+    expect(names).toHaveLength(2);
+    await user.type(names[0]!, "Ana");
+    await user.click(within(sheet).getByRole("button", { name: "Send request" }));
+    expect(within(sheet).getByText("Required")).toBeInTheDocument(); // guest 2's name
+    expect(st.mutate).not.toHaveBeenCalled();
+    await user.type(names[1]!, "Beto");
+    await user.type(within(sheet).getAllByLabelText("Instagram (optional)")[1]!, "@beto");
+    await user.click(within(sheet).getByRole("button", { name: "Send request" }));
+    await waitFor(() => expect(st.mutate).toHaveBeenCalled());
+    expect(st.mutate.mock.calls[0][0]).toMatchObject({ quantity: 2, registration_data: { name: "Ana", _guests: [{ name: "Beto", ig: "@beto" }] } });
   });
 
   it("picking a tier: the quantity is chosen in the card (no jump) and the bottom bar follows it", async () => {

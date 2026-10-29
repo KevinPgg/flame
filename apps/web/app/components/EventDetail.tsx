@@ -38,7 +38,8 @@ import RegistrationFormModal, {
 } from "./modals/RegistrationFormModal";
 import RsvpPaymentModal from "./modals/RsvpPaymentModal";
 import ConfirmationModal from "./modals/ConfirmationModal";
-import { CheckoutSheet, AccessCodeSheet } from "../v2/attendee/events/[slug]/CheckoutSheet";
+import { AccessCodeSheet } from "../v2/attendee/events/[slug]/CheckoutSheet";
+import { RsvpSheet, type RsvpField } from "../v2/attendee/events/[slug]/RsvpSheet";
 import { TierCard, BuyBar, buyBtn, type TierState } from "../v2/attendee/events/[slug]/TierCard";
 import { Icon as V2Icon } from "../v2/components/Icon";
 import { useI18n } from "../lib/i18n";
@@ -118,7 +119,6 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   const { t: tv2 } = useI18n(); // v2 copy only (outside the v2 frame it falls back to English, unused)
   const haveAccessCodeLabel = tv2("event.haveAccessCode");
   const continueLabel = tv2("checkout.continue");
-  const discountInvalidLabel = tv2("checkout.discountInvalid");
   const { isSignedIn, userId } = useAuth();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -1042,6 +1042,17 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
     }
   };
 
+  // Fase 3.4 (v2 RSVP sheet): the answers (guest 1 at the top level + `_guests`) come from the
+  // sheet, so the separate registration modal is skipped; same duplicate check and submit path.
+  const sendRsvpV2 = (answers: Record<string, unknown> | null) => {
+    if (!selectedTier || !isSignedIn || promoterStatus === "validating") return;
+    if (userTicketsData?.tickets?.some((tk) => tk.ticket_tier?.event?.id === event.id && tk.status === "pending")) {
+      setShowDuplicateRsvpModal(true);
+      return;
+    }
+    handleRsvpSubmit(undefined, (answers ?? undefined) as RegistrationData | undefined);
+  };
+
   // Compute the selected tier and stage once for reuse
   const normalizedSelectedTierId = selectedTier || undefined;
   const normalizedSelectedStageId = selectedStageId || undefined;
@@ -1062,7 +1073,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
   // B2: no hold while the promoter code is still being checked.
   const checkoutBusyV2 = creatingHold || rsvpMutation.isPending || isLoadingUserTickets || promoterStatus === "validating";
   // Fase 3.3 (3.2 merged, Kevin 10-28): tickets → reserve and go straight to the payment screen
-  // (promoter, discount and the countdown live there). RSVP keeps its sheet until 3.4.
+  // (promoter, discount and the countdown live there). RSVP opens its sheet (3.4).
   const openCheckoutV2 = () => {
     if (!isSignedIn) {
       router.push(`/sign-in?redirect_url=${encodeURIComponent(signInUrlV2)}`);
@@ -2017,8 +2028,8 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
         )}
       </div>
 
-      {v2Frame && selectedTierData && (
-        <CheckoutSheet
+      {v2Frame && selectedTierData && event.requires_rsvp && (
+        <RsvpSheet
           open={checkoutOpen}
           onClose={() => setCheckoutOpen(false)}
           event={{
@@ -2028,7 +2039,7 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
             timezone: event.timezone ?? null,
             venue: event.venue ?? null,
             currency,
-            requires_rsvp: event.requires_rsvp ?? false,
+            organizer: event.organizations?.name ?? "",
           }}
           tier={{
             name: selectedTierData.name,
@@ -2037,49 +2048,28 @@ export default function EventDetail({ event, header, footer }: EventDetailProps)
           }}
           quantity={selectedQuantity}
           maxQuantity={getMaxQuantityForTier(selectedTierData)}
-          onQuantity={(n) => {
-            setSelectedQuantity(n);
-            setDiscount(null); // the amount depends on the subtotal: check it again
-          }}
+          onQuantity={setSelectedQuantity}
+          fields={
+            (Array.isArray(event.registration_form_config)
+              ? filterFieldsForTier(event.registration_form_config, selectedTierData.registration_form_fields)
+              : []) as RsvpField[]
+          }
           accessCode={verifiedSecretCode ?? (accessCodeStatus === "valid" ? accessCodeInput.trim().toUpperCase() : null)}
           promoter={{
             input: promoterInput,
             status: promoterStatus,
             onInput: (v) => {
               setPromoterInput(v);
-              if (promoterStatus === "invalid") setPromoterStatus("idle");
+              if (promoterStatus === "invalid" || promoterStatus === "error") setPromoterStatus("idle");
             },
             onValidate: validatePromoterCode,
             onClear: clearPromoter,
           }}
-          discount={{
-            applied: discount,
-            onApply: async (code) => {
-              try {
-                const res = await fetch("/api/purchase/validate-promo-code", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    code,
-                    event_id: event.id,
-                    subtotal_cents: getEffectivePrice(selectedTier, selectedStageId) * selectedQuantity,
-                  }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok || !data.valid) return (data && data.error) || discountInvalidLabel;
-                setDiscount({ code: String(data.promotional_code?.code ?? code).toUpperCase(), amountCents: Number(data.discount_amount_cents) || 0 });
-                return null;
-              } catch {
-                return discountInvalidLabel;
-              }
-            },
-            onClear: () => setDiscount(null),
-          }}
-          busy={creatingHold || rsvpMutation.isPending}
+          busy={rsvpMutation.isPending}
           error={rsvpMessage && rsvpMessageType === "error" ? rsvpMessage : null}
-          onContinue={() => {
+          onSend={(answers) => {
             setCheckoutOpen(false);
-            handlePurchaseClick();
+            sendRsvpV2(answers);
           }}
         />
       )}

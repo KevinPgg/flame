@@ -13,6 +13,7 @@ import {
   formatCentsAsPrice,
   formatEventDateTime,
   registrationEntries,
+  rsvpGuestBlocks,
   rsvpAmountCents,
   rsvpGuestName,
   rsvpStatusKey,
@@ -552,6 +553,22 @@ function RegistrationDialog({
               </dl>
             </>
           )}
+          {/* Fase 3.4: the other guests' answers, one block each. */}
+          {rsvpGuestBlocks(config, rsvp.registration_data ?? null).map((b) => (
+            <div key={b.guest} data-testid={`rsvp-guest-${b.guest}`}>
+              <h3 className="mb-2 mt-5 text-[11px] uppercase tracking-[0.06em] text-v2-c50">{t("rsvps.guestN", { n: b.guest })}</h3>
+              <dl className="divide-y divide-v2-c10 rounded-v2-md bg-v2-ink3 px-4 text-[14px]">
+                {b.entries.map((e) => (
+                  <Row
+                    key={e.key}
+                    label={e.label}
+                    value={e.value.kind === "missing" ? t("rsvps.notProvided") : e.value.kind === "bool" ? (e.value.value ? t("rsvps.yes") : t("rsvps.no")) : e.value.text}
+                    muted={e.value.kind === "missing"}
+                  />
+                ))}
+              </dl>
+            </div>
+          ))}
           <div className="mt-5 flex justify-end">
             <button type="button" onClick={onClose} className="h-10 rounded-v2-pill bg-v2-ink3 px-5 text-[13px] font-v2-ui-semibold">
               {t("common.close")}

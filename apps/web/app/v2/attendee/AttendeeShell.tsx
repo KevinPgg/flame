@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { useI18n } from "../../lib/i18n";
 import { Icon, type IconName } from "../components/Icon";
 import { NotificationBell } from "./NotificationBell";
+import { PurchaseInProgress } from "./PurchaseInProgress";
 
 export type AttendeeTab = "home" | "explore" | "tickets" | "you";
 
@@ -127,6 +128,9 @@ export function AttendeeShell({ children, active, hideTabBar = false }: { childr
 
       <main className="pb-6 lg:pb-8">{children}</main>
       <AttendeeFooter />
+
+      {/* A running reservation follows the buyer everywhere until it's paid or expires. */}
+      {isLoaded && isSignedIn ? <PurchaseInProgress pathname={pathname} aboveBar={hideTabBar} /> : null}
 
       {/* Phone: the app's floating bar. */}
       {!hideTabBar && (
