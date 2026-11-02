@@ -8,7 +8,7 @@
  * ones dimmed after); Following (fase 4.2: counter + list with Follow/Following); past events
  * from your tickets.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { buildWallet, splitSavedEvents, walletDayTime } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
@@ -38,6 +38,82 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
       </div>
       {children}
     </section>
+  );
+}
+
+type MyInvite = { id: string; role: "admin" | "organizer"; expires_at: string; organization: { id: string; name: string; slug: string; logo_url: string | null } };
+
+/** Team invitations for me (fase 4.5): Accept / Decline right here; accepting adds the organizer. */
+function MyInvitations({ onJoined }: { onJoined: () => void }) {
+  const { t } = useI18n();
+  const [list, setList] = useState<MyInvite[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/me/invitations", { cache: "no-store" })
+      .then(async (r) => (r.ok ? ((await r.json()) as { invitations: MyInvite[] }).invitations : []))
+      .then((l) => alive && setList(l ?? []))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const answer = async (inv: MyInvite, action: "accept" | "decline") => {
+    setBusy(inv.id);
+    try {
+      const res = await fetch(`/api/me/invitations/${inv.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(j.error || t("errors.generic"));
+      setList((l) => l.filter((x) => x.id !== inv.id));
+      setMessage(action === "accept" ? t("invites.accepted", { org: inv.organization.name }) : t("invites.declined"));
+      if (action === "accept") onJoined();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : t("errors.generic"));
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (list.length === 0 && !message) return null;
+  return (
+    <div className="flex flex-col gap-2" data-testid="my-invitations">
+      {list.map((inv) => (
+        <div key={inv.id} className="flex flex-wrap items-center gap-3 rounded-[16px] border border-v2-warn/30 bg-[#121212] p-3">
+          <OrgAvatar name={inv.organization.name} logoUrl={inv.organization.logo_url} size={48} />
+          <span className="min-w-0 flex-1">
+            <b className="block truncate text-[15px] font-v2-ui-semibold">{t("invites.youInvited", { org: inv.organization.name })}</b>
+            <small className="block text-[12.5px] text-v2-c50">{t("invites.asRole", { role: t(`organizer.roles.${inv.role}`) })}</small>
+          </span>
+          <span className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy === inv.id}
+              onClick={() => void answer(inv, "decline")}
+              className="inline-flex h-9 items-center rounded-v2-pill bg-v2-ink3 px-4 text-[13px] font-v2-ui-semibold hover:bg-v2-ink4 disabled:opacity-50"
+            >
+              {t("invites.decline")}
+            </button>
+            <button
+              type="button"
+              disabled={busy === inv.id}
+              onClick={() => void answer(inv, "accept")}
+              className="inline-flex h-9 items-center rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink hover:bg-v2-paper disabled:opacity-50"
+            >
+              {t("invites.accept")}
+            </button>
+          </span>
+        </div>
+      ))}
+      {message && (
+        <p role="status" className="text-[13px] text-v2-c70">
+          {message}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -120,6 +196,7 @@ export default function YouView() {
 
       <Section title={t("you.myOrganizers")} aside={<span className="text-[13px] text-v2-c50">{list.length || ""}</span>}>
         <div id="my-organizers" className="flex flex-col gap-2">
+          <MyInvitations onJoined={() => void (orgs as { refetch?: () => unknown }).refetch?.()} />
           {orgs.isLoading && <Skeleton className="h-[72px] w-full rounded-[16px]" />}
           {list.map((o) =>
             o.approved ? (

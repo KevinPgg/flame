@@ -205,7 +205,7 @@ export default function ExploreView({ events, organizers, failed }: { events: Ho
             {result.events.length > 0 && (
               <section>
                 <h2 className="mb-3 font-v2-display-bold text-[20px] tracking-[-0.02em]">{t("explore.events")}</h2>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-7 md:grid-cols-3">
                   {result.events.map((e) => (
                     <EventTile key={e.id} event={e} />
                   ))}
@@ -249,7 +249,7 @@ export default function ExploreView({ events, organizers, failed }: { events: Ho
               <h2 className="mb-3 font-v2-display-bold text-[22px] tracking-[-0.03em]">{t("explore.featured")}</h2>
               <div className="v2-no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 lg:-mx-8 lg:px-8" style={{ scrollbarWidth: "none" }}>
                 {featured.map((e) => (
-                  <div key={e.id} className="w-[200px] shrink-0 md:w-[230px]">
+                  <div key={e.id} className="w-[260px] shrink-0 md:w-[300px]">
                     <EventTile event={e} />
                   </div>
                 ))}

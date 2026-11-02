@@ -27,6 +27,8 @@ export function notificationWebHref(
       return org ? `/v2/organizer?${org}` : "/v2/organizer";
     case "organization_rejected":
       return null; // the text carries the reason; the organization is no longer listed
+    case "team_invitation":
+      return "/profile"; // fase 4.5: the invitation card (Accept / Decline) is in "You"
     case "rsvp_pending":
     case "rsvp_approved":
     case "ticket_received":

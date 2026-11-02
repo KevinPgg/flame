@@ -1,7 +1,9 @@
 /**
  * Team (prototype "ow:team", phone view; same endpoints and rules as the web TeamView): members
- * with role and, for organizers, how many events they're scoped to. Owner/admin add people
- * (restricted search, PeoplePicker), change role, assign events, remove. Owners can't be changed.
+ * with role and, for organizers, how many events they're scoped to. Owner/admin change role,
+ * assign events, remove. Owners can't be changed.
+ * Fase 4.5 (2026-11-02): "Invite member" by e-mail (any address); the person is "Invited" until
+ * they accept (7 days); resend / cancel. Same endpoints as the web.
  */
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
@@ -21,6 +23,9 @@ import {
   memberHasActions,
   memberName,
   sortTeam,
+  invitationDaysLeft,
+  isValidInviteEmail,
+  normalizeInviteEmail,
   type AssignableRole,
   type OrgMemberRole,
   type TeamAssignment,
@@ -34,14 +39,15 @@ import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { useMe } from "../../../hooks/v2/useMe";
 import { OrganizerShell, TABBAR_SPACE } from "../OrganizerShell";
-import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, StatusTag } from "../ui";
+import { Button, ConfirmDialog, ErrorBox, ErrorText, Field, Icon, Skeleton, StatusTag } from "../ui";
 import { Sheet } from "../Sheet";
-import { Avatar, PeoplePicker, type Person } from "../people/PeoplePicker";
+import { Avatar } from "../people/PeoplePicker";
 
-type Dialog = { kind: "add" } | { kind: "menu" | "role" | "assign" | "remove"; member: TeamMember } | null;
+type Invite = { id: string; email: string; role: AssignableRole; state: "pending" | "expired"; created_at: string; expires_at: string };
+type Dialog = { kind: "add" } | { kind: "cancelInvite"; invite: Invite } | { kind: "menu" | "role" | "assign" | "remove"; member: TeamMember } | null;
 
 export function teamKeys(orgId: string) {
-  return { members: ["v2", "team-members", orgId], assignments: ["v2", "team-assignments", orgId] };
+  return { members: ["v2", "team-members", orgId], assignments: ["v2", "team-assignments", orgId], invites: ["v2", "team-invitations", orgId] };
 }
 
 export function TeamScreen({ organization }: { organization: MyOrganization }) {
@@ -65,6 +71,27 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
     queryFn: () => apiGet(`/api/organizations/${organization.id}/event-assignments`, getToken),
   });
 
+  const invitesQuery = useQuery<{ invitations: Invite[] }>({
+    queryKey: keys.invites,
+    enabled: canEdit,
+    queryFn: () => apiGet(`/api/organizations/${organization.id}/invitations`, getToken),
+  });
+  const invites = invitesQuery.data?.invitations ?? [];
+  const [notice, setNotice] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
+  const resend = async (inv: Invite) => {
+    setInviteBusy(inv.id);
+    try {
+      await apiClient(`/api/organizations/${organization.id}/invitations/${inv.id}`, { method: "POST", body: "{}", getToken });
+      setNotice(t("invites.sent", { email: inv.email }));
+    } catch (e) {
+      setNotice(apiErrorText(e, t("errors.generic")));
+    } finally {
+      setInviteBusy(null);
+      void queryClient.invalidateQueries({ queryKey: keys.invites });
+    }
+  };
+
   const members = useMemo(() => sortTeam(membersQuery.data?.members ?? [], locale), [membersQuery.data, locale]);
   const assignments = assignmentsQuery.data?.assignments ?? [];
   const counts = assignmentCounts(assignments);
@@ -75,6 +102,7 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: keys.members }),
       queryClient.invalidateQueries({ queryKey: keys.assignments }),
+      queryClient.invalidateQueries({ queryKey: keys.invites }),
       queryClient.invalidateQueries({ queryKey: ["v2", "organizer-data"] }),
     ]);
   };
@@ -96,7 +124,7 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
       onBack={back}
       actions={
         canEdit ? (
-          <Pressable onPress={() => setDialog({ kind: "add" })} accessibilityRole="button" accessibilityLabel={t("team.addMember")} className="h-9 w-9 items-center justify-center rounded-full bg-v2-cream active:bg-v2-paper">
+          <Pressable onPress={() => setDialog({ kind: "add" })} accessibilityRole="button" accessibilityLabel={t("invites.inviteMember")} className="h-9 w-9 items-center justify-center rounded-full bg-v2-cream active:bg-v2-paper">
             <Icon name="plus" size={20} color={c.ink} />
           </Pressable>
         ) : null
@@ -107,6 +135,45 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
         refreshControl={<RefreshControl refreshing={membersQuery.isRefetching} onRefresh={() => void refresh()} tintColor={c.cream} />}
       >
         <Text className="font-v2-ui text-[14px] leading-[20px] text-v2-c70">{t("team.lede", { org: organization.name })}</Text>
+        {notice ? (
+          <Text accessibilityRole="alert" className="rounded-v2-md bg-v2-ink2 px-4 py-3 font-v2-ui text-[13.5px] text-v2-c90">
+            {notice}
+          </Text>
+        ) : null}
+        {invites.length > 0 ? (
+          <View className="gap-2">
+            <Text className="font-v2-ui-semibold text-[12px] uppercase tracking-[0.7px] text-v2-c50">{t("invites.pendingTitle")}</Text>
+            <View className="overflow-hidden rounded-v2-card bg-v2-ink2" testID="invite-list">
+              {invites.map((inv, i) => (
+                <View key={inv.id} className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-v2-c06" : ""}`}>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderStyle: "dashed", borderColor: c.c30 }} className="items-center justify-center">
+                    <Text className="font-v2-ui-bold text-[13px] text-v2-c70">{inv.email.slice(0, 2).toUpperCase()}</Text>
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text numberOfLines={1} className="font-v2-ui-semibold text-[14px] text-v2-cream">{inv.email}</Text>
+                    <View className="mt-1 flex-row flex-wrap items-center gap-2">
+                      <StatusTag tone={inv.state === "expired" ? "neutral" : "warn"}>{inv.state === "expired" ? t("invites.expired") : t("invites.invited")}</StatusTag>
+                      <Text className="font-v2-ui text-[12px] text-v2-c70">
+                        {t(`organizer.roles.${inv.role}`)}
+                        {inv.state === "pending" ? ` · ${t("invites.expiresIn", { count: invitationDaysLeft(inv.expires_at) + 1 })}` : ""}
+                      </Text>
+                    </View>
+                  </View>
+                  <Button small label={t("invites.resend")} onPress={() => void resend(inv)} disabled={inviteBusy === inv.id} />
+                  <Pressable
+                    onPress={() => setDialog({ kind: "cancelInvite", invite: inv })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t("invites.cancel")} ${inv.email}`}
+                    hitSlop={6}
+                    className="h-9 w-9 items-center justify-center rounded-full active:bg-v2-ink3"
+                  >
+                    <Icon name="close" size={16} color={c.c50} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
         {membersQuery.isError ? (
           <ErrorBox onRetry={() => void membersQuery.refetch()} />
         ) : membersQuery.isLoading ? (
@@ -153,13 +220,32 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
       </ScrollView>
 
       {dialog?.kind === "add" && (
-        <AddMemberSheet
+        <InviteSheet
           organization={organization}
           members={members}
           onClose={() => setDialog(null)}
-          onAdded={async () => {
-            await refresh();
+          onSent={async (msg) => {
+            setNotice(msg);
+            await queryClient.invalidateQueries({ queryKey: keys.invites });
             setDialog(null);
+          }}
+        />
+      )}
+      {dialog?.kind === "cancelInvite" && (
+        <ConfirmDialog
+          open
+          message={t("invites.cancelConfirm", { email: dialog.invite.email })}
+          confirmLabel={t("invites.cancel")}
+          onCancel={() => setDialog(null)}
+          onConfirm={async () => {
+            const inv = dialog.invite;
+            setDialog(null);
+            try {
+              await apiClient(`/api/organizations/${organization.id}/invitations/${inv.id}`, { method: "DELETE", getToken });
+            } catch (e) {
+              setNotice(apiErrorText(e, t("errors.generic")));
+            }
+            await queryClient.invalidateQueries({ queryKey: keys.invites });
           }}
         />
       )}
@@ -271,24 +357,26 @@ function SheetActions({ onCancel, onSave, saveLabel, busy, disabled }: { onCance
   );
 }
 
-function AddMemberSheet({ organization, members, onClose, onAdded }: { organization: MyOrganization; members: TeamMember[]; onClose: () => void; onAdded: () => Promise<void> }) {
+function InviteSheet({ organization, members, onClose, onSent }: { organization: MyOrganization; members: TeamMember[]; onClose: () => void; onSent: (message: string) => Promise<void> }) {
   const { t } = useI18n();
   const { getToken } = useOptionalAuth();
-  const [person, setPerson] = useState<Person | null>(null);
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<AssignableRole>("organizer");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const already = person ? members.some((m) => m.user_id === person.id) : false;
+  const clean = normalizeInviteEmail(email);
 
-  const add = async () => {
-    if (!person || already) return;
+  const invite = async () => {
+    if (!isValidInviteEmail(clean)) return setError(t("invites.emailInvalid"));
+    if (members.some((m) => (m.user_email ?? "").toLowerCase() === clean)) return setError(t("invites.alreadyMember", { email: clean }));
     setBusy(true);
     setError(null);
     try {
-      await apiPost(`/api/organizations/${organization.id}/members`, { userId: person.id, role }, getToken);
-      await onAdded();
+      const res = await apiPost<{ emailSent?: boolean }>(`/api/organizations/${organization.id}/invitations`, { email: clean, role }, getToken);
+      await onSent(res?.emailSent === false ? t("invites.sentNoEmail", { email: clean }) : t("invites.sent", { email: clean }));
     } catch (e) {
-      setError(apiErrorText(e, t("errors.generic")));
+      const status = (e as { status?: number })?.status;
+      setError(status === 409 ? t("invites.alreadyMember", { email: clean }) : apiErrorText(e, t("errors.generic")));
       setBusy(false);
     }
   };
@@ -296,16 +384,27 @@ function AddMemberSheet({ organization, members, onClose, onAdded }: { organizat
   return (
     <Sheet
       open
-      title={t("team.addMember")}
+      title={t("invites.inviteMember")}
       subtitle={organization.name}
       onClose={onClose}
-      footer={<SheetActions onCancel={onClose} onSave={() => void add()} saveLabel={busy ? t("team.adding") : t("team.add")} busy={busy} disabled={!person || already} />}
+      footer={<SheetActions onCancel={onClose} onSave={() => void invite()} saveLabel={busy ? t("invites.sending") : t("invites.send")} busy={busy} disabled={!clean} />}
     >
       <View className="gap-4">
-        <PeoplePicker organization={organization} value={person} onChange={setPerson} disabled={busy} />
-        {person && already && <Text accessibilityRole="alert" className="font-v2-ui text-[13px] text-v2-warn">{t("team.alreadyMember", { name: [person.first_name, person.last_name].filter(Boolean).join(" ") || person.email })}</Text>}
-        {person && !already && <RolePicker value={role} onChange={setRole} />}
+        <Field
+          value={email}
+          onChangeText={(v) => {
+            setEmail(v);
+            setError(null);
+          }}
+          placeholder={t("invites.emailPlaceholder")}
+          accessibilityLabel={t("invites.email")}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          editable={!busy}
+        />
         {error ? <ErrorText>{error}</ErrorText> : null}
+        <RolePicker value={role} onChange={setRole} />
+        <Text className="font-v2-ui text-[12.5px] leading-[18px] text-v2-c50">{t("invites.hint")}</Text>
       </View>
     </Sheet>
   );

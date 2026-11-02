@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { directionsUrl, flameV2Colors as c, walletDayTime } from "@project-flame/lib";
@@ -66,14 +67,24 @@ export function EventHeader({
   const long = desc.length > 220 || desc.split("\n").length > 3;
 
   return (
-    <View style={{ paddingTop: insets.top + 8 }} className="overflow-hidden px-4 pb-2">
+    <View style={{ paddingTop: insets.top + 8 }} className="overflow-hidden px-4 pb-6">
       {event.image_url ? (
-        <Image
-          source={{ uri: event.image_url }}
-          style={{ position: "absolute", top: -80, left: -80, right: -80, height: 700, opacity: 0.5 }}
-          blurRadius={60}
-          contentFit="cover"
-        />
+        <>
+          {/* The blurred flyer covers the whole header down to "About", as on the web (it used to
+              stop at a fixed 700 px and cut under the event name — Kevin 2026-11-02). */}
+          <Image
+            testID="event-header-backdrop"
+            source={{ uri: event.image_url }}
+            style={{ position: "absolute", top: -80, left: -80, right: -80, bottom: -80, opacity: 0.5 }}
+            blurRadius={60}
+            contentFit="cover"
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(0,0,0,0)", "#000"]}
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 72 }}
+          />
+        </>
       ) : null}
       {/* Back and share live in EventTopBar, fixed over the page (Kevin 2026-10-28). */}
       <View style={{ height: 40 }} className="mb-4" />

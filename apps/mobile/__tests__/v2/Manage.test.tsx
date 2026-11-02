@@ -40,7 +40,9 @@ const MEMBERS = [
 ];
 const EVS = [event("ev-1", "Lovin Sunset", 5), event("ev-2", "Kora Night", 9)];
 
+const mockInvites = { list: [] as unknown[] };
 beforeEach(() => {
+  mockInvites.list = [];
   [mockReplace, mockApiPost, mockApiClient, mockStripe.handleConnect].forEach((m) => m.mockReset());
   mockApiPost.mockResolvedValue({});
   mockApiClient.mockResolvedValue({});
@@ -49,6 +51,7 @@ beforeEach(() => {
     if (url.startsWith("/api/organizer/data")) return { organization: {}, events: EVS, cohost_events: [] };
     if (url.includes("event-assignments?mine")) return { assignments: [] };
     if (url.endsWith("/members")) return { members: MEMBERS };
+    if (url.endsWith("/invitations")) return { invitations: mockInvites.list };
     if (url.endsWith("/event-assignments")) return { assignments: [{ user_id: "u-ana", event_id: "ev-1" }] };
     if (url.startsWith("/api/organizer/people")) {
       if (url.includes("q=lu")) return { people: [{ id: "u-luis", email: "luis@x.com", first_name: "Luis", last_name: "Mora", related: true }] };
@@ -72,25 +75,30 @@ describe("team", () => {
     expect(screen.getByLabelText("Options for Ana Ruiz")).toBeTruthy();
   });
 
-  it("add: suggestions as you type (restricted search), pick, role, POST", async () => {
+  it("invite (fase 4.5): e-mail + role → POST; already in the team is stopped", async () => {
+    mockApiPost.mockResolvedValueOnce({ emailSent: true });
     await renderV2(<TeamScreen organization={org("admin")} />);
-    await fireEvent.press(await screen.findByLabelText("Add member"));
-    expect(screen.getByText(/Anyone else: type their full e-mail/)).toBeTruthy();
-    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "lu");
-    await fireEvent.press(await screen.findByLabelText("Luis Mora luis@x.com"));
+    await fireEvent.press(await screen.findByLabelText("Invite member"));
+    await fireEvent.changeText(screen.getByLabelText("E-mail"), "ana@x.com");
+    await fireEvent.press(screen.getByText("Send invite"));
+    expect(screen.getByText("ana@x.com is already in the team.")).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText("E-mail"), " Zoe@X.com ");
     await fireEvent.press(screen.getByRole("radio", { name: "Admin" }));
-    await fireEvent.press(screen.getByText("Add to team"));
-    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith("/api/organizations/org-1/members", { userId: "u-luis", role: "admin" }, expect.any(Function)));
-    expect(mockApiGet).toHaveBeenCalledWith("/api/organizer/people?organizationId=org-1&q=lu", expect.any(Function));
+    await fireEvent.press(screen.getByText("Send invite"));
+    await waitFor(() => expect(mockApiPost).toHaveBeenCalledWith("/api/organizations/org-1/invitations", { email: "zoe@x.com", role: "admin" }, expect.any(Function)));
+    expect(await screen.findByText("Invite sent to zoe@x.com")).toBeTruthy();
   });
 
-  it("someone outside the organization only by full e-mail, tagged", async () => {
+  it("pending invitations: Invited, resend, cancel (asks first)", async () => {
+    mockInvites.list = [{ id: "inv1", email: "zoe@x.com", role: "organizer", state: "pending", created_at: "", expires_at: new Date(Date.now() + 3.5 * 86_400_000).toISOString() }];
     await renderV2(<TeamScreen organization={org("owner")} />);
-    await fireEvent.press(await screen.findByLabelText("Add member"));
-    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "zoe");
-    expect(await screen.findByText(/Nobody connected to Kora Club matches|No one connected to Kora Club matches/)).toBeTruthy();
-    await fireEvent.changeText(screen.getByLabelText("Name or e-mail"), "zoe@x.com");
-    expect(await screen.findByText("Found by e-mail")).toBeTruthy();
+    expect(await screen.findByText("zoe@x.com")).toBeTruthy();
+    expect(screen.getByText("Invited")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Resend"));
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalledWith("/api/organizations/org-1/invitations/inv1", expect.objectContaining({ method: "POST" })));
+    await fireEvent.press(screen.getByLabelText("Cancel invite zoe@x.com"));
+    await fireEvent.press(screen.getAllByText("Cancel invite").slice(-1)[0]!);
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalledWith("/api/organizations/org-1/invitations/inv1", expect.objectContaining({ method: "DELETE" })));
   });
 
   it("assign events (organizer) sends the checked list; remove asks first", async () => {
@@ -133,7 +141,7 @@ describe("team", () => {
   it("organizer role: list only", async () => {
     await renderV2(<TeamScreen organization={org("organizer")} />);
     expect(await screen.findByText("ana@x.com")).toBeTruthy();
-    expect(screen.queryByLabelText("Add member")).toBeNull();
+    expect(screen.queryByLabelText("Invite member")).toBeNull();
     expect(screen.queryByLabelText("Options for Ana Ruiz")).toBeNull();
   });
 });

@@ -87,37 +87,63 @@ describe("Team v2", () => {
     expect(screen.getByRole("button", { name: "Options for Beto" })).toBeInTheDocument();
   });
 
-  it("add member: restricted search, pick, role, add", async () => {
-    const { user, fetchMock } = setup();
-    await screen.findByText("ana@x.com");
-    await user.click(screen.getByRole("button", { name: /Add member/ }));
-    const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Name or e-mail"), "nu");
-    await user.click(await within(dialog).findByText("Nuevo Uno"));
-    expect(fetchMock.calls.some((c) => c.url === "/api/organizer/people?organizationId=org1&q=nu")).toBe(true);
-    await user.click(within(dialog).getByRole("radio", { name: /Admin/ }));
-    await user.click(within(dialog).getByRole("button", { name: "Add to team" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(writes(fetchMock.calls)).toEqual([{ url: "/api/organizations/org1/members", method: "POST", body: { userId: "u-new", role: "admin" } }]);
-  });
-
-  it("add member: no account / already in the team", async () => {
-    const { user } = setup({
-      extra: [
-        { match: (u) => u.startsWith("/api/organizer/people") && u.includes("ghost%40x.com"), body: { people: [] } },
-        { match: (u) => u.startsWith("/api/organizer/people") && u.includes("q=be"), body: { people: [{ id: "u-m3", email: "beto@x.com", first_name: "Beto", last_name: null, related: true }] } },
-      ],
+  it("invite (fase 4.5): any e-mail, role, sent; shows the notice", async () => {
+    const { user, fetchMock } = setup({
+      extra: [{ match: (u, i) => u === "/api/organizations/org1/invitations" && i?.method === "POST", body: { invitation: { id: "inv1" }, resent: false, emailSent: true } }],
     });
     await screen.findByText("ana@x.com");
-    await user.click(screen.getByRole("button", { name: /Add member/ }));
+    await user.click(screen.getByRole("button", { name: /Invite member/ }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Name or e-mail"), "ghost@x.com");
-    expect(await within(dialog).findByText(/No Flame account with that e-mail/)).toBeInTheDocument();
-    await user.clear(within(dialog).getByLabelText("Name or e-mail"));
-    await user.type(within(dialog).getByLabelText("Name or e-mail"), "be");
-    await user.click(await within(dialog).findByText("Beto"));
-    expect(await within(dialog).findByText("Beto is already in the team.")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Add to team" })).toBeDisabled();
+    await user.type(within(dialog).getByLabelText("E-mail"), "not-an-email");
+    await user.click(within(dialog).getByRole("button", { name: "Send invite" }));
+    expect(within(dialog).getByText("Enter a valid e-mail, like name@email.com.")).toBeInTheDocument();
+    await user.clear(within(dialog).getByLabelText("E-mail"));
+    await user.type(within(dialog).getByLabelText("E-mail"), "  New@X.com ");
+    await user.click(within(dialog).getByRole("radio", { name: /Admin/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Send invite" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(writes(fetchMock.calls)).toEqual([{ url: "/api/organizations/org1/invitations", method: "POST", body: { email: "new@x.com", role: "admin" } }]);
+    expect(screen.getByRole("status")).toHaveTextContent("Invite sent to new@x.com");
+  });
+
+  it("invite: someone already in the team is stopped before calling the API", async () => {
+    const { user, fetchMock } = setup();
+    await screen.findByText("ana@x.com");
+    await user.click(screen.getByRole("button", { name: /Invite member/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("E-mail"), "BETO@x.com");
+    await user.click(within(dialog).getByRole("button", { name: "Send invite" }));
+    expect(within(dialog).getByText("beto@x.com is already in the team.")).toBeInTheDocument();
+    expect(writes(fetchMock.calls)).toEqual([]);
+  });
+
+  it("pending invitations: Invited / Expired, resend and cancel (asks first)", async () => {
+    const soon = new Date(Date.now() + 3.5 * day).toISOString();
+    const { user, fetchMock } = setup({
+      extra: [
+        {
+          match: (u, i) => u === "/api/organizations/org1/invitations" && (i?.method ?? "GET") === "GET",
+          body: {
+            invitations: [
+              { id: "inv1", email: "zoe@x.com", role: "organizer", state: "pending", created_at: "", expires_at: soon },
+              { id: "inv2", email: "old@x.com", role: "admin", state: "expired", created_at: "", expires_at: "2026-01-01T00:00:00Z" },
+            ],
+          },
+        },
+        { match: (u, i) => u === "/api/organizations/org1/invitations/inv1" && i?.method === "DELETE", body: {} },
+      ],
+    });
+    const list = await screen.findByTestId("invite-list");
+    expect(list).toHaveTextContent("zoe@x.com");
+    expect(list).toHaveTextContent("Invited");
+    expect(list).toHaveTextContent("Expires in 4 days");
+    expect(list).toHaveTextContent("Expired");
+    await user.click(within(list).getAllByRole("button", { name: "Resend" })[0]!);
+    await waitFor(() => expect(writes(fetchMock.calls)[0]).toMatchObject({ url: "/api/organizations/org1/invitations/inv1", method: "POST" }));
+    await user.click(within(list).getByRole("button", { name: "Cancel invite zoe@x.com" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Cancel the invitation to zoe@x.com?");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel invite" }));
+    await waitFor(() => expect(writes(fetchMock.calls).some((c) => c.method === "DELETE" && c.url.endsWith("/inv1"))).toBe(true));
   });
 
   it("change role", async () => {

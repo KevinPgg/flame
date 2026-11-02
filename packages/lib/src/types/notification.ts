@@ -13,9 +13,11 @@ export type NotificationType =
   | "ticket_received"
   | "auth_expiry_warning"
   | "organization_approved"
-  | "organization_rejected";
+  | "organization_rejected"
+  | "team_invitation";
 
 /** Notification types that cannot be disabled by the user in preferences. */
 export const NON_DISMISSABLE_NOTIFICATION_TYPES: ReadonlySet<NotificationType> =
   // Organization review (2026-10-27): the answer to your own request — always delivered.
-  new Set(["ticket_received", "organization_approved", "organization_rejected"]);
+  // Team invitation (fase 4.5): needs an answer, always delivered.
+  new Set(["ticket_received", "organization_approved", "organization_rejected", "team_invitation"]);

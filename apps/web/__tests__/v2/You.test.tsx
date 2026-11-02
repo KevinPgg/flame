@@ -52,6 +52,25 @@ import YouView from "../../app/v2/attendee/you/YouView";
 vi.setConfig({ testTimeout: 20_000 });
 
 describe("You (web)", () => {
+  it("team invitation (fase 4.5): card with Accept / Decline; accepting posts and says so", async () => {
+    const f = mockFetch([
+      {
+        match: (u, i) => u === "/api/me/invitations" && (i?.method ?? "GET") === "GET",
+        body: { invitations: [{ id: "inv1", role: "admin", expires_at: "2099-01-01T00:00:00Z", organization: { id: "o9", name: "Kora", slug: "kora", logo_url: null } }] },
+      },
+      { match: (u, i) => u === "/api/me/invitations/inv1" && i?.method === "POST", body: { status: "accepted" } },
+    ]);
+    const user = userEvent.setup({ delay: null });
+    renderV2(<YouView />);
+    const card = await screen.findByTestId("my-invitations");
+    expect(card).toHaveTextContent("Kora invited you");
+    expect(card).toHaveTextContent("as Admin");
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    expect(await screen.findByText("You joined Kora.")).toBeInTheDocument();
+    expect(f.posts()[0]).toMatchObject({ url: "/api/me/invitations/inv1", body: { action: "accept" } });
+    vi.unstubAllGlobals();
+  });
+
   it("shows your role in each organization (Kevin 2026-11-02)", () => {
     renderV2(<YouView />);
     expect(screen.getByRole("link", { name: /Club Uno/ })).toHaveTextContent(/Owner/);

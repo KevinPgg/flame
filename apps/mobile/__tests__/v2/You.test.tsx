@@ -48,6 +48,11 @@ const mockFollowing = [{ id: "o-kora", name: "Kora", slug: "kora", logo_url: nul
 jest.mock("../../hooks/useFollowing", () => ({
   useFollowing: () => ({ orgs: mockFollowing, isLoading: false, isFollowing: () => true, toggle: jest.fn(), refetch: jest.fn() }),
 }));
+const mockAnswer = jest.fn(async () => undefined);
+const mockInv = { list: [] as unknown[] };
+jest.mock("../../hooks/useMyInvitations", () => ({
+  useMyInvitations: () => ({ invitations: mockInv.list, answer: mockAnswer, refetch: jest.fn() }),
+}));
 jest.mock("../../hooks/useSavedEvents", () => ({
   useSavedEvents: () => ({ events: mockSaved.events, isLoading: false, isSaved: () => true, toggle: jest.fn(), refetch: jest.fn() }),
 }));
@@ -58,6 +63,17 @@ beforeEach(() => {
 });
 
 describe("You (app)", () => {
+  it("team invitation (fase 4.5): card with Accept / Decline", async () => {
+    mockInv.list = [{ id: "inv1", role: "admin", expires_at: "2099-01-01T00:00:00Z", organization: { id: "o9", name: "Kora", slug: "kora", logo_url: null } }];
+    await renderV2(<You />);
+    expect(screen.getByText("Kora invited you")).toBeTruthy();
+    expect(screen.getByText("as Admin")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Accept"));
+    expect(mockAnswer).toHaveBeenCalledWith(expect.objectContaining({ id: "inv1" }), "accept");
+    expect(await screen.findByText("You joined Kora.")).toBeTruthy();
+    mockInv.list = [];
+  });
+
   it("shows your role in each organization (Kevin 2026-11-02)", async () => {
     await renderV2(<You />);
     expect(screen.getAllByText("Owner")).toHaveLength(2);

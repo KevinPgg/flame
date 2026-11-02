@@ -22,6 +22,7 @@ const ICON: Record<string, IconName> = {
   ticket_sold: "ticket",
   auth_expiry_warning: "alert",
   organization_approved: "check",
+  team_invitation: "user",
   organization_rejected: "close",
 };
 

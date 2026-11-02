@@ -16,13 +16,15 @@ import {
   memberInitials,
   memberName,
   sortTeam,
+  invitationDaysLeft,
+  isValidInviteEmail,
+  normalizeInviteEmail,
   type AssignableRole,
   type OrgMemberRole,
   type TeamAssignment,
   type TeamMember,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { PeoplePicker, personLabel, type Person } from "../../components/PeoplePicker";
 import { Icon } from "../../components/Icon";
 import { StatusTag } from "../../components/StatusTag";
 import { Modal } from "../../components/Modal";
@@ -34,8 +36,11 @@ import { routes } from "../../lib/routes";
 import { OrganizerShell, type ShellUser } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
 
+type Invite = { id: string; email: string; role: AssignableRole; state: "pending" | "expired"; created_at: string; expires_at: string };
+
 type Dialog =
   | { kind: "add" }
+  | { kind: "cancelInvite"; invite: Invite }
   | { kind: "menu"; member: TeamMember }
   | { kind: "role"; member: TeamMember }
   | { kind: "assign"; member: TeamMember }
@@ -48,8 +53,10 @@ const ghost = "inline-flex h-10 items-center justify-center rounded-v2-pill bg-v
 
 /**
  * Team v2 (prototype "ow:team"): members with role and, for organizers, how many events they're
- * scoped to. Add (existing Flame account by e-mail), change role, assign events, remove.
- * Same endpoints and rules as v1; owners can't be changed or removed here.
+ * scoped to. Change role, assign events, remove. Same endpoints and rules as v1; owners can't
+ * be changed or removed here.
+ * Fase 4.5 (2026-11-02): "Invite member" by e-mail (any address) instead of adding an existing
+ * account directly; the person is "Invited" until they accept (7 days); resend / cancel.
  */
 export default function TeamView({
   organization,
@@ -71,6 +78,25 @@ export default function TeamView({
   // Same cache keys as v1's Team screen.
   const membersKey = ["team-members", organization.id];
   const assignmentsKey = ["team-event-assignments", organization.id];
+  const invitesKey = ["team-invitations", organization.id];
+  const invitesQuery = useQuery<{ invitations: Invite[] }>({
+    queryKey: invitesKey,
+    queryFn: async () => {
+      const res = await fetch(`/api/organizations/${organization.id}/invitations`);
+      if (!res.ok) throw new Error(await apiErrorMessage(res, "Failed to load invitations"));
+      return res.json();
+    },
+  });
+  const invites = invitesQuery.data?.invitations ?? [];
+  const [notice, setNotice] = useState<string | null>(null);
+  const [inviteBusy, setInviteBusy] = useState<string | null>(null);
+  const resend = async (inv: Invite) => {
+    setInviteBusy(inv.id);
+    const err = await send(`/api/organizations/${organization.id}/invitations/${inv.id}`, "POST", {}, t("errors.generic"));
+    setInviteBusy(null);
+    setNotice(err ?? t("invites.sent", { email: inv.email }));
+    await queryClient.invalidateQueries({ queryKey: invitesKey });
+  };
   const membersQuery = useQuery<{ members: TeamMember[] }>({
     queryKey: membersKey,
     queryFn: async () => {
@@ -126,15 +152,57 @@ export default function TeamView({
         { label: t("team.title") },
       ]}
       actions={
-        <button type="button" onClick={() => setDialog({ kind: "add" })} aria-label={t("team.addMember")} className={primary}>
+        <button type="button" onClick={() => setDialog({ kind: "add" })} aria-label={t("invites.inviteMember")} className={primary}>
           <Icon name="plus" size={17} strokeWidth={2.2} />
-          <span className="hidden sm:inline">{t("team.addMember")}</span>
+          <span className="hidden sm:inline">{t("invites.inviteMember")}</span>
         </button>
       }
       me={me}
     >
       <section className="mx-auto max-w-[1120px] px-4 pt-5 lg:px-10 lg:pt-8">
         <p className="mb-5 text-[14px] text-v2-c70">{t("team.lede", { org: organization.name })}</p>
+        {notice && (
+          <p role="status" className="mb-4 rounded-v2-md bg-v2-ink2 px-4 py-3 text-[13.5px] text-v2-c90">
+            {notice}
+          </p>
+        )}
+        {invites.length > 0 && (
+          <div className="mb-6">
+            <h2 className="mb-2 text-[12px] font-v2-ui-semibold uppercase tracking-[0.06em] text-v2-c50">{t("invites.pendingTitle")}</h2>
+            <ul className="divide-y divide-v2-c06 overflow-hidden rounded-v2-card bg-v2-ink2" data-testid="invite-list">
+              {invites.map((inv) => (
+                <li key={inv.id} className="flex flex-wrap items-center gap-3 px-4 py-3 md:px-5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-dashed border-v2-c30 text-[13px] font-v2-ui-bold text-v2-c70">
+                    {inv.email.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[14px] font-v2-ui-semibold">{inv.email}</b>
+                    <small className="mt-1 flex flex-wrap items-center gap-2 text-[12.5px] text-v2-c50">
+                      <StatusTag tone={inv.state === "expired" ? "neutral" : "warn"}>
+                        {inv.state === "expired" ? t("invites.expired") : t("invites.invited")}
+                      </StatusTag>
+                      {t(`organizer.roles.${inv.role}`)}
+                      {inv.state === "pending" ? ` · ${t("invites.expiresIn", { count: invitationDaysLeft(inv.expires_at) + 1 })}` : ""}
+                    </small>
+                  </span>
+                  <span className="flex gap-2">
+                    <button type="button" disabled={inviteBusy === inv.id} onClick={() => void resend(inv)} className={`${ghost} h-9 text-[13px]`}>
+                      {t("invites.resend")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDialog({ kind: "cancelInvite", invite: inv })}
+                      aria-label={`${t("invites.cancel")} ${inv.email}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-v2-pill text-v2-c50 hover:bg-v2-ink3 hover:text-v2-cream"
+                    >
+                      <Icon name="close" size={16} />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {membersQuery.isError ? (
           <ErrorBox onRetry={() => void membersQuery.refetch()} />
@@ -194,13 +262,29 @@ export default function TeamView({
       </section>
 
       {dialog?.kind === "add" && (
-        <AddMemberDialog
+        <InviteDialog
           organization={organization}
           members={members}
           onClose={() => setDialog(null)}
-          onAdded={async () => {
-            await refresh();
+          onSent={async (msg) => {
+            setNotice(msg);
+            await queryClient.invalidateQueries({ queryKey: invitesKey });
             setDialog(null);
+          }}
+        />
+      )}
+      {dialog?.kind === "cancelInvite" && (
+        <ConfirmDialog
+          open
+          message={t("invites.cancelConfirm", { email: dialog.invite.email })}
+          confirmLabel={t("invites.cancel")}
+          onCancel={() => setDialog(null)}
+          onConfirm={async () => {
+            const inv = dialog.invite;
+            setDialog(null);
+            const err = await send(`/api/organizations/${organization.id}/invitations/${inv.id}`, "DELETE", {}, t("errors.generic"));
+            if (err) setNotice(err);
+            await queryClient.invalidateQueries({ queryKey: invitesKey });
           }}
         />
       )}
@@ -310,74 +394,86 @@ async function send(url: string, method: string, body: unknown, generic: string)
   }
 }
 
-function AddMemberDialog({
+function InviteDialog({
   organization,
   members,
   onClose,
-  onAdded,
+  onSent,
 }: {
   organization: { id: string; name: string };
   members: TeamMember[];
   onClose: () => void;
-  onAdded: () => Promise<void>;
+  onSent: (message: string) => Promise<void>;
 }) {
   const { t } = useI18n();
-  const [found, setFound] = useState<Person | null>(null);
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<AssignableRole>("organizer");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const already = found ? members.some((m) => m.user_id === found.id) : false;
-  const foundName = found ? personLabel(found) : "";
+  const clean = normalizeInviteEmail(email);
+  const already = members.some((m) => (m.user_email ?? "").toLowerCase() === clean);
 
-  const add = async () => {
-    if (!found || already) return;
+  const invite = async () => {
+    if (!isValidInviteEmail(clean)) return setError(t("invites.emailInvalid"));
+    if (already) return setError(t("invites.alreadyMember", { email: clean }));
     setBusy(true);
-    const err = await send(`/api/organizations/${organization.id}/members`, "POST", { userId: found.id, role }, t("errors.generic"));
-    if (err) {
-      setError(err);
+    setError(null);
+    try {
+      const res = await fetch(`/api/organizations/${organization.id}/invitations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: clean, role }),
+      });
+      if (res.status === 409) throw new Error(t("invites.alreadyMember", { email: clean }));
+      if (!res.ok) throw new Error(await apiErrorMessage(res, t("errors.generic")));
+      const j = (await res.json()) as { emailSent?: boolean };
+      await onSent(j.emailSent === false ? t("invites.sentNoEmail", { email: clean }) : t("invites.sent", { email: clean }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("errors.generic"));
       setBusy(false);
-      return;
     }
-    await onAdded();
   };
 
   return (
     <Modal
       open
-      title={t("team.addMember")}
+      title={t("invites.inviteMember")}
       onClose={onClose}
       footer={
         <>
           <button type="button" onClick={onClose} className={ghost}>
             {t("common.cancel")}
           </button>
-          <button type="button" onClick={() => void add()} disabled={!found || already || busy} className={primary}>
-            {busy ? t("team.adding") : t("team.add")}
+          <button type="button" onClick={() => void invite()} disabled={!clean || busy} className={primary}>
+            <Icon name="send" size={16} />
+            {busy ? t("invites.sending") : t("invites.send")}
           </button>
         </>
       }
     >
-      {/* Restricted people search (Kevin, 2026-10-23): suggestions only within the organization's circle. */}
-      <PeoplePicker
-        id="tm-person"
-        organization={organization}
-        value={found}
-        onChange={(p) => {
-          setFound(p);
+      <label htmlFor="tm-email" className="mb-1.5 block text-[12.5px] text-v2-c70">
+        {t("invites.email")}
+      </label>
+      <input
+        id="tm-email"
+        type="email"
+        inputMode="email"
+        autoComplete="off"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
           setError(null);
         }}
+        onKeyDown={(e) => e.key === "Enter" && void invite()}
+        placeholder={t("invites.emailPlaceholder")}
         disabled={busy}
+        className="h-11 w-full rounded-v2-md bg-v2-ink3 px-4 text-[14px] placeholder:text-v2-c50 focus:outline-none focus:ring-1 focus:ring-v2-c30"
       />
       {error && <p role="alert" className="mt-2 text-[13px] text-v2-errorText">{error}</p>}
-      {found && (
-        <div className="mt-4 flex flex-col gap-4">
-          {already ? (
-            <p role="alert" className="text-[13px] text-v2-warn">{t("team.alreadyMember", { name: foundName })}</p>
-          ) : (
-            <RolePicker value={role} onChange={setRole} />
-          )}
-        </div>
-      )}
+      <div className="mt-4">
+        <RolePicker value={role} onChange={setRole} />
+      </div>
+      <p className="mt-3 text-[12.5px] leading-snug text-v2-c50">{t("invites.hint")}</p>
     </Modal>
   );
 }

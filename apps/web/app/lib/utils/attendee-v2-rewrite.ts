@@ -20,6 +20,7 @@ const V2_PATTERNS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
   [/^\/events\/([^/]+)$/, (m) => `/v2/attendee/events/${m[1]}`], // 2.4 event page (public, indexable)
   // 2.4 public organizer profile — not the organizer's own screens that live under /organizer/.
   [/^\/organizer\/(?!(?:settings|team|rsvps|event)$)([^/]+)$/, (m) => `/v2/attendee/organizer/${m[1]}`],
+  [/^\/invite\/([A-Za-z0-9_-]{8,100})$/, (m) => `/v2/attendee/invite/${m[1]}`], // 4.5 team invitation link (public)
 ];
 
 /** Paths that only exist in v2: with ATTENDEE_V1=true they go home instead of a 404. */

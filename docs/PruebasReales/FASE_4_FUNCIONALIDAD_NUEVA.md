@@ -2,7 +2,7 @@
 
 Creada el 2026-11-02. `[x]` = ya probado y sigue valiendo; `[ ]` = falta o **cambió** y hay que repetirlo.
 Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
-Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → 4.3 Line-up → 4.4 Búsqueda → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
+Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → 4.3 Line-up → 4.4 Búsqueda → 4.5 Invitaciones de equipo → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
 
 ---
 
@@ -152,6 +152,34 @@ Ten al menos dos eventos publicados y próximos con line-up (uno con foto de art
 - [ ] **Búsquedas recientes**: 💻 pulsa Enter; 📱 botón buscar del teclado (o toca un artista del resultado) → al limpiar el buscador aparece "Búsquedas recientes" (máx. 4, la última arriba, sin repetir). Tocar una la vuelve a buscar; **Borrar** las quita. 💻 se guardan en este navegador; 📱 en este celular.
 - [ ] Organizadores destacados: cada tarjeta muestra "Ciudad · N seguidores" y van **los más seguidos primero**. 💻 el número se actualiza al minuto (caché de 60 s).
 
+## 9. Invitaciones de equipo — 4.5
+
+Preparación: migración `supabase/migrations/20261102190000_organization_invitations.sql`. Para el correo: `BREVO_API_KEY` en `.env.local` (sin ella la invitación se guarda y se ve en la app, pero no llega correo). Tests nuevos: lib `invitations`; web `team-invitations`, `Team`, `You`; app `Manage`, `You`.
+Necesitas: cuenta **dueño/admin** (A), una cuenta **existente** que no esté en el equipo (B) y un correo **sin cuenta** en Flame (C).
+
+### 9.1 Invitar (A)
+- [ ] 💻 / 📱 Equipo → **Invitar miembro** → correo + rol (Admin / Organizador) → **Enviar invitación**. Correo mal escrito → aviso, no envía. Correo de alguien que ya está en el equipo → "ya está en el equipo".
+- [ ] Aparece en **Invitaciones pendientes** con la etiqueta **Invitado**, el rol y "Vence en 7 días". Aviso arriba: "Invitación enviada a …" (o "No se pudo enviar el correo…" si falta Brevo).
+- [ ] Invitar otra vez el mismo correo → no duplica: renueva los 7 días.
+- [ ] **Reenviar** → vuelve a mandar correo/notificación y renueva el plazo. **✕** → pregunta → cancela y desaparece de la lista.
+- [ ] Rol **organizador**: no ve "Invitar miembro" ni la lista.
+- [ ] Studio → `organization_invitations`: fila `pending`, `email` en minúsculas, `expires_at` +7 días.
+
+### 9.2 Persona con cuenta (B)
+- [ ] 📱 / 💻 B recibe la notificación "Invitación de equipo" en la campana (y push en el celular); tocarla abre **Tú**.
+- [ ] Tú → arriba de "Mis organizadores": tarjeta "**Kora te invitó** · como Admin" con **Aceptar / Rechazar**.
+- [ ] Aceptar → "Te uniste a Kora", aparece en Mis organizadores con su rol y en el Equipo de A como miembro (sale de pendientes). Rechazar → desaparece; A ya no la ve pendiente.
+
+### 9.3 Persona sin cuenta (C) — correo
+- [ ] C recibe el correo "Kora invited you to its team on Flame" con botón **Open invitation** → `/invite/<token>`.
+- [ ] Sin sesión: ve organizador y rol, y botones **Iniciar sesión** / **Crear cuenta** que vuelven a la invitación. Crea la cuenta **con ese mismo correo** → Aceptar / Rechazar.
+- [ ] Con sesión de **otro** correo → "Esta invitación es para …; entra con ese correo" y no puede aceptar.
+- [ ] Link de una invitación vencida (cambia `expires_at` al pasado en Studio) → "Esta invitación venció"; ya respondida/cancelada → "ya fue respondida o cancelada"; token inventado → "ya no es válida".
+
+## 10. Ajustes (11-02, tarde 2)
+- [ ] 💻 / 📱 Explorar: los **eventos destacados** son más grandes (💻 260–300 px de ancho; 📱 ~72 % de la pantalla); 💻 resultados de búsqueda en 2–3 columnas (antes hasta 5).
+- [ ] 📱 Página del evento: el **fondo difuminado del flyer** llega hasta "Acerca de" (antes se cortaba en el nombre) y se funde en negro al final, como en la web.
+
 ---
 
 ## Cosas conocidas (no son fallo)
@@ -161,3 +189,5 @@ Ten al menos dos eventos publicados y próximos con line-up (uno con foto de art
 - Seguir a un organizador todavía **no** envía avisos cuando publica un evento (pendiente de decisión).
 - Instagram no permite leer fotos de perfil: la opción aparece desactivada a propósito.
 - Fotos de artistas que se suben y luego no se guardan quedan en Storage (sin limpieza automática por ahora).
+- Invitaciones: el alta directa de miembros (`POST /api/organizations/[id]/members`) sigue existiendo para la app v1; la v2 solo invita.
+- 📱 Resultados de búsqueda en la app siguen en 2 columnas (más grande no cabe en un teléfono sin pasar a una sola columna).

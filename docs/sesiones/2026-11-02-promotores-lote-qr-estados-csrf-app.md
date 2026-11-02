@@ -1,4 +1,4 @@
-# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up, 4.4 Búsqueda
+# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up, 4.4 Búsqueda, 4.5 Invitaciones
 
 ## Contexto
 Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anteriores. Siguiente fase del plan Flame 2.0 (`actual/FLAME_2_0_VALORACION.md` §3): **fase 4, funcionalidad nueva**. Ninguno de sus ítems existe hoy en la BD (sin tablas `follows`, `saved_events`, invitaciones, line-up ni numeración de tickets).
@@ -75,6 +75,18 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - **App**: `useAppEvents` ya trae `*` (incluye `lineup`); `FeedEvent.lineup`; `useFollowerCounts` (conteos públicos de 50 en 50); `lib/v2/recent-searches.ts` (SecureStore `flame_recent_searches`); `Explore.tsx` igual que la web.
 - Pruebas: §8 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 
+## 9. Fase 4.5 — Invitaciones de equipo (web y app)
+- **Decisiones de Kevin**: invitar **cualquier correo** (con o sin cuenta); aviso **en la app + correo** (si el correo falla, la invitación igual se ve en la app); **vence a los 7 días** (reenviar renueva, cancelar la cierra).
+- **Migración** `supabase/migrations/20261102190000_organization_invitations.sql`: tabla `organization_invitations` (email en minúsculas, rol admin/organizador, token, estado pending/accepted/declined/cancelled, `expires_at` +7 d); una sola pendiente por correo y organización; RLS sin políticas (solo la API).
+- **lib** `organizer/invitations.ts` (validar correo/rol, estado con vencido, días restantes); tipo de notificación `team_invitation` (siempre activa); i18n `invites.*` y `pushes.teamInvitation`.
+- **API** (`app/lib/team-invitations.ts`): `GET/POST /api/organizations/[id]/invitations` (dueño/admin; 409 si ya es miembro; repetir = reenviar), `POST/DELETE …/invitations/[invitationId]` (reenviar / cancelar), `GET /api/me/invitations`, `POST /api/me/invitations/[id]` (aceptar → fila en `organization_members` con el rol), `GET/POST /api/invitations/[token]` (link del correo; responder exige estar con **el mismo correo**). Correo por Brevo con botón a `/invite/<token>`; notificación + push si ya tiene cuenta.
+- **Web**: Equipo con "Invitar miembro" (correo + rol; sustituye a "Agregar miembro" con buscador), "Invitaciones pendientes" (Invitado/Vencida, vence en N días, Reenviar, cancelar); Tú con tarjeta Aceptar/Rechazar; página `/invite/<token>` (reescrita a `v2/attendee/invite/[token]`); campana → Tú.
+- **App**: `TeamScreen` igual; `hooks/useMyInvitations.ts` + tarjeta en Tú; deep link `team_invitation` → `/profile`.
+- El alta directa (`POST /api/organizations/[id]/members`) **no se borró** (la usa la app v1).
+- Se creó por error `apps/web/app/invite/[token]/` (duplicado); sus archivos se movieron a `_to_delete/web-app-invite-duplicado/` y quedó la **carpeta vacía** `apps/web/app/invite/` — borrar a mano.
+- Ajustes del mismo pedido: eventos de Explorar más grandes (web destacados 260–300 px y resultados máx. 3 columnas; app destacados ~72 % del ancho); app: el fondo difuminado del flyer cubre todo el encabezado hasta "Acerca de" con fundido a negro (antes altura fija de 700 px).
+- Pruebas: §9 y §10 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -89,4 +101,5 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 6. Decidir si seguir a un organizador debe avisar cuando publica eventos.
 7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Fotos de artistas: hechas (§7).
 8. Seguir §8 de la guía de pruebas (búsqueda).
-9. Siguiente ítem de fase 4: **Invitaciones de equipo** (miembro "Invited" hasta aceptar; toca RLS de miembros).
+9. Aplicar `20261102190000_organization_invitations.sql`, borrar la carpeta vacía `apps/web/app/invite/` y `_to_delete/web-app-invite-duplicado/`, seguir §9–§10.
+10. Último ítem de fase 4: **Numeración de tickets** (toca el RPC de compra).

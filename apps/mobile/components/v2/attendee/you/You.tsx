@@ -19,6 +19,8 @@ import { useUserOrgs, type UserOrg } from "../../../../hooks/useUserOrgs";
 import { useUserTickets } from "../../../../hooks/useUserTickets";
 import { useSavedEvents } from "../../../../hooks/useSavedEvents";
 import { useFollowing } from "../../../../hooks/useFollowing";
+import { useMyInvitations, type MyInvitation } from "../../../../hooks/useMyInvitations";
+import { apiErrorText } from "../../../../lib/v2/organizer-api";
 import { FollowButton } from "../FollowButton";
 import { EventTile } from "../EventTile";
 import { useMemberRoleContext } from "../../../../contexts/MemberRoleContext";
@@ -35,6 +37,50 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
         {aside}
       </View>
       {children}
+    </View>
+  );
+}
+
+/** Team invitations for me (fase 4.5): Accept / Decline right here. */
+function MyInvitations() {
+  const { t } = useI18n();
+  const { invitations, answer } = useMyInvitations();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const go = async (inv: MyInvitation, action: "accept" | "decline") => {
+    setBusy(inv.id);
+    try {
+      await answer(inv, action);
+      setMessage(action === "accept" ? t("invites.accepted", { org: inv.organization.name }) : t("invites.declined"));
+    } catch (e) {
+      setMessage(apiErrorText(e, t("errors.generic")));
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (invitations.length === 0 && !message) return null;
+  return (
+    <View className="gap-2">
+      {invitations.map((inv) => (
+        <View key={inv.id} style={{ borderWidth: 1, borderColor: "rgba(255,180,67,0.3)" }} className="gap-3 rounded-[16px] bg-[#121212] p-3">
+          <View className="flex-row items-center gap-3">
+            <OrgAvatar name={inv.organization.name} logoUrl={inv.organization.logo_url} size={48} />
+            <View className="min-w-0 flex-1">
+              <Text numberOfLines={1} className="font-v2-ui-semibold text-[15px] text-v2-cream">{t("invites.youInvited", { org: inv.organization.name })}</Text>
+              <Text className="font-v2-ui text-[12.5px] text-v2-c50">{t("invites.asRole", { role: t(`organizer.roles.${inv.role}`) })}</Text>
+            </View>
+          </View>
+          <View className="flex-row gap-2">
+            <View className="flex-1">
+              <Button small label={t("invites.decline")} onPress={() => void go(inv, "decline")} disabled={busy === inv.id} />
+            </View>
+            <View className="flex-1">
+              <Button small variant="primary" label={t("invites.accept")} onPress={() => void go(inv, "accept")} disabled={busy === inv.id} />
+            </View>
+          </View>
+        </View>
+      ))}
+      {message ? <Text accessibilityRole="alert" className="font-v2-ui text-[13px] text-v2-c70">{message}</Text> : null}
     </View>
   );
 }
@@ -123,6 +169,7 @@ export function You() {
 
       <Section title={t("you.myOrganizers")}>
         <View className="gap-2">
+          <MyInvitations />
           {orgsQuery.isLoading ? <Skeleton width={"100%"} height={72} radius={16} /> : null}
           {orgs.map((o) =>
             o.approved ? (

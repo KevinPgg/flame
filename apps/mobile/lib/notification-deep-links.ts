@@ -94,6 +94,8 @@ export function resolveNotificationDeepLink(
   // (the API hides rejected ones), so there is nowhere to go.
   if (type === "organization_approved") return orgId ? withOrgId("/organizer-admin", orgId) : "/profile";
   if (type === "organization_rejected") return null;
+  // Team invitation (fase 4.5): the card with Accept / Decline lives in "You".
+  if (type === "team_invitation") return "/profile";
 
   // User: RSVP rejected — send back to event page so they can retry
   if (type === "rsvp_rejected" && eventId) {

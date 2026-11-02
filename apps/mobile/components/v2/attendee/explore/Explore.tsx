@@ -302,7 +302,7 @@ export function Explore() {
               {sectionTitle(t("explore.featured"))}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
                 {featured.map((e) => (
-                  <EventTile key={e.id} event={e} width={190} />
+                  <EventTile key={e.id} event={e} width={Math.min(300, Math.round(width * 0.72))} />
                 ))}
               </ScrollView>
             </View>
