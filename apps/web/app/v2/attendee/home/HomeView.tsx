@@ -18,12 +18,13 @@ import { ErrorBox } from "../../components/ErrorBox";
 import { Modal } from "../../components/Modal";
 import type { HomeEvent } from "../../../lib/home-events";
 import { usePriceLine } from "../usePriceLine";
+import { SaveButton } from "../SaveButton";
 
 const capitalize = (s: string) => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
 
 /**
  * Home card, full flyer (fase 2.2; Kevin's choice): organizer + share, the flyer at 4:5 with
- * a dark fade and title, date · time and price on it, "RSVP" tag. Saving is fase 4.
+ * a dark fade and title, date · time and price on it, "RSVP" tag. Heart to save (fase 4.1).
  */
 function EventCard({ event, onShare }: { event: HomeEvent; onShare: (e: HomeEvent) => void }) {
   const { t, locale } = useI18n();
@@ -50,6 +51,7 @@ function EventCard({ event, onShare }: { event: HomeEvent; onShare: (e: HomeEven
           <Icon name="send" size={19} />
         </button>
       </div>
+      <div className="relative">
       <Link
         href={`/events/${event.slug}`}
         className="group relative block aspect-[4/5] overflow-hidden rounded-[16px] bg-[#111]"
@@ -63,12 +65,14 @@ function EventCard({ event, onShare }: { event: HomeEvent; onShare: (e: HomeEven
           <span className="absolute right-3 top-3 z-[2] rounded-v2-pill bg-v2-flame px-2.5 py-1 text-[11px] font-v2-ui-bold text-white">{t("home.rsvp")}</span>
         )}
         <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[60%] bg-[linear-gradient(to_top,rgba(0,0,0,.97)_0%,rgba(0,0,0,.82)_42%,rgba(0,0,0,0)_100%)]" />
-        <span className="absolute inset-x-3.5 bottom-3 z-[2] block">
+        <span className="absolute bottom-3 left-3.5 right-14 z-[2] block">
           <span className="line-clamp-2 block font-v2-display-bold text-[20px] leading-[1.15] tracking-[-0.03em] text-v2-cream">{event.name}</span>
           <span className="mt-1 block text-[14.5px] font-v2-ui-medium text-v2-c90">{when}</span>
           {price && <span className="mt-0.5 block text-[14.5px] text-v2-c70">{price}</span>}
         </span>
       </Link>
+      <SaveButton event={event} className="absolute bottom-3 right-3 z-[3]" />
+      </div>
     </article>
   );
 }

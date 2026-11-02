@@ -5,6 +5,7 @@ import { useStripeConnectStatus } from "../../lib/hooks/useStripeConnectStatus";
 import { useI18n } from "../../lib/i18n";
 import { routes } from "../lib/routes";
 import { Icon } from "./Icon";
+import { StatusTag } from "./StatusTag";
 import { Skeleton } from "./Skeleton";
 
 /**
@@ -31,17 +32,13 @@ export function StripeBadge({ orgId, slug, plain }: { orgId: string; slug: strin
     );
   }
   return ok ? (
-    <span className="inline-flex items-center gap-1.5 rounded-v2-pill bg-v2-good/15 px-2.5 py-1 text-[12px] text-v2-good">
-      <Icon name="check" size={13} strokeWidth={2.4} />
-      {t("organizer.stripeConnected")}
-    </span>
+    <StatusTag tone="good">{t("organizer.stripeConnected")}</StatusTag>
   ) : (
     <Link
       href={routes.payouts(slug)}
-      className="inline-flex items-center gap-1.5 rounded-v2-pill bg-v2-warn/15 px-2.5 py-1 text-[12px] text-v2-warn hover:bg-v2-warn/25"
+      className="rounded-[4px] transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-1 focus-visible:outline-v2-c30"
     >
-      <Icon name="alert" size={13} />
-      {t("organizer.stripeIncomplete")}
+      <StatusTag tone="warn">{t("organizer.stripeIncomplete")} →</StatusTag>
     </Link>
   );
 }

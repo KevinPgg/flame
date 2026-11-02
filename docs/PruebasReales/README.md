@@ -13,3 +13,4 @@ Pruebas manuales que hay que hacer en el PC de Kevin con datos reales de desarro
 | [FASE_1B_ORGANIZADOR_APP.md](FASE_1B_ORGANIZADOR_APP.md) | Organizador en la app (Expo): se llena con cada entrega de la 1b; ya incluye los casos de app heredados de la fase 1 | **Cerrada y aprobada (10-27)** |
 | [FASE_2_ASISTENTE.md](FASE_2_ASISTENTE.md) | Asistente web + app (fase 2): se llena con cada entrega (2.1 marco y campana web) | En curso |
 - [FASE_3_PAGOS.md](FASE_3_PAGOS.md) — fase 3 (pagos): 3.1 arreglos B2, B10, B3, B4.
+- [FASE_4_FUNCIONALIDAD_NUEVA.md](FASE_4_FUNCIONALIDAD_NUEVA.md) — fase 4: CSRF de pagos en la app, promotores en lote + QR, etiquetas de estado, 4.1 Guardar eventos.

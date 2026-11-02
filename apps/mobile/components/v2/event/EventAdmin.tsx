@@ -24,7 +24,7 @@ import { routes } from "../../../lib/v2/routes";
 import type { MyOrganization, OrgEventV2 } from "../../../lib/v2/organizer-api";
 import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { OrganizerShell, TABBAR_SPACE } from "../OrganizerShell";
-import { ErrorBox, Icon, Kpi, Skeleton } from "../ui";
+import { ErrorBox, Icon, Kpi, Skeleton, StatusTag } from "../ui";
 import { TiersTab } from "./TiersTab";
 import { PurchasesTab } from "./PurchasesTab";
 import { BreakdownTab } from "./BreakdownTab";
@@ -128,11 +128,7 @@ export function EventAdmin({ eventId, organization }: { eventId: string; organiz
                 <>
                   <View className="mb-2 flex-row flex-wrap items-center gap-2">
                     <StatusPill ended={ended} published={event.status === "published"} />
-                    {event.requires_rsvp && (
-                      <View className="rounded-v2-xs bg-v2-flame px-1.5 py-0.5">
-                        <Text className="font-v2-ui-semibold text-[11px] text-v2-cream">{t("organizer.rsvp")}</Text>
-                      </View>
-                    )}
+                    {event.requires_rsvp && <StatusTag tone="flame">{t("organizer.rsvp")}</StatusTag>}
                   </View>
                   <Text numberOfLines={3} className="font-v2-display-bold text-[24px] leading-[27px] tracking-[-0.7px] text-v2-cream">
                     {event.name}
@@ -270,15 +266,11 @@ function KpiValue({ children }: { children: React.ReactNode }) {
 
 function StatusPill({ ended, published }: { ended: boolean; published: boolean }) {
   const { t } = useI18n();
-  const [bg, fg, label] = ended
-    ? ["bg-v2-ink3", "text-v2-c70", t("eventAdmin.status.ended")]
-    : published
-      ? ["bg-[rgba(76,215,135,0.15)]", "text-v2-good", t("eventAdmin.status.published")]
-      : ["bg-[rgba(255,180,67,0.15)]", "text-v2-warn", t("eventAdmin.status.draft")];
-  return (
-    <View className={`rounded-v2-pill px-2.5 py-1 ${bg}`}>
-      <Text className={`font-v2-ui-semibold text-[12px] ${fg}`}>{label}</Text>
-    </View>
+  if (ended) return <StatusTag>{t("eventAdmin.status.ended")}</StatusTag>;
+  return published ? (
+    <StatusTag tone="good">{t("eventAdmin.status.published")}</StatusTag>
+  ) : (
+    <StatusTag tone="warn">{t("eventAdmin.status.draft")}</StatusTag>
   );
 }
 

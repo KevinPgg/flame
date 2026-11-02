@@ -26,7 +26,7 @@ import { useI18n } from "../../../lib/i18n";
 import { apiClient } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { apiErrorText, type OrgEventV2 } from "../../../lib/v2/organizer-api";
-import { Button, ErrorText, Field, Icon, SuccessNote } from "../ui";
+import { Button, ErrorText, Field, Icon, StatusTag, SuccessNote } from "../ui";
 import { PeoplePicker } from "../people/PeoplePicker";
 
 const SEND_TIMEOUT_MS = 60_000;
@@ -283,9 +283,9 @@ export function SendTab({
                         </Text>
                       </View>
                       <View className="flex-row gap-1">
-                        {o.stageId && o.current && !o.soldOut && <Tag tone="good">{t("eventAdmin.send.current")}</Tag>}
-                        {o.soldOut && <Tag>{t("eventAdmin.tiers.soldOut")}</Tag>}
-                        {o.hidden && <Tag>{t("eventAdmin.tiers.hidden")}</Tag>}
+                        {o.stageId && o.current && !o.soldOut && <StatusTag tone="good">{t("eventAdmin.send.current")}</StatusTag>}
+                        {o.soldOut && <StatusTag tone="danger">{t("eventAdmin.tiers.soldOut")}</StatusTag>}
+                        {o.hidden && <StatusTag>{t("eventAdmin.tiers.hidden")}</StatusTag>}
                       </View>
                     </Pressable>
                   );
@@ -441,14 +441,6 @@ function Avatar({ name }: { name: string }) {
   return (
     <View className="h-9 w-9 items-center justify-center rounded-full bg-v2-ink4">
       <Text className="font-v2-ui-semibold text-[12px] text-v2-cream">{initialsOf(name)}</Text>
-    </View>
-  );
-}
-
-function Tag({ children, tone }: { children: React.ReactNode; tone?: "good" }) {
-  return (
-    <View className={`rounded-v2-pill px-2 py-0.5 ${tone === "good" ? "bg-[rgba(76,215,135,0.15)]" : "bg-v2-ink4"}`}>
-      <Text className={`font-v2-ui-semibold text-[11px] ${tone === "good" ? "text-v2-good" : "text-v2-c70"}`}>{children}</Text>
     </View>
   );
 }

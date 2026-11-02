@@ -48,6 +48,8 @@ const ICONS = {
   help: "help-circle-outline",
   share: "share-outline",
   lock: "lock-closed-outline",
+  heart: "heart-outline",
+  heartFill: "heart",
 } as const;
 export type IconName = keyof typeof ICONS;
 
@@ -118,6 +120,31 @@ export function Pill({ children, tone = "neutral" }: { children: ReactNode; tone
   return (
     <View className={`rounded-v2-pill px-2.5 py-1 ${bg}`}>
       <Text className={`font-v2-ui-medium text-[12px] ${fg}`}>{children}</Text>
+    </View>
+  );
+}
+
+/**
+ * Status label (2026-11-02): ticket-stub tag — square corners, colored notch on the left carries
+ * the state, small uppercase Inter Tight in cream. Same look as web `StatusTag`.
+ */
+export type StatusTone = "good" | "warn" | "danger" | "flame" | "neutral";
+const NOTCH: Record<StatusTone, string> = {
+  good: "bg-v2-good",
+  warn: "bg-v2-warn",
+  danger: "bg-v2-errorText",
+  flame: "bg-v2-flame",
+  neutral: "bg-v2-c30",
+};
+export function StatusTag({ children, tone = "neutral" }: { children: ReactNode; tone?: StatusTone }) {
+  return (
+    <View className="h-[22px] flex-row self-start overflow-hidden rounded-[4px] bg-v2-c06">
+      <View className={`w-[3px] ${NOTCH[tone]}`} />
+      <View className="justify-center px-2">
+        <Text numberOfLines={1} className="font-v2-display-bold text-[10.5px] uppercase tracking-[0.9px] text-v2-c90">
+          {children}
+        </Text>
+      </View>
     </View>
   );
 }

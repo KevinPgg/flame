@@ -2,18 +2,21 @@
 
 /**
  * Small event card (fase 2.4–2.5): flyer 4:5, title, date · time, venue and price. Used by
- * "More from {organizer}", the organizer profile grid and Explore.
+ * "More from {organizer}", the organizer profile grid, Explore and You → Saved. Heart on the flyer
+ * (fase 4.1), not on past events.
  */
 import Link from "next/link";
 import { feedWhen } from "@project-flame/lib";
 import { useI18n } from "../../lib/i18n";
 import type { HomeEvent } from "../../lib/home-events";
 import { usePriceLine } from "./usePriceLine";
+import { SaveButton } from "./SaveButton";
 
-export function EventTile({ event, past }: { event: HomeEvent; past?: boolean }) {
+export function EventTile({ event, past, save = !past }: { event: HomeEvent; past?: boolean; /** Heart on the flyer (default: not on past events). */ save?: boolean }) {
   const { t, locale } = useI18n();
   const price = usePriceLine()(event);
   return (
+    <div className="relative min-w-0">
     <Link href={`/events/${event.slug}`} className="group block min-w-0">
       <span className="relative block aspect-[4/5] overflow-hidden rounded-[14px] bg-v2-ink3">
         {event.image_url ? (
@@ -29,5 +32,11 @@ export function EventTile({ event, past }: { event: HomeEvent; past?: boolean })
       {event.venue && <small className="block truncate text-[12.5px] text-v2-c50">{event.venue}</small>}
       {!past && price && <small className="mt-0.5 block text-[12.5px] font-v2-ui-semibold text-v2-c90">{price}</small>}
     </Link>
+    {save && (
+      <span className="pointer-events-none absolute inset-x-0 top-0 block aspect-[4/5]">
+        <SaveButton event={event} className="pointer-events-auto absolute bottom-2 right-2" />
+      </span>
+    )}
+    </div>
   );
 }

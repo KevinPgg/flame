@@ -41,7 +41,7 @@ export default async function EventPageV2({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateEventSchema(event)) }} />
       <EventDetail event={event} header={
           <>
-            <EventTopBar slug={event.slug} name={event.name} />
+            <EventTopBar id={event.id} slug={event.slug} name={event.name} />
             <EventHeader event={event} />
             <OpenInApp slug={event.slug} />
           </>

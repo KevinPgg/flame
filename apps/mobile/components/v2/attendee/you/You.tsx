@@ -3,7 +3,7 @@
  * hosting/attending switch): photo, name, e-mail, Settings (moved here from the top bar) and
  * Edit profile; counters; "My organizers" with Manage (approved, same route as v1) or Under
  * review, and New organizer (the v1 apply sheet); organizer approvals for Flame support; past
- * events from your tickets. Following and Saved are fase 4 (not shown).
+ * events from your tickets; Saved (fase 4.1). Following is fase 4 (not shown yet).
  * Data: the existing useUserProfile, useUserOrgs and useUserTickets.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
@@ -12,11 +12,13 @@ import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
-import { buildWallet, flameV2Colors as c, walletDayTime } from "@project-flame/lib";
+import { buildWallet, flameV2Colors as c, splitSavedEvents, walletDayTime } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { useUserProfile } from "../../../../hooks/useUserProfile";
 import { useUserOrgs, type UserOrg } from "../../../../hooks/useUserOrgs";
 import { useUserTickets } from "../../../../hooks/useUserTickets";
+import { useSavedEvents } from "../../../../hooks/useSavedEvents";
+import { EventTile } from "../EventTile";
 import { useMemberRoleContext } from "../../../../contexts/MemberRoleContext";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
 import { BecomeOrganizerSheet } from "../../../navigation/BecomeOrganizerSheet";
@@ -49,16 +51,18 @@ export function You() {
   const orgs = (orgsQuery.data as UserOrg[] | undefined) ?? [];
   const past = useMemo(() => buildWallet(tickets.data?.tickets ?? []).past, [tickets.data?.tickets]);
   const attended = past.filter((w) => w.checkedIn > 0).length;
+  const saved = useSavedEvents();
+  const savedSplit = useMemo(() => splitSavedEvents(saved.events), [saved.events]);
   const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchProfile(), orgsQuery.refetch(), tickets.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
+      await Promise.all([refetchProfile(), orgsQuery.refetch(), tickets.refetch(), saved.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetchProfile, orgsQuery, tickets, queryClient]);
+  }, [refetchProfile, orgsQuery, tickets, saved, queryClient]);
 
   const manage = (o: UserOrg) => {
     setSelectedOrgId(o.organizationId);
@@ -141,6 +145,34 @@ export function You() {
         <View className="mt-2">
           <OrgApprovalsEntry />
         </View>
+      </Section>
+
+      <Section
+        title={t("saved.title")}
+        aside={saved.events.length ? <Text className="font-v2-ui text-[13px] text-v2-c50">{saved.events.length}</Text> : undefined}
+      >
+        {saved.isLoading ? (
+          <View className="flex-row gap-3">
+            <Skeleton width={150} height={188} radius={14} />
+            <Skeleton width={150} height={188} radius={14} />
+          </View>
+        ) : saved.events.length === 0 ? (
+          <Text className="font-v2-ui text-[14px] text-v2-c50">{t("saved.empty")}</Text>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} className="-mx-4 px-4" testID="saved-list">
+            {savedSplit.upcoming.map((e) => (
+              <EventTile key={e.id} event={e} width={150} />
+            ))}
+            {savedSplit.past.map((e) => (
+              <View key={e.id}>
+                <EventTile event={e} width={150} past save />
+                <View className="absolute left-2 top-2 rounded-v2-pill bg-[rgba(0,0,0,0.6)] px-2 py-0.5">
+                  <Text className="font-v2-ui-semibold text-[10.5px] text-v2-c90">{t("saved.ended")}</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </Section>
 
       <Section

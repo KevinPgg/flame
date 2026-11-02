@@ -9,7 +9,7 @@ import { useI18n } from "../../../lib/i18n";
 import { apiDelete, apiPost } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { apiErrorText, type OrgEventV2 } from "../../../lib/v2/organizer-api";
-import { Button, ConfirmDialog, ErrorText, Field, Icon } from "../ui";
+import { Button, ConfirmDialog, ErrorText, Field, Icon, StatusTag } from "../ui";
 
 export function PromotionsTab({ event, canEdit, onChanged }: { event: OrgEventV2; canEdit: boolean; onChanged: () => Promise<unknown> | void }) {
   const { t } = useI18n();
@@ -112,11 +112,9 @@ export function PromotionsTab({ event, canEdit, onChanged }: { event: OrgEventV2
                   <Text className="font-v2-display-bold text-[18px] tracking-[0.5px] text-v2-cream">{x.code}</Text>
                   <Text className="font-v2-ui text-[13px] text-v2-c70">−{x.discount_percentage}%</Text>
                 </View>
-                <View className={`rounded-v2-pill px-2.5 py-1 ${s.active ? "bg-[rgba(76,215,135,0.15)]" : "bg-v2-ink4"}`}>
-                  <Text className={`font-v2-ui-semibold text-[12px] ${s.active ? "text-v2-good" : "text-v2-c50"}`}>
-                    {s.active ? t("eventAdmin.promotions.active") : t("eventAdmin.promotions.usedUp")}
-                  </Text>
-                </View>
+                <StatusTag tone={s.active ? "good" : "neutral"}>
+                  {s.active ? t("eventAdmin.promotions.active") : t("eventAdmin.promotions.usedUp")}
+                </StatusTag>
               </View>
               <View className="mt-4 h-1.5 overflow-hidden rounded-full bg-v2-ink4">
                 <View className="h-full rounded-full bg-v2-flame" style={{ width: `${Math.round(s.ratio * 100)}%` }} />

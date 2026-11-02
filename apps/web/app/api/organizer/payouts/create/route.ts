@@ -38,6 +38,12 @@ export async function POST(req: NextRequest) {
       }
     };
 
+    // CSRF only applies to cookie-authenticated (browser) requests. The mobile app sends a
+    // Clerk session token in `Authorization: Bearer …` and no Origin/Referer; another site
+    // cannot attach that header, so those requests skip the origin check (Kevin 2026-11-02,
+    // "Solicitar pago" from the app failed with origin: null).
+    const usesBearerToken = /^Bearer\s+\S+/i.test(req.headers.get("authorization") ?? "");
+
     // CSRF validation: Validate Origin/Referer header against allowed hosts
     // This protects against cross-site request forgery attacks
     const origin = req.headers.get("origin");
@@ -100,7 +106,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!isValidOrigin && !isValidReferer) {
+    if (!usesBearerToken && !isValidOrigin && !isValidReferer) {
       console.error("CSRF validation failed", {
         origin,
         referer,

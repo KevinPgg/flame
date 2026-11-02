@@ -3,7 +3,8 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderV2 } from "./helpers";
+import { renderV2, mockFetch } from "./helpers";
+import { __resetSavedEvents } from "../../app/v2/attendee/useSavedEvents";
 
 const D = 86_400_000;
 const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
@@ -50,6 +51,22 @@ import YouView from "../../app/v2/attendee/you/YouView";
 vi.setConfig({ testTimeout: 20_000 });
 
 describe("You (web)", () => {
+  it("Saved (fase 4.1): upcoming first, ended after with its tag; empty text when none", async () => {
+    __resetSavedEvents();
+    const ev = (id: string, name: string, startMs: number) => ({
+      id, slug: id, name, image_url: null, starts_at: iso(startMs), ends_at: iso(startMs + 3600_000), venue: null, city: null,
+      requires_rsvp: false, currency: "USD", timezone: "America/Guayaquil", organizations: null, ticket_tiers: [],
+    });
+    mockFetch([{ match: (u) => u === "/api/me/saved-events", body: { events: [ev("gone", "Saved gone", -3 * D), ev("soon", "Saved soon", 3 * D)] } }]);
+    renderV2(<YouView />);
+    const list = await screen.findByTestId("saved-list");
+    expect(Array.from(list.querySelectorAll("b")).map((b) => b.textContent)).toEqual(["Saved soon", "Saved gone"]);
+    expect(list).toHaveTextContent("Ended");
+    expect(screen.getByRole("button", { name: "Remove Saved gone from saved" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+    __resetSavedEvents();
+  });
+
   it("profile, Settings and Edit profile, counters, organizers (Manage / Under review), past events", async () => {
     const user = userEvent.setup({ delay: null });
     renderV2(<YouView />);

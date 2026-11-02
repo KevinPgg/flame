@@ -854,7 +854,11 @@ export default function EventDetailScreen() {
 
       {/* ─── Floating CTA (above tab bar, matches tab bar dimensions) ─── */}
       {/* Flame 2.0: fixed top bar (back / share) and bottom bar (continue / view tickets). */}
-      {v2 ? <EventTopBar onBack={() => (router.canGoBack() ? router.back() : router.replace("/" as Href))} onShare={handleShare} /> : null}
+      {v2 ? <EventTopBar
+          onBack={() => (router.canGoBack() ? router.back() : router.replace("/" as Href))}
+          onShare={handleShare}
+          event={event ? { id: event.id, name: event.name } : undefined}
+        /> : null}
       {v2 && buyBar ? <BuyBar {...buyBar} /> : null}
 
       {!v2 && hasTicketTiers && pillMounted && (

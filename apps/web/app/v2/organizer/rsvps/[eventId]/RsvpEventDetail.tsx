@@ -27,6 +27,7 @@ import {
 import type { Event as OrganizerEvent } from "../../../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../../../lib/i18n";
 import { Icon } from "../../../components/Icon";
+import { StatusTag } from "../../../components/StatusTag";
 import { Flyer } from "../../../components/Flyer";
 import { Skeleton } from "../../../components/Skeleton";
 import { ErrorBox } from "../../../components/ErrorBox";
@@ -465,15 +466,8 @@ export default function RsvpEventDetail({
 function StatusPill({ status }: { status: string }) {
   const { t } = useI18n();
   const key = rsvpStatusKey(status);
-  const tone =
-    key === "pending"
-      ? "bg-v2-warn/15 text-v2-warn"
-      : key === "approved" || key === "purchased"
-        ? "bg-v2-good/15 text-v2-good"
-        : key === "rejected"
-          ? "bg-v2-flame/25 text-v2-errorText"
-          : "bg-v2-ink4 text-v2-c70";
-  return <span className={`inline-flex rounded-v2-pill px-2.5 py-1 text-[12px] font-v2-ui-semibold ${tone}`}>{t(`rsvps.status.${key}`)}</span>;
+  const tone = key === "pending" ? "warn" : key === "approved" || key === "purchased" ? "good" : key === "rejected" ? "danger" : "neutral";
+  return <StatusTag tone={tone}>{t(`rsvps.status.${key}`)}</StatusTag>;
 }
 
 function RegistrationDialog({

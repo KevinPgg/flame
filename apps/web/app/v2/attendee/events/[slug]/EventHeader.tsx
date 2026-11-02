@@ -13,6 +13,7 @@ import { useI18n } from "../../../../lib/i18n";
 import { LinkifiedText } from "../../../../lib/utils/linkify-text";
 import { Icon } from "../../../components/Icon";
 import { OrgAvatar } from "../../../components/OrgAvatar";
+import { SaveButton } from "../../SaveButton";
 
 export type EventHeaderData = {
   name: string;
@@ -130,10 +131,10 @@ const circle = "pointer-events-auto inline-flex h-10 w-10 items-center justify-c
 
 /**
  * Back + share fixed at the top of the event page while it scrolls (Kevin 2026-10-28, prototype
- * `x-top float`), under the site bar. Room on the right for "save / follow" later. It takes no
+ * `x-top float`), under the site bar. Heart to save next to share (fase 4.1). It takes no
  * space: the header leaves a 40px gap where the buttons sit at the start.
  */
-export function EventTopBar({ slug, name }: { slug: string; name: string }) {
+export function EventTopBar({ id, slug, name }: { id: string; slug: string; name: string }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const share = async () => {
@@ -157,6 +158,7 @@ export function EventTopBar({ slug, name }: { slug: string; name: string }) {
         <button type="button" onClick={() => void share()} aria-label={t("event.shareEvent")} className={circle}>
           <Icon name="share" size={19} />
         </button>
+        <SaveButton event={{ id, slug, name }} variant="circle" />
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ import type { Purchase } from "../../../../lib/utils/purchase-data";
 import CoHostAssignmentModal from "../../../../components/organizer/CoHostAssignmentModal";
 import { useI18n } from "../../../../lib/i18n";
 import { Icon } from "../../../components/Icon";
+import { StatusTag } from "../../../components/StatusTag";
 import { Kpi } from "../../../components/Kpi";
 import { Skeleton } from "../../../components/Skeleton";
 import { ErrorBox } from "../../../components/ErrorBox";
@@ -158,22 +159,14 @@ export default function EventAdmin({
               {event ? (
                 <>
                   <span className="mb-2 inline-flex items-center gap-2">
-                    <span
-                      className={`rounded-v2-pill px-2.5 py-1 text-[12px] font-v2-ui-semibold ${
-                        ended ? "bg-v2-ink3 text-v2-c70" : event.status === "published" ? "bg-v2-good/15 text-v2-good" : "bg-v2-warn/15 text-v2-warn"
-                      }`}
-                    >
+                    <StatusTag tone={ended ? "neutral" : event.status === "published" ? "good" : "warn"}>
                       {ended
                         ? t("eventAdmin.status.ended")
                         : event.status === "published"
                           ? t("eventAdmin.status.published")
                           : t("eventAdmin.status.draft")}
-                    </span>
-                    {event.requires_rsvp && (
-                      <span className="rounded-v2-xs bg-v2-flame px-1.5 py-0.5 text-[11px] font-v2-ui-semibold">
-                        {t("organizer.rsvp")}
-                      </span>
-                    )}
+                    </StatusTag>
+                    {event.requires_rsvp && <StatusTag tone="flame">{t("organizer.rsvp")}</StatusTag>}
                   </span>
                   <h2 className="font-v2-display-bold text-[28px] leading-[1.05] tracking-[-0.03em] lg:text-[36px]">
                     {event.name}

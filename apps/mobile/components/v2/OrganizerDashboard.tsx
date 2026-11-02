@@ -23,7 +23,7 @@ import type { MyOrganization } from "../../lib/v2/organizer-api";
 import type { EnrichedOrgEvent } from "../../hooks/useOrgEventEnriched";
 import { useOrganizerModel } from "../../hooks/v2/useOrganizerModel";
 import { OrganizerShell, TABBAR_SPACE, useStripeReady } from "./OrganizerShell";
-import { ErrorBox, Flyer, Icon, OrgAvatar, Pill, Skeleton } from "./ui";
+import { ErrorBox, Flyer, Icon, OrgAvatar, Skeleton, StatusTag } from "./ui";
 
 export function OrganizerDashboard({ organization }: { organization: MyOrganization }) {
   const { t } = useI18n();
@@ -188,19 +188,15 @@ function Hero({
             </Text>
             {role !== "owner" && (
               <View className="self-start">
-                <Pill>{t(`organizer.roles.${role}`)}</Pill>
+                <StatusTag tone={role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${role}`)}</StatusTag>
               </View>
             )}
             {stripeReady === true && (
-              <View className="flex-row items-center gap-1">
-                <Icon name="check" size={13} color={c.good} />
-                <Text className="font-v2-ui-medium text-[12.5px] text-v2-good">{t("organizer.stripeConnected")}</Text>
-              </View>
+              <StatusTag tone="good">{t("organizer.stripeConnected")}</StatusTag>
             )}
             {stripeReady === false && (
-              <Pressable onPress={() => router.push(routes.payouts(organization) as Href)} accessibilityRole="link" className="flex-row items-center gap-1">
-                <Icon name="alert" size={13} color={c.warn} />
-                <Text className="font-v2-ui-medium text-[12.5px] text-v2-warn">{t("organizer.stripeIncomplete")}</Text>
+              <Pressable onPress={() => router.push(routes.payouts(organization) as Href)} accessibilityRole="link" className="self-start active:opacity-70">
+                <StatusTag tone="warn">{`${t("organizer.stripeIncomplete")} →`}</StatusTag>
               </Pressable>
             )}
           </View>

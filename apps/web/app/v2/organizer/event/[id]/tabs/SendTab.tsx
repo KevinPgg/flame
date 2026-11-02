@@ -21,6 +21,7 @@ import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrgani
 import { useI18n } from "../../../../../lib/i18n";
 import { PeoplePicker } from "../../../../components/PeoplePicker";
 import { Icon } from "../../../../components/Icon";
+import { StatusTag } from "../../../../components/StatusTag";
 import { apiErrorMessage } from "../../../../lib/api-error";
 
 interface FoundUser {
@@ -316,19 +317,13 @@ export default function SendTab({
                         </span>
                         <span className="flex shrink-0 gap-1">
                           {o.stageId && o.current && !o.soldOut && (
-                            <span className="rounded-v2-pill bg-v2-good/15 px-2 py-0.5 text-[11px] font-v2-ui-semibold text-v2-good">
-                              {t("eventAdmin.send.current")}
-                            </span>
+                            <StatusTag tone="good">{t("eventAdmin.send.current")}</StatusTag>
                           )}
                           {o.soldOut && (
-                            <span className="rounded-v2-pill bg-v2-ink4 px-2 py-0.5 text-[11px] font-v2-ui-semibold text-v2-c70">
-                              {t("eventAdmin.tiers.soldOut")}
-                            </span>
+                            <StatusTag tone="danger">{t("eventAdmin.tiers.soldOut")}</StatusTag>
                           )}
                           {o.hidden && (
-                            <span className="rounded-v2-pill bg-v2-ink4 px-2 py-0.5 text-[11px] font-v2-ui-semibold text-v2-c70">
-                              {t("eventAdmin.tiers.hidden")}
-                            </span>
+                            <StatusTag>{t("eventAdmin.tiers.hidden")}</StatusTag>
                           )}
                         </span>
                       </button>

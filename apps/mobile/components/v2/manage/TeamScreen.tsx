@@ -34,7 +34,7 @@ import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { useMe } from "../../../hooks/v2/useMe";
 import { OrganizerShell, TABBAR_SPACE } from "../OrganizerShell";
-import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton } from "../ui";
+import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, StatusTag } from "../ui";
 import { Sheet } from "../Sheet";
 import { Avatar, PeoplePicker, type Person } from "../people/PeoplePicker";
 
@@ -216,12 +216,7 @@ export function TeamScreen({ organization }: { organization: MyOrganization }) {
 
 function RolePill({ role }: { role: OrgMemberRole }) {
   const { t } = useI18n();
-  const [bg, fg] = role === "owner" ? ["bg-v2-cream", "text-v2-ink"] : role === "admin" ? ["bg-[rgba(136,5,23,0.45)]", "text-v2-cream"] : ["bg-v2-ink4", "text-v2-c90"];
-  return (
-    <View className={`rounded-v2-pill px-2 py-0.5 ${bg}`}>
-      <Text className={`font-v2-ui-semibold text-[11.5px] ${fg}`}>{t(`organizer.roles.${role}`)}</Text>
-    </View>
-  );
+  return <StatusTag tone={role === "owner" ? "flame" : role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${role}`)}</StatusTag>;
 }
 
 function MenuRow({ icon, label, onPress, danger }: { icon: "user" | "cal" | "trash"; label: string; onPress: () => void; danger?: boolean }) {

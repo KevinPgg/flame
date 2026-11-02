@@ -31,7 +31,7 @@ import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { useStripeConnect } from "../../../hooks/useStripeConnect";
 import { OrganizerShell, TABBAR_SPACE } from "../OrganizerShell";
-import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, SuccessNote } from "../ui";
+import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, StatusTag, SuccessNote } from "../ui";
 import { Group, SelectRow } from "../form/ui";
 
 type Payout = { id: string; amount: number; currency: string; status: string; arrival_date: number | null; created: number; automatic: boolean };
@@ -287,9 +287,7 @@ function Balance({ organization, opening, onboardError, onManage }: { organizati
           </View>
         </View>
         <View className="flex-row items-center justify-between gap-3">
-          <View className="rounded-v2-pill bg-[rgba(76,215,135,0.15)] px-2.5 py-1">
-            <Text className="font-v2-ui text-[12px] text-v2-good">{t("payouts.connected")}</Text>
-          </View>
+          <StatusTag tone="good">{t("payouts.connected")}</StatusTag>
           <Button small label={opening ? t("payouts.opening") : t("payouts.manage")} onPress={onManage} disabled={opening} />
         </View>
         {onboardError ? <ErrorText>{t("payouts.onboardError")}</ErrorText> : null}

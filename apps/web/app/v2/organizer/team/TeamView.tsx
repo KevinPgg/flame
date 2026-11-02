@@ -24,6 +24,7 @@ import {
 import { useI18n } from "../../../lib/i18n";
 import { PeoplePicker, personLabel, type Person } from "../../components/PeoplePicker";
 import { Icon } from "../../components/Icon";
+import { StatusTag } from "../../components/StatusTag";
 import { Modal } from "../../components/Modal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ErrorBox } from "../../components/ErrorBox";
@@ -258,8 +259,7 @@ export default function TeamView({
 
 function RolePill({ role }: { role: OrgMemberRole }) {
   const { t } = useI18n();
-  const tone = role === "owner" ? "bg-v2-cream text-v2-ink" : role === "admin" ? "bg-v2-flame/30 text-v2-cream" : "bg-v2-ink4 text-v2-c90";
-  return <span className={`inline-flex rounded-v2-pill px-2.5 py-1 text-[12px] font-v2-ui-semibold ${tone}`}>{t(`organizer.roles.${role}`)}</span>;
+  return <StatusTag tone={role === "owner" ? "flame" : role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${role}`)}</StatusTag>;
 }
 
 function MenuButton({ icon, label, onClick, danger }: { icon: "user" | "cal" | "trash"; label: string; onClick: () => void; danger?: boolean }) {

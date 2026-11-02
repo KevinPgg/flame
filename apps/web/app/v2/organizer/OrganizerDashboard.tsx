@@ -13,6 +13,7 @@ import {
 import type { Event as OrganizerEvent } from "../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../lib/i18n";
 import { Icon } from "../components/Icon";
+import { StatusTag } from "../components/StatusTag";
 import { OrgAvatar } from "../components/OrgAvatar";
 import { Skeleton } from "../components/Skeleton";
 import { Flyer } from "../components/Flyer";
@@ -164,9 +165,7 @@ function Hero({
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {role && role !== "owner" && (
-                <span className="rounded-v2-pill bg-v2-ink3 px-2.5 py-1 text-[12px] text-v2-c70">
-                  {t(`organizer.roles.${role}`)}
-                </span>
+                <StatusTag tone={role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${role}`)}</StatusTag>
               )}
               {canManagePayouts(role) && <StripeBadge orgId={organization.id} slug={organization.slug} />}
               {canManagePayouts(role) && (

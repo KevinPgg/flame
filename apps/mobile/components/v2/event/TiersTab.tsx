@@ -12,7 +12,7 @@ import { apiPatch } from "../../../lib/api";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { routes } from "../../../lib/v2/routes";
 import { apiErrorText, type MyOrganization, type OrgEventV2 } from "../../../lib/v2/organizer-api";
-import { Icon } from "../ui";
+import { Icon, StatusTag } from "../ui";
 
 export function TiersTab({
   event,
@@ -106,8 +106,8 @@ export function TiersTab({
           ) : (
             (s.tier.is_manually_sold_out || s.tier.is_hidden) && (
               <View className="mt-3 flex-row gap-2">
-                {s.tier.is_manually_sold_out && <Tag>{t("eventAdmin.tiers.soldOut")}</Tag>}
-                {s.tier.is_hidden && <Tag>{t("eventAdmin.tiers.hidden")}</Tag>}
+                {s.tier.is_manually_sold_out && <StatusTag tone="danger">{t("eventAdmin.tiers.soldOut")}</StatusTag>}
+                {s.tier.is_hidden && <StatusTag>{t("eventAdmin.tiers.hidden")}</StatusTag>}
               </View>
             )
           )}
@@ -144,10 +144,3 @@ function SwitchLabel({ label, value, disabled, onChange }: { label: string; valu
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <View className="rounded-v2-xs bg-v2-ink4 px-1.5 py-0.5">
-      <Text className="font-v2-ui text-[12px] text-v2-c70">{children}</Text>
-    </View>
-  );
-}

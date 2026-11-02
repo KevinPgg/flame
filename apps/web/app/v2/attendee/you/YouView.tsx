@@ -4,12 +4,12 @@
  * Flame 2.0 "You" on the web (fase 2.6). Prototype `SCREENS.profile` — one single profile (no
  * hosting/attending switch): photo, name, e-mail, Settings and Edit profile; counters; "My
  * organizers" with Manage (approved) or Under review, and New organizer (the v1 onboarding);
- * the organizer approvals entry for Flame support; past events from your tickets.
- * Following and Saved are fase 4 (not shown).
+ * the organizer approvals entry for Flame support; Saved (fase 4.1: hearts, upcoming first, ended
+ * ones dimmed after); past events from your tickets. Following is fase 4 (not shown yet).
  */
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { buildWallet, walletDayTime } from "@project-flame/lib";
+import { buildWallet, splitSavedEvents, walletDayTime } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { useUserProfile } from "../../../lib/hooks/useUserProfile";
 import { useUserOrganizations } from "../../../lib/hooks/useOrganizations";
@@ -20,6 +20,8 @@ import { Icon } from "../../components/Icon";
 import { OrgAvatar } from "../../components/OrgAvatar";
 import { Skeleton } from "../../components/Skeleton";
 import { routes } from "../../lib/routes";
+import { EventTile } from "../EventTile";
+import { useSavedEvents } from "../useSavedEvents";
 
 const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
@@ -66,6 +68,9 @@ export default function YouView() {
   const list = orgs.data?.organizations ?? [];
   const past = useMemo(() => buildWallet(tickets.data?.tickets ?? []).past, [tickets.data?.tickets]);
   const attended = past.filter((w) => w.checkedIn > 0).length;
+  const saved = useSavedEvents();
+  const savedSplit = useMemo(() => splitSavedEvents(saved.events), [saved.events]);
+  const savedCount = saved.events.length;
 
   return (
     <div className="mx-auto max-w-[760px] px-4 pt-6 lg:pt-10">
@@ -142,6 +147,33 @@ export default function YouView() {
           </button>
           <SupportEntry />
         </div>
+      </Section>
+
+      <Section title={t("saved.title")} aside={<span className="text-[13px] text-v2-c50">{savedCount || ""}</span>}>
+        {saved.status === "loading" || saved.status === "idle" ? (
+          <div className="flex gap-3">
+            <Skeleton className="aspect-[4/5] w-[168px] rounded-[14px]" />
+            <Skeleton className="aspect-[4/5] w-[168px] rounded-[14px]" />
+          </div>
+        ) : savedCount === 0 ? (
+          <p className="text-[14px] text-v2-c50">{t("saved.empty")}</p>
+        ) : (
+          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2" data-testid="saved-list">
+            {savedSplit.upcoming.map((e) => (
+              <div key={e.id} className="w-[168px] shrink-0 snap-start">
+                <EventTile event={e} />
+              </div>
+            ))}
+            {savedSplit.past.map((e) => (
+              <div key={e.id} className="relative w-[168px] shrink-0 snap-start">
+                <EventTile event={e} past save />
+                <span className="absolute left-2 top-2 rounded-v2-pill bg-[rgba(0,0,0,0.6)] px-2 py-0.5 text-[10.5px] font-v2-ui-semibold text-v2-c90">
+                  {t("saved.ended")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section

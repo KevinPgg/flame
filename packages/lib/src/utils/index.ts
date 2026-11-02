@@ -103,6 +103,8 @@ export {
 } from "./registration-form";
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle } from "./home-feed";
 export type { FeedDay, FeedEventTime, PriceSummary } from "./home-feed";
+export { splitSavedEvents, toggleSavedId } from "./saved-events";
+export type { SavedEventTime } from "./saved-events";
 export {
   buildWallet,
   walletWhen,

@@ -39,7 +39,7 @@ import { exportPendingRsvpsXlsx } from "../../../lib/organizer-xlsx-export";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
 import { useOrganizerModel } from "../../../hooks/v2/useOrganizerModel";
 import { OrganizerShell, TABBAR_SPACE } from "../OrganizerShell";
-import { Button, ConfirmDialog, ErrorBox, ErrorText, Flyer, Icon, Skeleton, SuccessNote } from "../ui";
+import { Button, ConfirmDialog, ErrorBox, ErrorText, Flyer, Icon, Skeleton, StatusTag, SuccessNote } from "../ui";
 
 type RsvpData = { rsvps: OrganizerRsvp[]; registration_form_config: RegistrationField[] | null };
 type Pending = { kind: "one"; action: "approve" | "reject"; rsvp: OrganizerRsvp } | { kind: "all" };
@@ -420,19 +420,8 @@ export function RsvpEventDetail({ eventId, organization }: { eventId: string; or
 function StatusPill({ status }: { status: string }) {
   const { t } = useI18n();
   const key = rsvpStatusKey(status);
-  const [bg, fg] =
-    key === "pending"
-      ? ["bg-[rgba(255,180,67,0.15)]", "text-v2-warn"]
-      : key === "approved" || key === "purchased"
-        ? ["bg-[rgba(76,215,135,0.15)]", "text-v2-good"]
-        : key === "rejected"
-          ? ["bg-[rgba(136,5,23,0.45)]", "text-v2-errorText"]
-          : ["bg-v2-ink4", "text-v2-c70"];
-  return (
-    <View className={`rounded-v2-pill px-2.5 py-1 ${bg}`}>
-      <Text className={`font-v2-ui-semibold text-[12px] ${fg}`}>{t(`rsvps.status.${key}`)}</Text>
-    </View>
-  );
+  const tone = key === "pending" ? "warn" : key === "approved" || key === "purchased" ? "good" : key === "rejected" ? "danger" : "neutral";
+  return <StatusTag tone={tone}>{t(`rsvps.status.${key}`)}</StatusTag>;
 }
 
 /** Registration details (prototype "regdetails") as a bottom sheet. */

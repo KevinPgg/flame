@@ -26,6 +26,10 @@ jest.mock("../../lib/api", () => ({
 jest.mock("../../hooks/useStripeConnect", () => ({ useStripeConnect: () => ({ status: null, isLoading: false }) }));
 const mockCopy = jest.fn(async () => true);
 jest.mock("expo-clipboard", () => ({ setStringAsync: (...a: unknown[]) => mockCopy(...(a as [])) }));
+jest.mock("react-native-qrcode-svg", () => {
+  const { Text } = jest.requireActual("react-native");
+  return ({ value }: { value: string }) => <Text testID="promoter-qr">{value}</Text>;
+});
 
 const tier = (id: string, name: string, extra = {}) => ({
   id, name, price_cents: 1500, quantity_total: 100, quantity_sold: 10, per_user_limit: 10,
@@ -85,6 +89,36 @@ describe("promoter links", () => {
     await fireEvent.press(screen.getByLabelText("Delete ANA"));
     await fireEvent.press(screen.getByText("Delete"));
     expect(mockApiDelete).toHaveBeenCalledWith("/api/organizer/promoter-links/pl-1", expect.any(Function));
+  });
+
+  it("'Paste a list' sends the parsed names to the bulk endpoint; 'Copy all' copies name: link per line", async () => {
+    mockApiPost.mockResolvedValueOnce({
+      promoter_links: [
+        { id: "n1", promoter_code: "DAVIDC", promoter_name: "David Camacho", total_tickets_sold: 0, total_revenue_cents: 0 },
+        { id: "n2", promoter_code: "JUANL", promoter_name: "Juan León", total_tickets_sold: 0, total_revenue_cents: 0 },
+      ],
+    });
+    await renderV2(<EventAdmin eventId="ev-1" organization={org("owner")} />);
+    await fireEvent.press(await screen.findByText("Paste a list"));
+    await fireEvent.changeText(screen.getByLabelText("Promoter names"), "1. David Camacho\nJuan León, david camacho");
+    expect(screen.getByText("Names detected: 2")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Create links"));
+    expect(mockApiPost).toHaveBeenCalledWith(
+      "/api/organizer/promoter-links/bulk",
+      { event_id: "ev-1", names: ["David Camacho", "Juan León"] },
+      expect.any(Function),
+    );
+    expect(await screen.findByText("2 links ready")).toBeTruthy();
+    await fireEvent.press(screen.getAllByText("Copy all")[0]);
+    expect(mockCopy).toHaveBeenLastCalledWith(
+      expect.stringMatching(/^David Camacho: .*\/events\/hallowen-pt-ii\?promoter=DAVIDC\nJuan León: .*\?promoter=JUANL$/),
+    );
+  });
+
+  it("QR shows the promoter's link on screen", async () => {
+    await renderV2(<EventAdmin eventId="ev-1" organization={org("viewer")} />);
+    await fireEvent.press(await screen.findByLabelText("QR ANA"));
+    expect(screen.getByTestId("promoter-qr").props.children).toMatch(/\/events\/hallowen-pt-ii\?promoter=ANA$/);
   });
 
   it("viewer: list only", async () => {

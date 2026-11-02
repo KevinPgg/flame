@@ -273,6 +273,10 @@ export {
   promoterLeaderboard,
   promoterLinkUrl,
   validatePromoterCode,
+  parsePromoterNames,
+  promoterCodeFor,
+  buildPromoterBatch,
+  PROMOTER_BATCH_MAX,
   validatePromoCode,
   promoCodeStatus,
   bankOrderNetCents,
@@ -481,6 +485,8 @@ export { attendance } from "./organizer/attendance";
 export type { AttendanceOrigin, AttendanceRow, AttendanceSale, AttendanceTransfer, AttendanceComp } from "./organizer/attendance";
 // Flame 2.0 Home (fase 2.2)
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle, lowestPriceInfo } from "./utils";
+export { splitSavedEvents, toggleSavedId } from "./utils";
+export type { SavedEventTime } from "./utils";
 export {
   buildWallet,
   walletWhen,

@@ -38,6 +38,15 @@ const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
 const mockOld = { id: "old", name: "Old night", slug: "old", description: "", image_url: "", starts_at: iso(-30 * D), ends_at: iso(-30 * D + 3600_000), venue: "Club", timezone: "America/Guayaquil" };
 const mockPAST: UserTicket = { id: "t1", type: "ticket", status: "checked_in", created_at: iso(-40 * D), ticket_tier: { id: "x", name: "GA", price_cents: 0, event: mockOld } };
 jest.mock("../../hooks/useUserTickets", () => ({ useUserTickets: () => ({ data: { tickets: [mockPAST] }, refetch: jest.fn() }) }));
+const mockSaved = {
+  events: [
+    { id: "s-up", slug: "s-up", name: "Saved soon", image_url: null, starts_at: iso(3 * D), ends_at: iso(3 * D + 3600_000), timezone: "America/Guayaquil", ticket_tiers: [] },
+    { id: "s-old", slug: "s-old", name: "Saved gone", image_url: null, starts_at: iso(-3 * D), ends_at: iso(-3 * D + 3600_000), timezone: "America/Guayaquil", ticket_tiers: [] },
+  ],
+};
+jest.mock("../../hooks/useSavedEvents", () => ({
+  useSavedEvents: () => ({ events: mockSaved.events, isLoading: false, isSaved: () => true, toggle: jest.fn(), refetch: jest.fn() }),
+}));
 
 beforeEach(() => {
   mockNav.push.mockReset();
@@ -45,6 +54,16 @@ beforeEach(() => {
 });
 
 describe("You (app)", () => {
+  it("Saved (fase 4.1): upcoming first, ended ones after with their tag; hearts to un-save", async () => {
+    await renderV2(<You />);
+    expect(screen.getByRole("header", { name: "Saved" })).toBeTruthy();
+    const names = screen.getAllByText(/^Saved (soon|gone)$/).map((n) => n.props.children);
+    expect(names).toEqual(["Saved soon", "Saved gone"]);
+    expect(screen.getByText("Ended")).toBeTruthy();
+    expect(screen.getByLabelText("Remove Saved soon from saved")).toBeTruthy();
+    expect(screen.getByLabelText("Remove Saved gone from saved")).toBeTruthy();
+  });
+
   it("name, e-mail, counters; Edit profile and Settings; organizers with Manage / Under review; New organizer", async () => {
     await renderV2(<You />);
     expect(screen.getByRole("header", { name: "Ana Ruiz" })).toBeTruthy();

@@ -219,6 +219,59 @@ function validateCode(
 /** Same rules as POST /api/organizer/promoter-links (3–50, A–Z 0–9, unique per event). */
 export const validatePromoterCode = (raw: string, existing: string[]) => validateCode(raw, existing, 50);
 
+/** Most promoters one "Paste a list" batch may create (POST /api/organizer/promoter-links/bulk). */
+export const PROMOTER_BATCH_MAX = 100;
+
+/**
+ * "Paste a list" (prototype `owParseNames`): one name per line or separated by commas/semicolons;
+ * strips list markers ("1.", "2)", "-", "•", "*"), collapses spaces, drops 1-letter entries and
+ * repeats (case-insensitive), keeps the first spelling.
+ */
+export function parsePromoterNames(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of text.split(/[\n,;]+/)) {
+    const name = raw
+      .replace(/^\s*(\d+[.)-]?|[-•*])\s*/, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80);
+    const key = name.toLowerCase();
+    if (name.length > 1 && !seen.has(key)) {
+      seen.add(key);
+      out.push(name);
+    }
+  }
+  return out;
+}
+
+/**
+ * Code for a promoter name (prototype `owCodeFor`): first word + initial of the second, accents
+ * removed, A–Z only ("David Camacho" → DAVIDC); padded to 3 with X; numbered on clash
+ * (DAVIDC2, DAVIDC3…). `taken` holds upper-case codes and is updated.
+ */
+export function promoterCodeFor(name: string, taken: Set<string>): string {
+  const words = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z ]/g, "")
+    .split(" ")
+    .filter(Boolean);
+  let base = ((words[0] || "PROMO") + (words[1] ? words[1][0] : "")).slice(0, 40);
+  if (base.length < 3) base = (base + "XXX").slice(0, 3);
+  let code = base;
+  for (let n = 2; taken.has(code); n++) code = `${base}${n}`;
+  taken.add(code);
+  return code;
+}
+
+/** Names → { name, code } with codes unique against the event's existing ones. */
+export function buildPromoterBatch(names: string[], existingCodes: string[]): { name: string; code: string }[] {
+  const taken = new Set(existingCodes.map((c) => c.toUpperCase()));
+  return names.map((name) => ({ name, code: promoterCodeFor(name, taken) }));
+}
+
 /** Same rules as POST /api/organizer/promotional-codes (3–20, A–Z 0–9, unique per event). */
 export const validatePromoCode = (raw: string, existing: string[]) => validateCode(raw, existing, 20);
 

@@ -10,6 +10,7 @@ import {
 import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../../../../lib/i18n";
 import { Icon } from "../../../../components/Icon";
+import { StatusTag } from "../../../../components/StatusTag";
 import { ConfirmDialog } from "../../../../components/ConfirmDialog";
 import { apiErrorMessage } from "../../../../lib/api-error";
 
@@ -152,13 +153,9 @@ export default function PromotionsTab({
                     <div className="font-v2-display-bold text-[18px] tracking-wide">{c.code}</div>
                     <div className="text-[13px] text-v2-c70">−{c.discount_percentage}%</div>
                   </div>
-                  <span
-                    className={`rounded-v2-pill px-2.5 py-1 text-[12px] font-v2-ui-semibold ${
-                      s.active ? "bg-v2-good/15 text-v2-good" : "bg-v2-ink4 text-v2-c50"
-                    }`}
-                  >
+                  <StatusTag tone={s.active ? "good" : "neutral"}>
                     {s.active ? t("eventAdmin.promotions.active") : t("eventAdmin.promotions.usedUp")}
-                  </span>
+                  </StatusTag>
                 </div>
                 <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-v2-ink4" aria-hidden>
                   <div className="h-full rounded-full bg-v2-flame" style={{ width: `${Math.round(s.ratio * 100)}%` }} />

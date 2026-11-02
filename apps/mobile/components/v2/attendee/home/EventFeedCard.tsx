@@ -1,7 +1,7 @@
 /**
  * Home card, "full flyer" (fase 2.2; Kevin chose it over square on 2026-10-27). Prototype `bCard`:
  * organizer + share on top; the flyer at 4:5 with a dark fade, and title, date · time and price
- * written on it; "RSVP" tag when the event asks for a request. Saving (heart) is fase 4.
+ * written on it; "RSVP" tag when the event asks for a request. Heart to save (fase 4.1).
  */
 import { Pressable, Share, Text, View } from "react-native";
 import { Image } from "expo-image";
@@ -10,6 +10,7 @@ import { useRouter, type Href } from "expo-router";
 import { feedWhen, flameV2Colors as c, formatCentsAsPrice, priceSummary, type PriceableTier } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { Icon, OrgAvatar } from "../../ui";
+import { SaveButton } from "../SaveButton";
 
 export type FeedEvent = {
   id: string;
@@ -116,12 +117,15 @@ export function EventFeedCard({ event }: { event: FeedEvent }) {
           style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "60%" }}
           pointerEvents="none"
         />
-        <View className="absolute bottom-3 left-3.5 right-3.5">
+        <View className="absolute bottom-3 left-3.5 right-14">
           <Text numberOfLines={2} className="font-v2-display-bold text-[20px] leading-[23px] text-v2-cream">
             {event.name}
           </Text>
           <Text className="mt-1 font-v2-ui-medium text-[14.5px] text-v2-c90">{when}</Text>
           {priceLine ? <Text className="mt-0.5 font-v2-ui text-[14.5px] text-v2-c70">{priceLine}</Text> : null}
+        </View>
+        <View className="absolute bottom-3 right-3">
+          <SaveButton event={event} />
         </View>
       </Pressable>
     </View>

@@ -235,3 +235,41 @@ describe("PromotionsTab", () => {
     expect(onChanged).not.toHaveBeenCalled();
   });
 });
+
+describe("PromotersTab — paste a list and QR (2026-11-02)", () => {
+  it("'Paste a list' sends the parsed names to the bulk endpoint and offers 'Copy all'", async () => {
+    const created = [
+      { id: "n1", promoter_code: "DAVIDC", promoter_name: "David Camacho", total_tickets_sold: 0, total_revenue_cents: 0 },
+      { id: "n2", promoter_code: "JUANL", promoter_name: "Juan León", total_tickets_sold: 0, total_revenue_cents: 0 },
+    ];
+    const f = mockFetch([{ match: (u) => u === "/api/organizer/promoter-links/bulk", body: { promoter_links: created } }]);
+    const onChanged = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    Object.assign(window.location, { origin: "https://flme.test" });
+    renderV2(<PromotersTab event={event} canEdit onChanged={onChanged} />);
+    await user.click(screen.getByRole("tab", { name: "Paste a list" }));
+    await user.type(screen.getByLabelText("Promoter names"), "1. David Camacho{enter}Juan León, david camacho");
+    expect(screen.getByText("Names detected: 2")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create links" }));
+    expect(f.posts()[0].body).toEqual({ event_id: "ev1", names: ["David Camacho", "Juan León"] });
+    expect(onChanged).toHaveBeenCalled();
+    expect(await screen.findByText("2 links ready")).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Copy all" })[0]);
+    expect(writeText).toHaveBeenCalledWith(
+      "David Camacho: https://flme.test/events/biblos?promoter=DAVIDC\nJuan León: https://flme.test/events/biblos?promoter=JUANL"
+    );
+  });
+
+  it("QR opens in-page with the code and the link", async () => {
+    mockFetch([]);
+    const user = userEvent.setup({ delay: null });
+    Object.assign(window.location, { origin: "https://flme.test" });
+    renderV2(<PromotersTab event={event} canEdit={false} onChanged={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "QR LUIS" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("LUIS");
+    expect(dialog).toHaveTextContent("flme.test/events/biblos?promoter=LUIS");
+  });
+});

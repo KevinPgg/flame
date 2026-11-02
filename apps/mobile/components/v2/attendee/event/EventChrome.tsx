@@ -1,7 +1,7 @@
 /**
  * Flame 2.0 event screen chrome (Kevin 2026-10-28, prototype `x-top float` + `x-buybar`):
- *  - EventTopBar: back and share always on top while the page scrolls (room on the right for
- *    "save / follow" later).
+ *  - EventTopBar: back, share and the heart to save (fase 4.1) always on top while the page
+ *    scrolls.
  *  - BuyBar: replaces the floating "Buy Tickets" pill. It always says where you are:
  *    you have tickets → "You're going · N tickets" + View N tickets; open RSVP request → its
  *    state; a tier picked → "2 × Tier · before fees" + Continue to checkout; nothing yet →
@@ -13,12 +13,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { flameV2Colors as c } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { Icon, type IconName } from "../../ui";
+import { SaveButton } from "../SaveButton";
 
 const circle = { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(28,28,28,0.82)" } as const;
 
 export const EVENT_TOP_BAR_HEIGHT = 56;
 
-export function EventTopBar({ onBack, onShare }: { onBack: () => void; onShare: () => void }) {
+export function EventTopBar({ onBack, onShare, event }: { onBack: () => void; onShare: () => void; event?: { id: string; name: string } }) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   return (
@@ -36,6 +37,7 @@ export function EventTopBar({ onBack, onShare }: { onBack: () => void; onShare: 
           <Pressable onPress={onShare} accessibilityRole="button" accessibilityLabel={t("event.shareEvent")} hitSlop={4} style={circle} className="items-center justify-center">
             <Icon name="share" size={19} color={c.cream} />
           </Pressable>
+          {event ? <SaveButton event={event} variant="circle" /> : null}
         </View>
       </View>
     </View>

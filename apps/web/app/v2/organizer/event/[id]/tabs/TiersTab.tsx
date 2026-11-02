@@ -8,6 +8,7 @@ import type { Purchase } from "../../../../../lib/utils/purchase-data";
 import { useI18n } from "../../../../../lib/i18n";
 import { Toggle } from "../../../../components/Toggle";
 import { Icon } from "../../../../components/Icon";
+import { StatusTag } from "../../../../components/StatusTag";
 import { routes } from "../../../../lib/routes";
 import { apiErrorMessage } from "../../../../lib/api-error";
 
@@ -111,9 +112,9 @@ export default function TiersTab({
             </div>
           ) : (
             (s.tier.is_manually_sold_out || s.tier.is_hidden) && (
-              <div className="mt-3 flex gap-2 text-[12px]">
-                {s.tier.is_manually_sold_out && <span className="rounded-v2-xs bg-v2-ink4 px-1.5 py-0.5">{t("eventAdmin.tiers.soldOut")}</span>}
-                {s.tier.is_hidden && <span className="rounded-v2-xs bg-v2-ink4 px-1.5 py-0.5">{t("eventAdmin.tiers.hidden")}</span>}
+              <div className="mt-3 flex gap-2">
+                {s.tier.is_manually_sold_out && <StatusTag tone="danger">{t("eventAdmin.tiers.soldOut")}</StatusTag>}
+                {s.tier.is_hidden && <StatusTag>{t("eventAdmin.tiers.hidden")}</StatusTag>}
               </div>
             )
           )}

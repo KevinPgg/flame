@@ -1,6 +1,7 @@
 /**
  * Small event card (fase 2.4–2.5), app: flyer 4:5, title, date · time, venue and price. Used by
- * "More from {organizer}", the organizer profile grid and Explore.
+ * "More from {organizer}", the organizer profile grid, Explore and You → Saved. Heart on the flyer
+ * (fase 4.1), not on past events unless asked (Saved).
  */
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
@@ -8,8 +9,9 @@ import { useRouter, type Href } from "expo-router";
 import { feedWhen, flameV2Colors as c } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
 import { usePriceLine, type FeedEvent } from "./home/EventFeedCard";
+import { SaveButton } from "./SaveButton";
 
-export function EventTile({ event, width, past }: { event: FeedEvent; width: number; past?: boolean }) {
+export function EventTile({ event, width, past, save = !past }: { event: FeedEvent; width: number; past?: boolean; save?: boolean }) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const price = usePriceLine()(event);
@@ -30,6 +32,11 @@ export function EventTile({ event, width, past }: { event: FeedEvent; width: num
           </View>
         ) : null}
       </View>
+      {save ? (
+        <View style={{ position: "absolute", top: width * 1.25 - 42, right: 8 }}>
+          <SaveButton event={event} />
+        </View>
+      ) : null}
       <Text numberOfLines={2} className="mt-2 font-v2-display-bold text-[15px] leading-[18px] text-v2-cream">
         {event.name}
       </Text>

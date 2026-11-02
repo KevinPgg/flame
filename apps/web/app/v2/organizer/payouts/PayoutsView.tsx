@@ -18,6 +18,7 @@ import {
 import { useStripeConnectStatus } from "../../../lib/hooks/useStripeConnectStatus";
 import { useI18n } from "../../../lib/i18n";
 import { Icon } from "../../components/Icon";
+import { StatusTag } from "../../components/StatusTag";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { ErrorBox } from "../../components/ErrorBox";
 import { Skeleton } from "../../components/Skeleton";
@@ -417,7 +418,7 @@ function Balance({
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 sm:justify-end">
-          <span className="rounded-v2-pill bg-v2-good/15 px-2.5 py-1 text-[12px] text-v2-good">{t("payouts.connected")}</span>
+          <StatusTag tone="good">{t("payouts.connected")}</StatusTag>
           <button type="button" onClick={onManage} disabled={opening} className={ghost}>
             {opening ? t("payouts.opening") : t("payouts.manage")}
           </button>
