@@ -34,7 +34,7 @@ Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
 
 **Abrir el enlace en la app** (solo en un teléfono **real**; el modo "pantalla de celular" del navegador de la PC no puede abrir apps y da el error `Failed to launch 'intent://…'` que viste — es esperado ahí):
 - [x] 📱 Android con la app: "¿Abrir en la app de Flame?" → Abrir en la app → la app en ese evento.
-- [ ] 📱 Android **real** sin la app: Abrir en la app → vuelves a la página con "No pudimos abrir la app…".
+- [x] 📱 Android **real** sin la app: Abrir en la app → vuelves a la página con "No pudimos abrir la app…".
 - [ ] 📱 iPhone con la app: Safari pregunta "¿Abrir en Flame?" → la app en el evento.
 - [x] 📱 Seguir en el navegador → el aviso no vuelve en esa pestaña. 💻 PC: el aviso no aparece.
 
@@ -44,16 +44,16 @@ Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
 
 ### 2.1 Reloj de 30 minutos
 - [x] 💻 Ir al pago → `/purchase` con "Tickets reservados por 29:xx" bajando.
-- [ ] 💻 / 📱 Tocar **Pagar** → el reloj **ya no sube por encima de lo que mostraba** (antes saltaba +10 min y pasaba de 30:00). Solo si quedaban menos de 10 min sube hasta **10:00** justas, para que alcance a terminar el pago.
+- [x] 💻 / 📱 Tocar **Pagar** → el reloj **ya no sube por encima de lo que mostraba** (antes saltaba +10 min y pasaba de 30:00). Solo si quedaban menos de 10 min sube hasta **10:00** justas, para que alcance a terminar el pago.
   - Cómo forzarlo: en Studio pon `expires_at` de tu reserva a 3 min en el futuro, recarga, toca Pagar → el reloj pasa a ~10:00.
 - [x] 💻 Reserva vencida a mano (en Studio, `expires_at` 1–2 min en el futuro y esperar) → "Tu reserva venció · Volver a elegir", Pagar bloqueado, ningún cobro en Stripe.
 - [x] Tarjeta rechazada y reintento con 4242 → funciona.
 
 ### 2.2 Descuento y pago (corregido el 10-29)
 Lo que te pasó: aplicaste un descuento y en ese momento tocaste Pagar en el celular. Aplicar un descuento **reemplaza** el pago en Stripe (cancela el anterior y crea otro); el celular intentó pagar con el anterior → `PaymentSheet cannot set up a PaymentIntent in status 'canceled'`. Arreglo: **Pagar se bloquea mientras se aplica un código** (web y app), y si el pago fue reemplazado en otro dispositivo, la app crea uno nuevo y sigue sola.
-- [ ] 💻 Escribir un descuento y tocar Aplicar → mientras dice "…", **Pagar está deshabilitado**; al terminar, Pagar muestra el total con descuento y paga bien.
-- [ ] 📱 Lo mismo en la app.
-- [ ] 📱 + 💻 con la **misma reserva** abierta en los dos (abre la compra en curso en ambos): aplicar un descuento en la PC y luego tocar Pagar en el celular → la hoja de Stripe se abre sin error (con el monto sin descuento del celular; es correcto: cada pantalla paga lo que muestra).
+- [x] 💻 Escribir un descuento y tocar Aplicar → mientras dice "…", **Pagar está deshabilitado**; al terminar, Pagar muestra el total con descuento y paga bien.
+- [x] 📱 Lo mismo en la app.
+- [ ] 📱 + 💻 con la **misma reserva** abierta en los dos (abre la compra en curso en ambos): aplicar un descuento en la PC y luego tocar Pagar en el celular → la hoja de Stripe se abre sin error (con el monto sin descuento del celular; es correcto: cada pantalla paga lo que muestra). `//Falso, al querer pagar desde el celular(luego de aplicar descuento en pc) aparece que el pago tiene status canceled`
 - [x] Promotor escrito en la pantalla de pago y descuento → la venta queda con ese promotor; "You’re in" y Ver tickets.
 - [x] 💻 Pagar con `stripe listen` apagado → nunca error: "Pago recibido · tus tickets se están preparando". Encenderlo y reenviar → "You’re in".
 - [x] Ticket gratis → Obtener ticket gratis → listo.
@@ -61,11 +61,11 @@ Lo que te pasó: aplicaste un descuento y en ese momento tocaste Pagar en el cel
 
 ### 2.3 Salir, volver y cancelar (cambió el 10-29)
 Ahora **solo el botón "Cancelar reserva" libera la reserva**, y pide confirmación. Atrás (flecha, botón de Android, gesto), cambiar de pestaña, ir a Inicio/Explorar o cambiar de app **no** la tocan: la reserva sigue y aparece "Compra en curso" para volver.
-- [ ] 📱 En la pantalla de pago: flecha atrás → vuelves al evento; arriba de la barra aparece **COMPRA EN CURSO · quedan mm:ss · Continuar** → vuelve a la misma pantalla y el reloj siguió.
-- [ ] 📱 Android: botón atrás del sistema → igual que la flecha (la reserva **no** se libera).
-- [ ] 📱 Cambiar de app (WhatsApp) y volver → sigues en la pantalla de pago; en la consola del servidor **no** aparece `POST /api/holds/cancel`.
-- [ ] 📱 / 💻 **Cancelar reserva** (abajo, subrayado) → "¿Cancelar esta reserva? Las entradas se liberan…" → Cancelar reserva → vuelves al evento, el cupo se recupera y desaparece la compra en curso. Con "Atrás"/"Cancelar" en el aviso no pasa nada.
-- [ ] 📱 Tocar Pagar y **cerrar la hoja de Stripe** sin pagar → vuelves a la pantalla; sales con la flecha → la compra en curso **sí** aparece (antes no, y además quedabas bloqueado 20 min para volver a comprar ese tier).
+- [x] 📱 En la pantalla de pago: flecha atrás → vuelves al evento; arriba de la barra aparece **COMPRA EN CURSO · quedan mm:ss · Continuar** → vuelve a la misma pantalla y el reloj siguió.
+- [x] 📱 Android: botón atrás del sistema → igual que la flecha (la reserva **no** se libera).
+- [x] 📱 Cambiar de app (WhatsApp) y volver → sigues en la pantalla de pago; en la consola del servidor **no** aparece `POST /api/holds/cancel`.
+- [x] 📱 / 💻 **Cancelar reserva** (abajo, subrayado) → "¿Cancelar esta reserva? Las entradas se liberan…" → Cancelar reserva → vuelves al evento, el cupo se recupera y desaparece la compra en curso. Con "Atrás"/"Cancelar" en el aviso no pasa nada.
+- [x] 📱 Tocar Pagar y **cerrar la hoja de Stripe** sin pagar → vuelves a la pantalla; sales con la flecha → la compra en curso **sí** aparece (antes no, y además quedabas bloqueado 20 min para volver a comprar ese tier).
 - [x] 💻 `/purchase` no muestra el aviso de compra en curso; Inicio/Explorar sí.
 
 ---
@@ -76,10 +76,10 @@ Qué protege cada cosa:
 - **B4** (3.1) protege una reserva **cuyo pago ya empezó** (tocaste Pagar). En tu prueba la primera pestaña solo tenía la pantalla abierta, sin tocar Pagar: por eso se reemplazó. Era el comportamiento previsto, sin aviso.
 - **Nuevo (10-29)**: cualquier reserva activa del mismo tier, en cualquier dispositivo, **pregunta antes** de reemplazarse.
 
-- [ ] 💻 Pestaña A: Ir al pago (no pagues). Pestaña B, mismo tier → Ir al pago → aviso **"Ya tienes una reserva de N entradas de este tier (quedan mm:ss)"** con: **Ir a mi reserva** (abre la de A) · **Reemplazar reserva** (crea la nueva; la de A ya no se puede pagar) · Cancelar.
-- [ ] 📱 + 💻: reserva en el celular, luego mismo tier en la PC → el mismo aviso. Y al revés (PC primero, celular después) → aviso nativo con los mismos tres botones.
-- [ ] Reemplazar con otra cantidad (ej. de 2 a 4) → la pantalla de pago muestra 4; en `holds` hay **una** reserva tuya de ese tier.
-- [ ] 💻 Pestaña A: Pagar con la tarjeta 3DS y deja abierta la autenticación. Pestaña B, mismo tier → "Ya tienes un pago en curso para este ticket…" (no ofrece reemplazar). Autenticar en A → tickets.
+- [x] 💻 Pestaña A: Ir al pago (no pagues). Pestaña B, mismo tier → Ir al pago → aviso **"Ya tienes una reserva de N entradas de este tier (quedan mm:ss)"** con: **Ir a mi reserva** (abre la de A) · **Reemplazar reserva** (crea la nueva; la de A ya no se puede pagar) · Cancelar.
+- [x] 📱 + 💻: reserva en el celular, luego mismo tier en la PC → el mismo aviso. Y al revés (PC primero, celular después) → aviso nativo con los mismos tres botones.
+- [x] Reemplazar con otra cantidad (ej. de 2 a 4) → la pantalla de pago muestra 4; en `holds` hay **una** reserva tuya de ese tier.
+- [ ] 💻 Pestaña A: Pagar con la tarjeta 3DS y deja abierta la autenticación. Pestaña B, mismo tier → "Ya tienes un pago en curso para este ticket…" (no ofrece reemplazar). Autenticar en A → tickets. `//Que es una tarjeta 3ds`
 - [ ] Otro tier del mismo evento → no pregunta (las reservas son por tier).
 
 ---
@@ -88,9 +88,9 @@ Qué protege cada cosa:
 
 ### 4.1 Preguntas: por solicitud (por defecto) o por entrada (opción del tier) — cambió el 10-29
 Configuración: Organizador → evento RSVP → Tiers → editar tier → interruptor **"Preguntas por cada entrada"** (apagado por defecto). Al crear un evento nuevo el interruptor no está; se activa después editando el tier.
-- [ ] 💻 / 📱 Tier con el interruptor **apagado**: Solicitar → subir a 3 invitados → las preguntas aparecen **una sola vez** (sin "Invitado 1 de 3"). Enviar → el organizador ve una sola respuesta.
-- [ ] Encender el interruptor en ese tier y guardar → Solicitar con 3 invitados → "Invitado 1 de 3", "2 de 3", "3 de 3", cada uno con las preguntas; un obligatorio vacío → "Obligatorio" y no se envía.
-- [ ] Organizador: detalle de la solicitud con bloques "Invitado 2", "Invitado 3"; Exportar pendientes con columnas "Guest 2 · …".
+- [x] 💻 / 📱 Tier con el interruptor **apagado**: Solicitar → subir a 3 invitados → las preguntas aparecen **una sola vez** (sin "Invitado 1 de 3"). Enviar → el organizador ve una sola respuesta.
+- [x] Encender el interruptor en ese tier y guardar → Solicitar con 3 invitados → "Invitado 1 de 3", "2 de 3", "3 de 3", cada uno con las preguntas; un obligatorio vacío → "Obligatorio" y no se envía.
+- [x] Organizador: detalle de la solicitud con bloques "Invitado 2", "Invitado 3"; Exportar pendientes con columnas "Guest 2 · …".
 - [x] Pagado: autorización de tarjeta; en la web el promotor del enlace aparece aplicado. 📱 El descuento baja el monto autorizado.
 
 ### 4.2 Aprobar
@@ -105,9 +105,9 @@ Requisito: `CRON_SECRET` en `.env.local` (§0) y el servidor reiniciado.
 4. Llama al cron. En **cmd** de Windows (`$CRON_SECRET` no funciona en cmd; pon el valor tal cual):
    `curl -H "Authorization: Bearer flme-local-cron" http://localhost:3000/api/cron/reconcile-rsvp-payments`
    En **PowerShell** usa `curl.exe` (no `curl`) con la misma línea.
-- [ ] Responde `{"checked":1,"created":1,…}`; la RSVP pasa a comprada y aparecen los tickets.
-- [ ] Llamarlo otra vez → `"created":0` (no duplica).
-- [ ] Sin la cabecera (o con otro valor) → 401.
+- [x] Responde `{"checked":1,"created":1,…}`; la RSVP pasa a comprada y aparecen los tickets.
+- [x] Llamarlo otra vez → `"created":0` (no duplica).
+- [x] Sin la cabecera (o con otro valor) → 401.
 
 ---
 
