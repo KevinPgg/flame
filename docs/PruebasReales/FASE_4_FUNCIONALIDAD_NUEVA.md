@@ -191,6 +191,9 @@ Necesitas: cuenta **dueño/admin** (A), una cuenta **existente** que no esté en
 - [ ] 💻 / 📱 Explorar: los **eventos destacados** son más grandes (💻 260–300 px de ancho; 📱 ~72 % de la pantalla); 💻 resultados de búsqueda en 2–3 columnas (antes hasta 5).
 - [ ] 📱 Página del evento: el **fondo difuminado del flyer** llega hasta "Acerca de" (antes se cortaba en el nombre) y se funde en negro al final, como en la web.
 
+## 11. Campana con 10+ notificaciones (11-02, noche)
+- [ ] 📱 Con 21 sin leer, la insignia de la campana muestra **21** completo (antes "2"); con 5 → "5" redonda; con más de 99 → "99+". La insignia no tapa la campana.
+
 ---
 
 ## Cosas conocidas (no son fallo)

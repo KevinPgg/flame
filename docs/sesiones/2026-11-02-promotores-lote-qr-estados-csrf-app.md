@@ -113,8 +113,13 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - **[Seguro] En el prototipo el número es por persona, no por evento**: `ACTS.payNow` asigna `n` contando solo los tickets **de esa persona** para ese evento (`S.tickets.filter(x => x.ev === e.id)`, todos `holder:'me'`), y la pantalla del ticket muestra "Ticket 1 / Ticket 2" para cambiar entre los tuyos. No hay un correlativo 1, 2, 3… entre todos los compradores.
 - **Ya está hecho**: "Ticket N de M" en la web (`v2/attendee/tickets/[id]/TicketView.tsx`) y en la app (`TicketPager.tsx`) desde la 2.3; el escáner muestra "Ticket N de M" de la orden (`sequence_number` = posición en la orden, sale del QR, `api/qr-scanner/verify`).
 - La valoración (`actual/FLAME_2_0_VALORACION.md` §2.3) lo describió como "correlativa por evento con asignación dentro del RPC de compra": **lectura equivocada del prototipo**. Corregido abajo.
-- **Decisión pendiente de Kevin**: (a) cerrar la 4.6 como cubierta (recomendado), o (b) añadir además un número de serie por evento (#0001…) — sería columna + backfill + trigger `BEFORE INSERT` en `tickets` con contador por evento (no dentro del RPC); toca el camino de compra, así que entraría en la evaluación del proceso de compra que Kevin ya planificó para después de Flame 2.0.
+- **Decisión de Kevin (11-02)**: cerrar la 4.6 como cubierta (sin serie por evento). Antes se planteó (b) añadir además un número de serie por evento (#0001…) — sería columna + backfill + trigger `BEFORE INSERT` en `tickets` con contador por evento (no dentro del RPC); toca el camino de compra, así que entraría en la evaluación del proceso de compra que Kevin ya planificó para después de Flame 2.0.
 - No se cambió código en este punto.
+
+## 13. Corrección de cierre de la fase 4 + inventario para la fase 5 (11-02, noche)
+- **Bug (app)**: el número de la campana con 2 cifras se veía cortado (21 → "2"). [Seguro] El conteo estaba bien; era el dibujo: la insignia absoluta solo tenía `minWidth` y Android la medía antes de aplicar la fuente en negrita. Arreglo en `components/v2/attendee/AttendeeTopBar.tsx`: ancho explícito por nº de caracteres (`badgeWidth`: 18 / 24 / 30 px para 1, 2 y "99+"), `numberOfLines={1}`, sin padding de fuente. Test: `__tests__/v2/AttendeeTopBarBadge.test.tsx`. Prueba real: §11 de `PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+- **Fase 4 cerrada en código** (4.1–4.6). Falta: tests en local + pruebas reales + aplicar sus migraciones.
+- **Qué queda para la fase 5 (Ensayo y salida)** — detalle en `actual/ESTADO_ACTUAL.md`, fila 5.
 
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
@@ -132,4 +137,4 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Fotos de artistas: hechas (§7).
 8. Seguir §8 de la guía de pruebas (búsqueda).
 9. Aplicar `20261102190000_organization_invitations.sql`, borrar la carpeta vacía `apps/web/app/invite/` y `_to_delete/web-app-invite-duplicado/`, seguir §9–§10.
-10. Fase 4.6 Numeración: el prototipo pide número **por persona**, ya hecho en 2.3 (§12). Decidir si además se quiere serie por evento (iría a la evaluación de compra).
+10. Fase 4.6 cerrada sin cambios (§12). Probar la insignia de la campana con 10+ notificaciones (§13).
