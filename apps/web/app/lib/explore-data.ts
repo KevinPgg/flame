@@ -6,6 +6,7 @@
 import { unstable_cache } from "next/cache";
 import { INTERNAL_ORG_IDS, latestFlyers } from "@project-flame/lib";
 import { supabaseAdmin } from "./supabase/server";
+import { followerCounts } from "./follows";
 import { isProduction } from "./utils/environment";
 
 export type ExploreOrganizer = {
@@ -17,6 +18,8 @@ export type ExploreOrganizer = {
   city: string | null;
   /** Flyer of its latest published event (card background when nothing is upcoming). */
   last_flyer_url?: string | null;
+  /** Fase 4.4: people following it (count only). */
+  followers_count?: number;
 };
 
 async function fetchExploreOrganizers(): Promise<ExploreOrganizer[]> {
@@ -49,7 +52,16 @@ async function fetchExploreOrganizers(): Promise<ExploreOrganizer[]> {
     return orgs;
   }
   const flyers = latestFlyers(evs ?? []);
-  return orgs.map((o) => ({ ...o, last_flyer_url: flyers[o.id] ?? null }));
+  let counts: Record<string, number> = {};
+  try {
+    counts = await followerCounts(supabaseAdmin, orgs.map((o) => o.id));
+  } catch (e) {
+    console.error("[explore-data] follower counts failed", e); // cards work without them
+  }
+  // Fase 4.4: most followed first (then by name, as before).
+  return orgs
+    .map((o) => ({ ...o, last_flyer_url: flyers[o.id] ?? null, followers_count: counts[o.id] ?? 0 }))
+    .sort((a, b) => (b.followers_count ?? 0) - (a.followers_count ?? 0) || a.name.localeCompare(b.name));
 }
 
-export const getExploreOrganizers = unstable_cache(fetchExploreOrganizers, ["explore-organizers-v2"], { revalidate: 60 });
+export const getExploreOrganizers = unstable_cache(fetchExploreOrganizers, ["explore-organizers-v3"], { revalidate: 60 });

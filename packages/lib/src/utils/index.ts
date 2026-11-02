@@ -119,7 +119,8 @@ export {
   myEventState,
   holdCountdown,
 } from "./wallet";
-export { normalizeSearch, searchExplore, featuredFirst, organizerCover, latestFlyers } from "./explore";
+export { normalizeSearch, searchExplore, featuredFirst, organizerCover, latestFlyers, addRecentSearch, RECENT_SEARCHES_MAX } from "./explore";
+export type { ArtistResult } from "./explore";
 export type { HoldCountdown, MyEventState, Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./wallet";
 export { lowestPriceInfo } from "./availability";
 export type { LowestPriceInfo, PriceableTier } from "./availability";

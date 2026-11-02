@@ -1,4 +1,4 @@
-# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up
+# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up, 4.4 Búsqueda
 
 ## Contexto
 Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anteriores. Siguiente fase del plan Flame 2.0 (`actual/FLAME_2_0_VALORACION.md` §3): **fase 4, funcionalidad nueva**. Ninguno de sus ítems existe hoy en la BD (sin tablas `follows`, `saved_events`, invitaciones, line-up ni numeración de tickets).
@@ -67,6 +67,14 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
   - Tests: lib `lineup`, web `lineup-photo.test.ts`, `LineupPhoto.test.tsx`, `OrganizerShell`, `You`; app `EventForms`, `You`.
 - Pruebas: §6.3 y §7 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 
+## 8. Fase 4.4 — Búsqueda (web y app)
+- Kevin confirmó que la foto de Spotify funciona (el error sale cuando Spotify no tiene foto del artista: esperado).
+- [Probable] **Sin endpoint nuevo**: la búsqueda sigue en el cliente sobre los eventos próximos que ya cargan Inicio/Explorar (como el prototipo `filterEvents`). Al volumen actual es suficiente; si crece mucho, pasar a un endpoint con índice (pendiente, no urgente).
+- **lib** `utils/explore.ts`: `searchExplore` busca también por artistas del line-up y devuelve `artists` (mismo nombre sin tildes = mismo artista; foto de cualquiera de sus eventos; ordenados por nº de eventos); `addRecentSearch` (máx. 4, sin repetir). Tests en `packages/lib/__tests__/explore.test.ts`.
+- **Web**: `getHomeEvents` trae `lineup` (caché `home-events-v2.6`); `getExploreOrganizers` trae `followers_count` y ordena por seguidores (caché `explore-organizers-v3`); `ExploreView`: sección Artistas (fila con foto/iniciales → próximo evento), seguidores en las tarjetas, búsquedas recientes en `localStorage` (`flame.recentSearches`), placeholder "Eventos, artistas, lugares, organizadores".
+- **App**: `useAppEvents` ya trae `*` (incluye `lineup`); `FeedEvent.lineup`; `useFollowerCounts` (conteos públicos de 50 en 50); `lib/v2/recent-searches.ts` (SecureStore `flame_recent_searches`); `Explore.tsx` igual que la web.
+- Pruebas: §8 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -80,4 +88,5 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 5. Aplicar `20261102150000_organization_follows.sql` y seguir §5 de la guía de pruebas.
 6. Decidir si seguir a un organizador debe avisar cuando publica eventos.
 7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Fotos de artistas: hechas (§7).
-8. Siguiente ítem de fase 4: **Búsqueda** (eventos, lugares, organizadores y artistas).
+8. Seguir §8 de la guía de pruebas (búsqueda).
+9. Siguiente ítem de fase 4: **Invitaciones de equipo** (miembro "Invited" hasta aceptar; toca RLS de miembros).

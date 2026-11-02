@@ -1,6 +1,9 @@
+import { parseLineup, type LineupArtist } from "../organizer/lineup";
+
 /**
  * Flame 2.0 Explore (fase 2.5) — search by name, as today, for web and app: events by their
- * name, venue, city or organizer; organizers by name or city. Accents and case don't matter
+ * name, venue, city, organizer or (fase 4.4) an artist of the line-up; organizers by name or
+ * city; artists (fase 4.4) by name, each with the upcoming events they play. Accents and case don't matter
  * ("cumbia" finds "Cúmbia"). Featured events: the ones flagged featured first, then the next
  * upcoming, so the row is never empty.
  */
@@ -16,20 +19,55 @@ type SearchableEvent = {
   venue?: string | null;
   city?: string | null;
   organizations?: { name: string } | null;
+  /** events.lineup (fase 4.3); optional so older selects still work. */
+  lineup?: unknown;
+  starts_at?: string;
 };
+
+/** An artist found by the search, with the events (in the list given) where they play. */
+export type ArtistResult<E> = { name: string; photo_url: string | null; events: E[] };
 type SearchableOrg = { name: string; city?: string | null };
 
-export function searchExplore<E extends SearchableEvent, O extends SearchableOrg>(events: E[], orgs: O[], query: string): { events: E[]; organizers: O[] } {
+export function searchExplore<E extends SearchableEvent, O extends SearchableOrg>(
+  events: E[],
+  orgs: O[],
+  query: string
+): { events: E[]; organizers: O[]; artists: ArtistResult<E>[] } {
   const words = normalizeSearch(query).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return { events: [], organizers: [] };
+  if (words.length === 0) return { events: [], organizers: [], artists: [] };
   const hits = (fields: Array<string | null | undefined>) => {
     const hay = fields.map(normalizeSearch).join(" ");
     return words.every((w) => hay.includes(w));
   };
+  const lineups = new Map<E, LineupArtist[]>(events.map((e) => [e, parseLineup(e.lineup)]));
+
+  // Artists: same name (accents/case ignored) = same artist across events; photo from any of them.
+  const byArtist = new Map<string, ArtistResult<E>>();
+  for (const e of events) {
+    for (const a of lineups.get(e)!) {
+      if (!hits([a.name])) continue;
+      const key = normalizeSearch(a.name);
+      const found = byArtist.get(key) ?? { name: a.name, photo_url: null, events: [] };
+      if (!found.photo_url && a.photo_url) found.photo_url = a.photo_url;
+      if (!found.events.includes(e)) found.events.push(e);
+      byArtist.set(key, found);
+    }
+  }
   return {
-    events: events.filter((e) => hits([e.name, e.venue, e.city, e.organizations?.name])),
+    events: events.filter((e) => hits([e.name, e.venue, e.city, e.organizations?.name, ...lineups.get(e)!.map((a) => a.name)])),
     organizers: orgs.filter((o) => hits([o.name, o.city])),
+    artists: [...byArtist.values()].sort((a, b) => b.events.length - a.events.length || a.name.localeCompare(b.name)),
   };
+}
+
+export const RECENT_SEARCHES_MAX = 4;
+
+/** "Recent searches" (prototype): newest first, no repeats (case/accents ignored), at most 4. */
+export function addRecentSearch(list: readonly string[], query: string): string[] {
+  const q = query.trim().replace(/\s+/g, " ");
+  if (q.length < 2) return [...list];
+  const key = normalizeSearch(q);
+  return [q, ...list.filter((r) => normalizeSearch(r) !== key)].slice(0, RECENT_SEARCHES_MAX);
 }
 
 export function featuredFirst<E extends { is_featured?: boolean | null }>(events: E[], limit = 10): E[] {

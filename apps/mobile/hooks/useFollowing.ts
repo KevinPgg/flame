@@ -82,3 +82,22 @@ export function useFollowerCount(orgId: string | undefined) {
     queryFn: async () => (await apiGetPublic<{ counts: Record<string, number> }>(`/api/organizations/followers?ids=${orgId}`))?.counts?.[orgId!] ?? 0,
   });
 }
+
+/** Public follower counts of many organizations (Explore cards), 50 ids per request. */
+export function useFollowerCounts(orgIds: string[]) {
+  const ids = [...new Set(orgIds)].sort();
+  return useQuery({
+    queryKey: ["org-followers-many", ids.join(",")],
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out: Record<string, number> = {};
+      for (let i = 0; i < ids.length; i += 50) {
+        const chunk = ids.slice(i, i + 50);
+        const res = await apiGetPublic<{ counts: Record<string, number> }>(`/api/organizations/followers?ids=${chunk.join(",")}`);
+        Object.assign(out, res?.counts ?? {});
+      }
+      return out;
+    },
+  });
+}

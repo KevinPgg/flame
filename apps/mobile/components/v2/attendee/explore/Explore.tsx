@@ -2,21 +2,24 @@
  * Flame 2.0 Explore (fase 2.5), app. Prototype `SCREENS.explore`: search on top (events by
  * name, venue, city or organizer; organizers by name — "como hoy", rules in lib/explore);
  * idle: featured events, featured organizers, "Host your own events" (the v1 apply sheet) and
- * FAQs. Categories, followers and artist/venue search are fase 4 (not shown).
+ * FAQs. Categories were dropped (2026-11-02). Fase 4.4: artists (line-up) in the search,
+ * followers on the organizer cards (most followed first), recent searches (this phone only).
  * Data: the existing useAppEvents and useOrganizations (decision 2026-10-27).
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as WebBrowser from "expo-web-browser";
-import { faqs, featuredFirst, flameV2Colors as c, organizerCover, searchExplore } from "@project-flame/lib";
+import { addRecentSearch, artistInitials, faqs, featuredFirst, flameV2Colors as c, organizerCover, searchExplore, type ArtistResult } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { useAppEvents } from "../../../../hooks/useAppEvents";
 import { useOrganizations } from "../../../../hooks/useOrganizations";
 import { useUserOrgs, type UserOrg } from "../../../../hooks/useUserOrgs";
 import { useOptionalAuth } from "../../../../hooks/useOptionalAuth";
+import { useFollowerCounts } from "../../../../hooks/useFollowing";
+import { loadRecentSearches, saveRecentSearches } from "../../../../lib/v2/recent-searches";
 import { useScrollToTop } from "../../../../contexts/ScrollToTopContext";
 import { useScrollRegistration } from "../../../../hooks/useScrollRegistration";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
@@ -28,7 +31,7 @@ import { Button, ErrorBox, Icon, OrgAvatar } from "../../ui";
 type Org = { id: string; name: string; slug: string; logo_url?: string | null; cover_image_url?: string | null; city?: string | null; last_flyer_url?: string | null };
 
 /** Background: the flyer of the organizer's next event, else its latest one, else its photo (Kevin 2026-10-28/29). */
-function OrgCard({ org, width, events }: { org: Org; width: number; events: FeedEvent[] }) {
+function OrgCard({ org, width, events, followers }: { org: Org; width: number; events: FeedEvent[]; followers?: number }) {
   const { t } = useI18n();
   const router = useRouter();
   const bg = organizerCover(org, events);
@@ -57,7 +60,11 @@ function OrgCard({ org, width, events }: { org: Org; width: number; events: Feed
           <OrgAvatar name={org.name} logoUrl={org.logo_url ?? null} size={50} />
         </View>
         <Text numberOfLines={1} className="mt-2 font-v2-ui-semibold text-[15px] text-v2-cream">{org.name}</Text>
-        {org.city ? <Text numberOfLines={1} className="font-v2-ui text-[12.5px] text-v2-c50">{org.city}</Text> : null}
+        {org.city || followers !== undefined ? (
+          <Text numberOfLines={1} className="font-v2-ui text-[12.5px] text-v2-c50">
+            {[org.city, followers !== undefined ? t("follow.followers", { count: followers }) : null].filter(Boolean).join(" · ")}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -101,6 +108,40 @@ function Faq({ q, a, initiallyOpen }: { q: string; a: string; initiallyOpen: boo
   );
 }
 
+/** Artist found by the search (fase 4.4): photo or initials, name, next event; opens it. */
+function ArtistRow({ artist, onOpen }: { artist: ArtistResult<FeedEvent>; onOpen: () => void }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const next = artist.events[0]!;
+  return (
+    <Pressable
+      onPress={() => {
+        onOpen();
+        router.push(`/event/${next.id}` as Href);
+      }}
+      accessibilityRole="link"
+      accessibilityLabel={artist.name}
+      className="flex-row items-center gap-3 rounded-[16px] bg-[#121212] p-3 active:opacity-80"
+    >
+      {artist.photo_url ? (
+        <Image source={{ uri: artist.photo_url }} style={{ width: 56, height: 56, borderRadius: 12 }} contentFit="cover" />
+      ) : (
+        <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#2A1A1F" }} className="items-center justify-center">
+          <Text className="font-v2-display-bold text-[18px] text-v2-cream">{artistInitials(artist.name)}</Text>
+        </View>
+      )}
+      <View className="min-w-0 flex-1">
+        <Text numberOfLines={1} className="font-v2-ui-semibold text-[15px] text-v2-cream">{artist.name}</Text>
+        <Text numberOfLines={1} className="font-v2-ui text-[12.5px] text-v2-c50">
+          {t("explore.artistNext", { event: next.name })}
+          {artist.events.length > 1 ? ` · ${t("explore.artistMore", { count: artist.events.length - 1 })}` : ""}
+        </Text>
+      </View>
+      <Icon name="chev" size={16} color={c.c50} />
+    </Pressable>
+  );
+}
+
 export function Explore() {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
@@ -113,21 +154,36 @@ export function Explore() {
   const { scrollRef } = useScrollRegistration({ registerScrollRef, isLoading: events.isLoading, isError: events.isError, hasData: !!events.data });
 
   const raw = useMemo(() => ((events.data as { rawEvents?: Array<FeedEvent & { is_featured?: boolean | null }> } | undefined)?.rawEvents ?? []), [events.data]);
-  const orgList = useMemo(() => ((orgs.data ?? []) as Org[]), [orgs.data]);
+  const counts = useFollowerCounts(((orgs.data ?? []) as Org[]).map((o) => o.id));
+  // Fase 4.4: most followed first (then by name, as the list comes).
+  const orgList = useMemo(() => {
+    const list = (orgs.data ?? []) as Org[];
+    const n = counts.data ?? {};
+    return [...list].sort((a, b) => (n[b.id] ?? 0) - (n[a.id] ?? 0));
+  }, [orgs.data, counts.data]);
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => {
+    void loadRecentSearches().then(setRecent);
+  }, []);
+  const remember = () => {
+    const next = addRecentSearch(recent, q);
+    setRecent(next);
+    void saveRecentSearches(next);
+  };
   const featured = useMemo(() => featuredFirst(raw, 10), [raw]);
   const result = useMemo(() => searchExplore(raw, orgList, q), [raw, orgList, q]);
   const searching = q.trim().length > 0;
-  const count = result.events.length + result.organizers.length;
+  const count = result.events.length + result.organizers.length + result.artists.length;
   const tileW = (width - 16 * 2 - 12) / 2;
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([events.refetch(), orgs.refetch()]);
+      await Promise.all([events.refetch(), orgs.refetch(), counts.refetch()]);
     } finally {
       setRefreshing(false);
     }
-  }, [events, orgs]);
+  }, [events, orgs, counts]);
 
   const sectionTitle = (s: string) => (
     <Text accessibilityRole="header" className="mb-3 px-4 font-v2-display-bold text-[22px] tracking-[-0.6px] text-v2-cream">
@@ -155,6 +211,7 @@ export function Explore() {
           placeholderTextColor={c.c50}
           accessibilityLabel={t("common.search")}
           returnKeyType="search"
+          onSubmitEditing={remember}
           autoCorrect={false}
           className="h-full flex-1 font-v2-ui text-[15px] text-v2-cream"
         />
@@ -179,12 +236,22 @@ export function Explore() {
         ) : (
           <View className="pt-5">
             <Text className="mb-4 px-4 font-v2-ui text-[13px] text-v2-c50">{t("explore.results", { count })}</Text>
+            {result.artists.length > 0 ? (
+              <View className="mb-8">
+                {sectionTitle(t("explore.artists"))}
+                <View className="gap-2 px-4">
+                  {result.artists.slice(0, 6).map((a) => (
+                    <ArtistRow key={a.name} artist={a} onOpen={remember} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
             {result.organizers.length > 0 ? (
               <View className="mb-8">
                 {sectionTitle(t("explore.organizers"))}
                 <View className="flex-row flex-wrap px-4" style={{ gap: 12 }}>
                   {result.organizers.map((o) => (
-                    <OrgCard key={o.id} org={o} width={tileW} events={raw} />
+                    <OrgCard key={o.id} org={o} width={tileW} events={raw} followers={counts.data?.[o.id]} />
                   ))}
                 </View>
               </View>
@@ -203,6 +270,33 @@ export function Explore() {
         )
       ) : (
         <View className="gap-10 pt-7">
+          {recent.length > 0 ? (
+            <View>
+              <View className="flex-row items-center justify-between pr-4">
+                {sectionTitle(t("explore.recent"))}
+                <Pressable
+                  onPress={() => {
+                    setRecent([]);
+                    void saveRecentSearches([]);
+                  }}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  className="mb-3"
+                >
+                  <Text className="font-v2-ui-semibold text-[13px] text-v2-c70 underline">{t("explore.recentClear")}</Text>
+                </Pressable>
+              </View>
+              <View className="px-4">
+                {recent.map((r) => (
+                  <Pressable key={r} onPress={() => setQ(r)} accessibilityRole="button" className="flex-row items-center gap-3 border-b border-[#1A1A1A] py-3 active:opacity-70">
+                    <Icon name="clock" size={18} color={c.c70} />
+                    <Text numberOfLines={1} className="flex-1 font-v2-ui text-[15px] text-v2-cream">{r}</Text>
+                    <Icon name="chev" size={15} color={c.c50} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {featured.length > 0 ? (
             <View>
               {sectionTitle(t("explore.featured"))}
@@ -218,7 +312,7 @@ export function Explore() {
               {sectionTitle(t("explore.organizers"))}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
                 {orgList.map((o) => (
-                  <OrgCard key={o.id} org={o} width={200} events={raw} />
+                  <OrgCard key={o.id} org={o} width={200} events={raw} followers={counts.data?.[o.id]} />
                 ))}
               </ScrollView>
             </View>

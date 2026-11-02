@@ -43,11 +43,23 @@ const mockAuth = { isSignedIn: true };
 jest.mock("../../hooks/useOptionalAuth", () => ({ useOptionalAuth: () => mockAuth }));
 const mockUserOrgs = { data: [] as unknown[], isLoading: false };
 jest.mock("../../hooks/useUserOrgs", () => ({ useUserOrgs: () => mockUserOrgs }));
+// Fase 4.4: public follower counts and recent searches on the phone.
+jest.mock("../../hooks/useFollowing", () => ({
+  useFollowerCounts: () => ({ data: { o2: 1161 }, refetch: jest.fn() }),
+}));
+const mockStore = new Map<string, string>();
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async (k: string) => mockStore.get(k) ?? null),
+  setItemAsync: jest.fn(async (k: string, v: string) => void mockStore.set(k, v)),
+  deleteItemAsync: jest.fn(async (k: string) => void mockStore.delete(k)),
+}));
 
 beforeEach(() => {
   mockNav.push.mockReset();
   mockAuth.isSignedIn = true;
   mockUserOrgs.data = [];
+  mockStore.clear();
+  mockEvents.data.rawEvents[0] = ev("a", { lineup: [{ name: "Perdomo" }] });
 });
 
 describe("Explore (app)", () => {
@@ -93,5 +105,30 @@ describe("Explore (app)", () => {
     await renderV2(<Explore />, "es");
     expect(screen.getByText("Tu organización está en revisión. Te avisaremos cuando la aprueben.")).toBeTruthy();
     expect(screen.queryByText("Postular como organizador")).toBeNull();
+  });
+
+  it("fase 4.4: artists from the line-up; organizer cards show followers", async () => {
+    await renderV2(<Explore />);
+    expect(screen.getByText("Guayaquil · 1161 followers")).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText("Search"), "perdomo");
+    expect(screen.getByText("Artists")).toBeTruthy();
+    expect(screen.getByText("Next: Event a")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("link", { name: "Perdomo" }));
+    expect(mockNav.push).toHaveBeenCalledWith("/event/a");
+  });
+
+  it("fase 4.4: recent searches are kept on the phone and can be cleared", async () => {
+    await renderV2(<Explore />);
+    const box = screen.getByLabelText("Search");
+    await fireEvent.changeText(box, "cumbia");
+    await fireEvent(box, "submitEditing");
+    await fireEvent.press(screen.getAllByRole("button", { name: "Clear search" })[0]!);
+    expect(await screen.findByText("Recent searches")).toBeTruthy();
+    expect(JSON.parse(mockStore.get("flame_recent_searches")!)).toEqual(["cumbia"]);
+    await fireEvent.press(screen.getByText("cumbia"));
+    expect(screen.getByText("1 result")).toBeTruthy();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Clear search" })[0]!);
+    await fireEvent.press(screen.getByText("Clear"));
+    expect(screen.queryByText("Recent searches")).toBeNull();
   });
 });

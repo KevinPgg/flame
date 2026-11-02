@@ -2,7 +2,7 @@
 
 Creada el 2026-11-02. `[x]` = ya probado y sigue valiendo; `[ ]` = falta o **cambió** y hay que repetirlo.
 Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
-Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → 4.3 Line-up → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
+Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → 4.3 Line-up → 4.4 Búsqueda → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
 
 ---
 
@@ -138,6 +138,19 @@ Preparación: migración `supabase/migrations/20261102170000_events_lineup.sql` 
 - [ ] 💻 El logo de Flame lleva al **Inicio** desde cualquier pantalla: barra del asistente, menú lateral del organizador (antes iba a "Mis organizadores") y pantallas de inicio de sesión / registro. 📱 En la app el logo de la barra superior ya iba a Inicio.
 - [ ] 💻 / 📱 Tú → **Mis organizadores**: cada organización muestra tu **rol** (Dueño / Admin / Organizador / Viewer) junto al número de eventos, también en las que están en revisión.
 - [ ] 💻 `/v2/organizer` (Mis organizadores): ahora dentro del marco del asistente (barra superior con las secciones, barra inferior en el celular, pie de página); botón **Tú** para volver; rol en cada tarjeta.
+
+## 8. Búsqueda — 4.4
+
+Sin migración. Tests nuevos: lib `explore`; web `Explore`; app `Explore`.
+Ten al menos dos eventos publicados y próximos con line-up (uno con foto de artista) y un mismo artista en los dos.
+
+- [ ] 💻 / 📱 Explorar → el buscador dice "Eventos, artistas, lugares, organizadores".
+- [ ] Buscar un **artista** (parte del nombre, sin tildes, mayúsculas da igual) → sección **Artistas** arriba: foto o iniciales, "Próximo: <evento>" y "+N eventos más" si toca en varios; tocarlo abre su próximo evento. Sus eventos también salen en **Eventos**.
+- [ ] Buscar por **lugar** (venue), **ciudad** u **organizador** sigue funcionando como antes.
+- [ ] Varias palabras ("perdomo salinas") → solo lo que cumple todas.
+- [ ] Solo busca en eventos **próximos y publicados** (los mismos de Inicio).
+- [ ] **Búsquedas recientes**: 💻 pulsa Enter; 📱 botón buscar del teclado (o toca un artista del resultado) → al limpiar el buscador aparece "Búsquedas recientes" (máx. 4, la última arriba, sin repetir). Tocar una la vuelve a buscar; **Borrar** las quita. 💻 se guardan en este navegador; 📱 en este celular.
+- [ ] Organizadores destacados: cada tarjeta muestra "Ciudad · N seguidores" y van **los más seguidos primero**. 💻 el número se actualiza al minuto (caché de 60 s).
 
 ---
 

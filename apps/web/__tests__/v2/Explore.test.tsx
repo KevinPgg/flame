@@ -84,4 +84,33 @@ describe("Explore (web)", () => {
     expect(screen.getByText("Tu organización está en revisión. Te avisaremos cuando la aprueben.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Postular como organizador" })).not.toBeInTheDocument();
   });
+
+  it("fase 4.4: artists from the line-up lead to their next event; organizer cards show followers", async () => {
+    const user = userEvent.setup({ delay: null });
+    const withLineup = [ev("a", { lineup: [{ name: "Perdomo" }] } as Partial<HomeEvent>), ev("b", { name: "Sunset", lineup: [{ name: "perdómo" }] } as Partial<HomeEvent>)];
+    renderV2(<ExploreView events={withLineup} organizers={[{ ...ORGS[1]!, followers_count: 1161 }]} failed={false} />);
+    expect(screen.getByText("Guayaquil · 1161 followers")).toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox", { name: "Search" }), "perdomo");
+    expect(screen.getByRole("heading", { name: "Artists" })).toBeInTheDocument();
+    const artist = screen.getByRole("link", { name: /Perdomo/ });
+    expect(artist).toHaveAttribute("href", "/events/ev-a");
+    expect(artist).toHaveTextContent("Next: Event a · +1 more event");
+    expect(screen.getByText("3 results")).toBeInTheDocument(); // 1 artist + 2 events
+  });
+
+  it("fase 4.4: recent searches (this browser), newest first, clear", async () => {
+    window.localStorage.clear();
+    const user = userEvent.setup({ delay: null });
+    renderV2(<ExploreView events={EVENTS} organizers={ORGS} failed={false} />);
+    const box = screen.getByRole("searchbox", { name: "Search" });
+    await user.type(box, "cumbia{Enter}");
+    await user.clear(box);
+    expect(screen.getByRole("heading", { name: "Recent searches" })).toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem("flame.recentSearches")!)).toEqual(["cumbia"]);
+    await user.click(screen.getByRole("button", { name: /cumbia/ }));
+    expect(screen.getByText("1 result")).toBeInTheDocument();
+    await user.clear(box);
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.queryByRole("heading", { name: "Recent searches" })).not.toBeInTheDocument();
+  });
 });

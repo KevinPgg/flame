@@ -27,6 +27,8 @@ export type FeedEvent = {
   currency?: string | null;
   organizations?: { name: string; slug: string; logo_url?: string | null } | null;
   ticket_tiers?: PriceableTier[];
+  /** Fase 4.3/4.4: line-up (jsonb), searched in Explore. */
+  lineup?: unknown;
 };
 
 /** Public link of an event (same as the v1 event screen). */

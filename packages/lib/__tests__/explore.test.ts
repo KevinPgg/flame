@@ -11,13 +11,13 @@ describe("searchExplore", () => {
   it("matches events by name, venue, city or organizer; organizers by name or city; accents and case don't matter", () => {
     expect(searchExplore(events, orgs, "cumbia").events.map((e) => e.name)).toEqual(["Noche de Cúmbia"]);
     expect(searchExplore(events, orgs, "BODEGA").events).toHaveLength(1);
-    expect(searchExplore(events, orgs, "club rojo")).toEqual({ events: [events[1]], organizers: [orgs[0]] });
+    expect(searchExplore(events, orgs, "club rojo")).toEqual({ events: [events[1]], organizers: [orgs[0]], artists: [] });
     expect(searchExplore(events, orgs, "quito sonar").events.map((e) => e.name)).toEqual(["Noche de Cúmbia"]);
   });
 
   it("empty query → nothing; no match → nothing", () => {
-    expect(searchExplore(events, orgs, "  ")).toEqual({ events: [], organizers: [] });
-    expect(searchExplore(events, orgs, "zzz")).toEqual({ events: [], organizers: [] });
+    expect(searchExplore(events, orgs, "  ")).toEqual({ events: [], organizers: [], artists: [] });
+    expect(searchExplore(events, orgs, "zzz")).toEqual({ events: [], organizers: [], artists: [] });
     expect(normalizeSearch(" Ñandú ")).toBe("nandu");
   });
 });
@@ -72,5 +72,32 @@ describe("organizer card without upcoming events (Kevin 2026-10-29)", () => {
     expect(organizerCover({ ...org, last_flyer_url: null }, [])).toEqual({ url: "logo.png", kind: "logo" });
     const next = { image_url: "next.jpg", organization_id: "o1", starts_at: "2099-01-01T00:00:00Z", ends_at: "2099-01-02T00:00:00Z" };
     expect(organizerCover(org, [next])).toEqual({ url: "next.jpg", kind: "flyer" });
+  });
+});
+
+describe("search by artist (fase 4.4)", () => {
+  const PHOTO = "https://abc.supabase.co/storage/v1/object/public/event-images/artists/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg";
+  const evs = [
+    { name: "White Party", venue: "Kora", city: "Guayaquil", organizations: { name: "SA" }, lineup: [{ name: "Perdomo" }, { name: "DJ Mila Q" }] },
+    { name: "Sunset", venue: "Zulu", city: "Salinas", organizations: { name: "Zulu" }, lineup: [{ name: "perdómo", photo_url: PHOTO }] },
+    { name: "Other", venue: "X", city: "Quito", organizations: { name: "Y" }, lineup: null },
+  ];
+  it("events whose line-up has the artist; the artist once, with both events and a photo", () => {
+    const r = searchExplore(evs, [], "perdomo");
+    expect(r.events.map((e) => e.name)).toEqual(["White Party", "Sunset"]);
+    expect(r.artists).toEqual([{ name: "Perdomo", photo_url: PHOTO, events: [evs[0], evs[1]] }]);
+  });
+  it("partial names and several words", () => {
+    expect(searchExplore(evs, [], "mila").artists.map((a) => a.name)).toEqual(["DJ Mila Q"]);
+    expect(searchExplore(evs, [], "mila salinas").events).toEqual([]);
+  });
+});
+
+describe("recent searches", () => {
+  it("newest first, no repeats (accents/case), at most 4, ignores 1-letter", async () => {
+    const { addRecentSearch } = await import("../src/utils/explore");
+    let l: string[] = [];
+    for (const q of ["Perdomo", "kora", "  zulu  beach ", "PERDÓMO", "a", "salinas", "quito"]) l = addRecentSearch(l, q);
+    expect(l).toEqual(["quito", "salinas", "PERDÓMO", "zulu beach"]);
   });
 });
