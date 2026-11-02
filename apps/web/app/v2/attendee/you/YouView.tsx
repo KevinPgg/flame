@@ -25,6 +25,7 @@ import { EventTile } from "../EventTile";
 import { useSavedEvents } from "../useSavedEvents";
 import { useFollowing } from "../useFollowing";
 import { FollowButton } from "../FollowButton";
+import { StatusTag } from "../../components/StatusTag";
 
 const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
@@ -126,7 +127,10 @@ export default function YouView() {
                 <OrgAvatar name={o.name} logoUrl={o.logo_url} size={48} />
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15px] font-v2-ui-semibold">{o.name}</b>
-                  <small className="block text-[12.5px] text-v2-c50">{t("you.eventsCount", { count: o.eventCount })}</small>
+                  <span className="mt-1 flex items-center gap-2">
+                    <StatusTag tone={o.role === "owner" ? "flame" : o.role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${o.role}`)}</StatusTag>
+                    <small className="text-[12.5px] text-v2-c50">{t("you.eventsCount", { count: o.eventCount })}</small>
+                  </span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-[13px] font-v2-ui-semibold text-v2-c90">
                   {t("you.manage")}

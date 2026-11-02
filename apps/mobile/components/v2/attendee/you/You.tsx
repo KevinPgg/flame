@@ -25,7 +25,7 @@ import { useMemberRoleContext } from "../../../../contexts/MemberRoleContext";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
 import { BecomeOrganizerSheet } from "../../../navigation/BecomeOrganizerSheet";
 import { OrgApprovalsEntry } from "../../support/OrgApprovals";
-import { Button, Icon, OrgAvatar, Skeleton } from "../../ui";
+import { Button, Icon, OrgAvatar, Skeleton, StatusTag } from "../../ui";
 
 function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -37,6 +37,13 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
       {children}
     </View>
   );
+}
+
+/** Your role in the organization (Kevin 2026-11-02). */
+function RoleTag({ role }: { role: string }) {
+  const { t } = useI18n();
+  const known = ["owner", "admin", "organizer", "viewer"].includes(role) ? role : "viewer";
+  return <StatusTag tone={known === "owner" ? "flame" : known === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${known}` as "organizer.roles.owner")}</StatusTag>;
 }
 
 export function You() {
@@ -123,7 +130,10 @@ export function You() {
                 <OrgAvatar name={o.organizationName} logoUrl={o.logoUrl} size={48} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="font-v2-ui-semibold text-[15px] text-v2-cream">{o.organizationName}</Text>
-                  <Text className="font-v2-ui text-[12.5px] text-v2-c50">{t("you.eventsCount", { count: o.eventCount })}</Text>
+                  <View className="mt-1 flex-row items-center gap-2">
+                    <RoleTag role={o.memberRole} />
+                    <Text className="font-v2-ui text-[12.5px] text-v2-c50">{t("you.eventsCount", { count: o.eventCount })}</Text>
+                  </View>
                 </View>
                 <Text className="font-v2-ui-semibold text-[13px] text-v2-c90">{t("you.manage")}</Text>
                 <Icon name="chev" size={15} color={c.c90} />
@@ -133,7 +143,10 @@ export function You() {
                 <OrgAvatar name={o.organizationName} logoUrl={o.logoUrl} size={48} />
                 <View className="min-w-0 flex-1">
                   <Text numberOfLines={1} className="font-v2-ui-semibold text-[15px] text-v2-cream">{o.organizationName}</Text>
-                  <Text style={{ color: c.warn }} className="font-v2-ui text-[12.5px]">{t("you.underReview")}</Text>
+                  <View className="mt-1 flex-row items-center gap-2">
+                    <RoleTag role={o.memberRole} />
+                    <Text style={{ color: c.warn }} className="font-v2-ui text-[12.5px]">{t("you.underReview")}</Text>
+                  </View>
                 </View>
                 <Icon name="clock" size={18} color={c.c50} />
               </View>

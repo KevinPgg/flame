@@ -53,8 +53,11 @@ export async function WelcomeFrame({ children }: { children: ReactNode }) {
       )}
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/85 to-black" />
       <div className="relative mx-auto flex min-h-[100dvh] max-w-[460px] flex-col items-center justify-center gap-6 px-4 py-10">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static logo */}
-        <img src="/flame-logo-white.svg" alt="Flame" width={150} height={30} className="h-[30px] w-auto" />
+        {/* The Flame logo always goes to the main menu (Home) — Kevin 2026-11-02. */}
+        <a href="/" aria-label="Flame" className="block">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static logo */}
+          <img src="/flame-logo-white.svg" alt="Flame" width={150} height={30} className="h-[30px] w-auto" />
+        </a>
         <h1 className="text-center text-[30px] font-bold leading-[1.05] tracking-[-0.04em] md:text-[38px]">{t("welcome.headline")}</h1>
         {children}
         <p className="text-center text-[12px] text-white/50">{t("welcome.fine")}</p>

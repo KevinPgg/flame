@@ -147,6 +147,29 @@ describe("line-up (fase 4.3)", () => {
   });
 });
 
+describe("line-up photo (fase 4.3)", () => {
+  it("pencil → Spotify photo → POST with the link; the photo goes in the PATCH", async () => {
+    const PHOTO = "https://abc.supabase.co/storage/v1/object/public/event-images/artists/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.jpg";
+    await renderV2(<EditEvent eventId="ev-1" organization={org("owner")} />);
+    expect(await screen.findByDisplayValue("Club")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Add artist"));
+    await fireEvent.changeText(screen.getByLabelText("Artist name 1"), "Chuy");
+    await fireEvent.changeText(screen.getByLabelText("Spotify 1"), "open.spotify.com/artist/1");
+    mockApiClient.mockResolvedValueOnce({ photo_url: PHOTO });
+    await fireEvent.press(screen.getByLabelText("Change photo of Chuy"));
+    await fireEvent.press(screen.getByText("Use the Spotify photo"));
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalledTimes(1));
+    const [url, opts] = mockApiClient.mock.calls[0] as [string, { method: string; body: string }];
+    expect(url).toBe("/api/organizer/lineup-photo");
+    expect(JSON.parse(opts.body)).toEqual({ organizationId: expect.any(String), source: "spotify", url: "open.spotify.com/artist/1" });
+    await fireEvent.press(screen.getByText("Save changes"));
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalledTimes(2));
+    expect(JSON.parse((mockApiClient.mock.calls[1] as [string, { body: string }])[1].body).lineup).toEqual([
+      { name: "Chuy", spotify: "https://open.spotify.com/artist/1", photo_url: PHOTO },
+    ]);
+  });
+});
+
 describe("tier editor", () => {
   it("new tier on the defaults: POST with the sales end in Z (not the database's +00:00)", async () => {
     await renderV2(<TierEditor eventId="ev-1" tierId="new" organization={org("owner")} />);

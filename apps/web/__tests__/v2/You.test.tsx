@@ -52,6 +52,11 @@ import YouView from "../../app/v2/attendee/you/YouView";
 vi.setConfig({ testTimeout: 20_000 });
 
 describe("You (web)", () => {
+  it("shows your role in each organization (Kevin 2026-11-02)", () => {
+    renderV2(<YouView />);
+    expect(screen.getByRole("link", { name: /Club Uno/ })).toHaveTextContent(/Owner/);
+  });
+
   it("Following (fase 4.2): counter, list with followers, Following button; empty state links to Explore", async () => {
     __resetFollowing();
     mockFetch([

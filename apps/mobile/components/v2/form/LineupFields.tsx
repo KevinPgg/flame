@@ -2,23 +2,150 @@
  * Line-up in create / edit event, app (fase 4.3) — same model as the web (packages/lib lineup):
  * one card per artist with name and optional Instagram / Spotify / SoundCloud; empty cards are
  * ignored on save. Errors from validateLineup (paths `lineup.<key>.<field>`).
+ * Photo (2026-11-02): thumbnail with a pencil; the pencil opens a sheet with Spotify / SoundCloud
+ * (from the links below), Instagram (disabled: not readable), upload (square crop), remove.
  */
-import { Pressable, Text, View } from "react-native";
-import { flameV2Colors as c, LINEUP_MAX, moveItem, newArtistDraft, type ArtistDraft } from "@project-flame/lib";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import {
+  artistInitials,
+  flameV2Colors as c,
+  LINEUP_MAX,
+  moveItem,
+  newArtistDraft,
+  normalizeSoundcloud,
+  normalizeSpotify,
+  type ArtistDraft,
+} from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
+import { apiClient, apiUploadFormData } from "../../../lib/api";
+import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
+import { apiErrorText } from "../../../lib/v2/organizer-api";
+import { Sheet } from "../Sheet";
 import { Icon } from "../ui";
 import { FieldError, Input, Labeled } from "./ui";
+
+function ArtistPhoto({
+  artist,
+  organizationId,
+  disabled,
+  onPhoto,
+}: {
+  artist: ArtistDraft;
+  organizationId: string;
+  disabled?: boolean;
+  onPhoto: (url: string) => void;
+}) {
+  const { t } = useI18n();
+  const { getToken } = useOptionalAuth();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const spotify = normalizeSpotify(artist.spotify);
+  const soundcloud = normalizeSoundcloud(artist.soundcloud);
+  const okSpotify = !!spotify && spotify !== "invalid";
+  const okSoundcloud = !!soundcloud && soundcloud !== "invalid";
+  const who = artist.name || t("eventForm.lineupArtist");
+
+  const run = async (req: () => Promise<{ photo_url?: string } | null>) => {
+    setOpen(false);
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await req();
+      if (res?.photo_url) onPhoto(res.photo_url);
+    } catch (e) {
+      setError(apiErrorText(e, t("eventForm.photoError")));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fromSource = (source: "spotify" | "soundcloud", url: string) =>
+    run(() =>
+      apiClient<{ photo_url: string }>("/api/organizer/lineup-photo", {
+        method: "POST",
+        body: JSON.stringify({ organizationId, source, url }),
+        getToken,
+      })
+    );
+  const upload = () =>
+    run(async () => {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) return null;
+      const pick = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+      const asset = pick.canceled ? null : pick.assets?.[0];
+      if (!asset) return null;
+      const body = new FormData();
+      body.append("organizationId", organizationId);
+      body.append("file", { uri: asset.uri, name: "artist.jpg", type: asset.mimeType ?? "image/jpeg" } as unknown as Blob);
+      return apiUploadFormData<{ photo_url: string }>("/api/organizer/lineup-photo", body, getToken);
+    });
+
+  const option = (label: string, onPress: () => void, enabled = true, danger = false) => (
+    <Pressable
+      key={label}
+      onPress={onPress}
+      disabled={!enabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !enabled }}
+      className={`h-12 justify-center rounded-v2-md px-3 active:bg-v2-ink3 ${enabled ? "" : "opacity-40"}`}
+    >
+      <Text className={`font-v2-ui-medium text-[15px] ${danger ? "text-v2-errorText" : "text-v2-cream"}`}>{label}</Text>
+    </Pressable>
+  );
+
+  return (
+    <View>
+      <View style={{ width: 44, height: 44, borderRadius: 10, overflow: "hidden", backgroundColor: c.ink3 }} className="items-center justify-center">
+        {busy ? (
+          <ActivityIndicator color={c.c70} />
+        ) : artist.photo ? (
+          <Image source={{ uri: artist.photo }} style={{ width: 44, height: 44 }} contentFit="cover" />
+        ) : (
+          <Text className="font-v2-display-bold text-[14px] text-v2-c70">{artist.name.trim() ? artistInitials(artist.name) : "?"}</Text>
+        )}
+      </View>
+      <Pressable
+        onPress={() => setOpen(true)}
+        disabled={disabled || busy}
+        accessibilityRole="button"
+        accessibilityLabel={t("eventForm.photoEdit", { name: who })}
+        hitSlop={8}
+        style={{ position: "absolute", right: -6, bottom: -6, width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: c.ink2, backgroundColor: c.cream }}
+        className="items-center justify-center"
+      >
+        <Icon name="pencil" size={11} color={c.ink} />
+      </Pressable>
+      <Sheet open={open} title={t("eventForm.photoEdit", { name: who })} onClose={() => setOpen(false)}>
+        <View className="gap-1 pb-2">
+          {option(t("eventForm.photoFromSpotify"), () => void fromSource("spotify", artist.spotify), okSpotify)}
+          {option(t("eventForm.photoFromSoundcloud"), () => void fromSource("soundcloud", artist.soundcloud), okSoundcloud)}
+          {option(t("eventForm.photoFromInstagram"), () => {}, false)}
+          {option(t("eventForm.photoUpload"), () => void upload())}
+          {artist.photo ? option(t("eventForm.photoRemove"), () => (setOpen(false), onPhoto("")), true, true) : null}
+          {!okSpotify || !okSoundcloud ? <Text className="px-3 pt-1 font-v2-ui text-[12px] text-v2-c50">{t("eventForm.photoHint")}</Text> : null}
+        </View>
+      </Sheet>
+      {error ? <Text accessibilityRole="alert" className="mt-2 w-[220px] font-v2-ui text-[12px] text-v2-errorText">{error}</Text> : null}
+    </View>
+  );
+}
 
 export function LineupFields({
   value,
   onChange,
   errorText,
   disabled,
+  organizationId,
 }: {
   value: ArtistDraft[];
   onChange: (next: ArtistDraft[]) => void;
   errorText: (path: string) => string | null;
   disabled?: boolean;
+  /** For the artist photos (stored under the organization). */
+  organizationId: string;
 }) {
   const { t } = useI18n();
   const set = (key: string, patch: Partial<ArtistDraft>) => onChange(value.map((a) => (a.key === key ? { ...a, ...patch } : a)));
@@ -44,6 +171,9 @@ export function LineupFields({
         return (
           <View key={a.key} className="gap-3 rounded-v2-card bg-v2-ink2 p-4">
             <View className="flex-row items-center gap-1">
+              <View className="mr-2">
+                <ArtistPhoto artist={a} organizationId={organizationId} disabled={disabled} onPhoto={(photo) => set(a.key, { photo })} />
+              </View>
               <Text className="w-5 font-v2-display-bold text-[15px] text-v2-c50">{i + 1}</Text>
               <Text numberOfLines={1} className="flex-1 font-v2-ui-semibold text-[14px] text-v2-cream">
                 {a.name.trim() || t("eventForm.lineupArtist")}

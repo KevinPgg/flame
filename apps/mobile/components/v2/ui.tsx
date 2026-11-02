@@ -49,6 +49,7 @@ const ICONS = {
   share: "share-outline",
   lock: "lock-closed-outline",
   heart: "heart-outline",
+  pencil: "pencil",
   heartFill: "heart",
 } as const;
 export type IconName = keyof typeof ICONS;

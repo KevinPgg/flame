@@ -141,7 +141,8 @@ export function OrganizerShell({
         }`}
       >
         <div className="flex items-center justify-between px-1 pb-1.5">
-          <Link href={routes.organizers()} aria-label={t("organizer.myOrganizers")} className="block">
+          {/* The Flame logo always goes to the main menu (Home), from any screen — Kevin 2026-11-02. */}
+          <Link href="/" aria-label={t("tabs.home")} className="block">
             {/* eslint-disable-next-line @next/next/no-img-element -- static brand svg */}
             <img src="/flame-logo-white.svg" alt="Flame" width={94} height={18} className="h-[18px] w-auto" />
           </Link>

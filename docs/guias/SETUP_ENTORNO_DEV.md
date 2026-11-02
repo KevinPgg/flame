@@ -161,6 +161,7 @@ WHERE email = 'seed.userNNNN@test.flme.dev';
 | `NEXT_PUBLIC_APP_URL` / `SITE_URL` / `BASE_URL` | `http://localhost:3000` | fijo |
 | `QR_SIGNATURE_SECRET` | `openssl rand -hex 32` | necesario para QR de tickets |
 | `CRON_SECRET` | `openssl rand -hex 32` | solo si pruebas rutas cron a mano |
+| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | app de developer.spotify.com (opcional) | solo si la foto de Spotify del line-up falla con el oEmbed público (fase 4.3) |
 | `BREVO_API_KEY` + `BREVO_SENDER_EMAIL`/`FROM_EMAIL`/`SUPPORT_EMAIL` | opcional | sin esto no salen emails (la app no rompe). Cuenta Brevo gratuita + sender verificado si quieres probarlos |
 | `MAINTENANCE_MODE` | `false` | fijo |
 | Sentry / `GOOGLE_PLACES_API_KEY` / `EXPO_ACCESS_TOKEN` / `DATAFAST_*` / `TEST_*` | vacíos | no necesarios en dev |

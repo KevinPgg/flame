@@ -12,6 +12,7 @@ import {
   artistInitials,
   newArtistDraft,
   LINEUP_MAX,
+  isArtistPhotoUrl,
 } from "../src/organizer/lineup";
 import { buildUpdateEventPayload, editFormFromEvent, emptyEventForm, validateEventForm } from "../src/organizer/event-form";
 
@@ -87,5 +88,27 @@ describe("display", () => {
     ]);
     expect(artistInitials("DJ Mila Q")).toBe("MQ");
     expect(artistInitials("Perdomo")).toBe("PE");
+  });
+});
+
+describe("artist photo (2026-11-02)", () => {
+  const ORG = "11111111-1111-4111-8111-111111111111";
+  const FILE = "22222222-2222-4222-8222-222222222222";
+  const ok = `https://abc.supabase.co/storage/v1/object/public/event-images/artists/${ORG}/${FILE}.jpg`;
+  const local = `http://192.168.100.57:54321/storage/v1/object/public/event-images/artists/${ORG}/${FILE}.png`;
+  it("only our storage, under artists/<org>/<uuid>", () => {
+    expect(isArtistPhotoUrl(ok)).toBe(true);
+    expect(isArtistPhotoUrl(local)).toBe(true);
+    expect(isArtistPhotoUrl("https://i.scdn.co/image/ab67616d")).toBe(false);
+    expect(isArtistPhotoUrl(`https://abc.supabase.co/storage/v1/object/public/event-images/events/${ORG}/${FILE}.jpg`)).toBe(false);
+  });
+  it("travels through drafts, payload and display; a foreign URL is an error / dropped", () => {
+    const d = newArtistDraft({ name: "Chuy", photo: ok });
+    expect(lineupFromDrafts([d])).toEqual([{ name: "Chuy", photo_url: ok }]);
+    const bad = newArtistDraft({ name: "X", photo: "https://evil.com/a.jpg" });
+    expect(validateLineup([bad])[`lineup.${bad.key}.photo`]).toBe("photoInvalid");
+    expect(parseLineup([{ name: "Chuy", photo_url: ok }, { name: "Y", photo_url: "https://evil.com/a.jpg" }])).toEqual([{ name: "Chuy", photo_url: ok }, { name: "Y" }]);
+    expect(sanitizeLineup([{ name: "Chuy", photo_url: ok }])).toEqual({ lineup: [{ name: "Chuy", photo_url: ok }] });
+    expect(sanitizeLineup([{ name: "Chuy", photo_url: "https://evil.com/a.jpg" }])).toEqual({ error: "lineup.0.photo: photoInvalid" });
   });
 });

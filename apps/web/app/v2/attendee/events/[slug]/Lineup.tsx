@@ -2,7 +2,7 @@
 
 /**
  * Line-up on the event page (fase 4.3, prototype `x-artists`): a row of square artist tiles with
- * their links. No photos yet: the tile shows the initials on a tone picked from the name.
+ * their links. Photo when the organizer set one; otherwise the initials on a tone from the name.
  */
 import { artistInitials, artistLinks, parseLineup } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
@@ -49,13 +49,18 @@ export function Lineup({ lineup }: { lineup: unknown }) {
       <ul className="-mx-4 flex snap-x gap-3.5 overflow-x-auto px-4 pb-1">
         {artists.map((a, i) => (
           <li key={`${a.name}-${i}`} className="w-[112px] shrink-0 snap-start">
-            <div
-              aria-hidden
-              className="flex h-[112px] w-[112px] items-center justify-center rounded-[12px] font-v2-display-bold text-[30px] tracking-[-0.02em] text-v2-cream/90"
-              style={{ background: `linear-gradient(145deg, ${tone(a.name)}, #0E0E0E)` }}
-            >
-              {artistInitials(a.name)}
-            </div>
+            {a.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- artist photo from our storage
+              <img src={a.photo_url} alt="" loading="lazy" className="h-[112px] w-[112px] rounded-[12px] bg-v2-ink3 object-cover" />
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-[112px] w-[112px] items-center justify-center rounded-[12px] font-v2-display-bold text-[30px] tracking-[-0.02em] text-v2-cream/90"
+                style={{ background: `linear-gradient(145deg, ${tone(a.name)}, #0E0E0E)` }}
+              >
+                {artistInitials(a.name)}
+              </div>
+            )}
             <b className="mt-2 block line-clamp-2 text-[13.5px] font-v2-ui-semibold leading-[1.2]">{a.name}</b>
             {artistLinks(a).length > 0 && (
               <div className="mt-1.5 flex gap-1.5">

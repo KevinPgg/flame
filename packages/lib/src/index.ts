@@ -501,6 +501,7 @@ export {
   artistLinks,
   sameLineup,
   artistInitials,
+  isArtistPhotoUrl,
 } from "./organizer/lineup";
 export type { LineupArtist, ArtistDraft, LineupErrorKey } from "./organizer/lineup";
 export type { SavedEventTime } from "./utils";

@@ -1,9 +1,10 @@
 /**
  * Line-up on the event screen (fase 4.3, prototype `x-artists`): horizontal row of square artist
- * tiles with their links. No photos yet: initials on a tone picked from the name.
+ * tiles with their links. Photo when set; otherwise initials on a tone picked from the name.
  */
 import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { artistInitials, artistLinks, flameV2Colors as c, parseLineup } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
@@ -26,16 +27,20 @@ export function Lineup({ lineup }: { lineup: unknown }) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingHorizontal: 16 }}>
         {artists.map((a, i) => (
           <View key={`${a.name}-${i}`} style={{ width: 112 }}>
-            <LinearGradient
-              colors={[tone(a.name), "#0E0E0E"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ width: 112, height: 112, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
-            >
-              <Text className="font-v2-display-bold text-[30px] text-v2-cream" style={{ opacity: 0.9 }}>
-                {artistInitials(a.name)}
-              </Text>
-            </LinearGradient>
+            {a.photo_url ? (
+              <Image source={{ uri: a.photo_url }} style={{ width: 112, height: 112, borderRadius: 12, backgroundColor: c.ink3 }} contentFit="cover" transition={150} />
+            ) : (
+              <LinearGradient
+                colors={[tone(a.name), "#0E0E0E"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ width: 112, height: 112, borderRadius: 12, alignItems: "center", justifyContent: "center" }}
+              >
+                <Text className="font-v2-display-bold text-[30px] text-v2-cream" style={{ opacity: 0.9 }}>
+                  {artistInitials(a.name)}
+                </Text>
+              </LinearGradient>
+            )}
             <Text numberOfLines={2} className="mt-2 font-v2-ui-semibold text-[13.5px] leading-[16px] text-v2-cream">
               {a.name}
             </Text>

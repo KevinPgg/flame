@@ -298,7 +298,7 @@ export default function CreateEvent({
           </Section>
 
           <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
-            <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} />
+            <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} organizationId={organization.id} />
           </Section>
 
           <Section title={t("eventForm.tiers")} aside={t("eventForm.tiersHint")}>

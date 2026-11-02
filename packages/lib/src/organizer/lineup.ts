@@ -1,7 +1,9 @@
 /**
  * Line-up (fase 4.3, 2026-11-02): artists of an event with optional Instagram, Spotify and
  * SoundCloud. Stored as `events.lineup` jsonb (array, ≤ LINEUP_MAX), edited in create/edit event,
- * shown on the event page (prototype `x-artists`). Photos are not part of this step.
+ * shown on the event page (prototype `x-artists`). Photo (2026-11-02): taken from the artist's
+ * Spotify / SoundCloud or uploaded, always copied to our storage (event-images/artists/…) by
+ * POST /api/organizer/lineup-photo, so only those URLs are accepted.
  *
  * Organizers paste whatever they have ("@perdomo.dj", "instagram.com/perdomo.dj",
  * "https://open.spotify.com/artist/…", "soundcloud.com/perdomo"); the normalizers turn it into
@@ -19,9 +21,11 @@ export type LineupArtist = {
   spotify?: string | null;
   /** https://soundcloud.com/… */
   soundcloud?: string | null;
+  /** Our storage: …/storage/v1/object/public/event-images/artists/<org>/<file>. */
+  photo_url?: string | null;
 };
 
-export type ArtistDraft = { key: string; name: string; instagram: string; spotify: string; soundcloud: string };
+export type ArtistDraft = { key: string; name: string; instagram: string; spotify: string; soundcloud: string; photo: string };
 
 export type LineupErrorKey =
   | "artistNameRequired"
@@ -29,12 +33,13 @@ export type LineupErrorKey =
   | "instagramInvalid"
   | "spotifyInvalid"
   | "soundcloudInvalid"
+  | "photoInvalid"
   | "lineupTooLong";
 
 let seq = 0;
 export function newArtistDraft(over: Partial<Omit<ArtistDraft, "key">> = {}): ArtistDraft {
   seq += 1;
-  return { key: `a${Date.now().toString(36)}${seq}`, name: "", instagram: "", spotify: "", soundcloud: "", ...over };
+  return { key: `a${Date.now().toString(36)}${seq}`, name: "", instagram: "", spotify: "", soundcloud: "", photo: "", ...over };
 }
 
 const HANDLE = /^[A-Za-z0-9._]{1,30}$/;
@@ -83,8 +88,14 @@ export function normalizeSoundcloud(raw: string): string | null | "invalid" {
   return `https://soundcloud.com${u.pathname.replace(/\/+$/, "")}`;
 }
 
-const isBlank = (d: Pick<ArtistDraft, "name" | "instagram" | "spotify" | "soundcloud">) =>
-  !d.name.trim() && !d.instagram.trim() && !d.spotify.trim() && !d.soundcloud.trim();
+/** Only photos copied to our storage by /api/organizer/lineup-photo. */
+const PHOTO = /^https?:\/\/[^\s/]+(?:\/[^\s]*)?\/storage\/v1\/object\/public\/event-images\/artists\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(?:jpg|png|webp)$/i;
+export function isArtistPhotoUrl(v: string): boolean {
+  return PHOTO.test(v.trim());
+}
+
+const isBlank = (d: Pick<ArtistDraft, "name" | "instagram" | "spotify" | "soundcloud"> & { photo?: string }) =>
+  !d.name.trim() && !d.instagram.trim() && !d.spotify.trim() && !d.soundcloud.trim() && !(d.photo ?? "").trim();
 
 /** Errors keyed `lineup.<key>.<field>` (and `lineup` for too many). Fully empty rows are ignored. */
 export function validateLineup(drafts: ArtistDraft[]): Record<string, LineupErrorKey> {
@@ -99,6 +110,7 @@ export function validateLineup(drafts: ArtistDraft[]): Record<string, LineupErro
     if (normalizeArtistInstagram(d.instagram) === "invalid") e[p + "instagram"] = "instagramInvalid";
     if (normalizeSpotify(d.spotify) === "invalid") e[p + "spotify"] = "spotifyInvalid";
     if (normalizeSoundcloud(d.soundcloud) === "invalid") e[p + "soundcloud"] = "soundcloudInvalid";
+    if ((d.photo ?? "").trim() && !isArtistPhotoUrl(d.photo)) e[p + "photo"] = "photoInvalid";
   }
   return e;
 }
@@ -115,13 +127,14 @@ export function lineupFromDrafts(drafts: ArtistDraft[]): LineupArtist[] {
       if (ig && ig !== "invalid") a.instagram = ig;
       if (sp && sp !== "invalid") a.spotify = sp;
       if (sc && sc !== "invalid") a.soundcloud = sc;
+      if ((d.photo ?? "").trim() && isArtistPhotoUrl(d.photo)) a.photo_url = d.photo.trim();
       return a;
     });
 }
 
 export function draftsFromLineup(lineup: unknown): ArtistDraft[] {
   return parseLineup(lineup).map((a) =>
-    newArtistDraft({ name: a.name, instagram: a.instagram ?? "", spotify: a.spotify ?? "", soundcloud: a.soundcloud ?? "" })
+    newArtistDraft({ name: a.name, instagram: a.instagram ?? "", spotify: a.spotify ?? "", soundcloud: a.soundcloud ?? "", photo: a.photo_url ?? "" })
   );
 }
 
@@ -141,6 +154,7 @@ export function parseLineup(value: unknown): LineupArtist[] {
     if (ig && ig !== "invalid") a.instagram = ig;
     if (sp && sp !== "invalid") a.spotify = sp;
     if (sc && sc !== "invalid") a.soundcloud = sc;
+    if (typeof o.photo_url === "string" && isArtistPhotoUrl(o.photo_url)) a.photo_url = o.photo_url.trim();
     out.push(a);
     if (out.length === LINEUP_MAX) break;
   }
@@ -159,7 +173,7 @@ export function sanitizeLineup(value: unknown): { lineup: LineupArtist[] } | { e
     if (!v || typeof v !== "object") return { error: `lineup[${i}] must be an object` };
     const o = v as Record<string, unknown>;
     const str = (k: string) => (typeof o[k] === "string" ? (o[k] as string) : "");
-    drafts.push({ key: String(i), name: str("name"), instagram: str("instagram"), spotify: str("spotify"), soundcloud: str("soundcloud") });
+    drafts.push({ key: String(i), name: str("name"), instagram: str("instagram"), spotify: str("spotify"), soundcloud: str("soundcloud"), photo: str("photo_url") });
   }
   const errors = validateLineup(drafts);
   const first = Object.entries(errors)[0];

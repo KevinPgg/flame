@@ -259,7 +259,7 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
 
       <View {...at("lineup")}>
         <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
-          <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} />
+          <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} organizationId={organization.id} />
         </Section>
       </View>
 

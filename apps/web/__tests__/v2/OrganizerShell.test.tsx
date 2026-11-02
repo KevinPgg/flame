@@ -53,6 +53,8 @@ describe("OrganizerShell (prototype layout)", () => {
     expect(screen.getByRole("heading", { level: 1, name: "New event" })).toBeInTheDocument();
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(within(crumbs).getByRole("link", { name: "My organizers" })).toHaveAttribute("href", "/v2/organizer");
+    // The Flame logo goes to the main menu (Home) from any screen (Kevin 2026-11-02).
+    expect(screen.getAllByRole("link", { name: "Home" }).some((l) => l.getAttribute("href") === "/")).toBe(true);
     expect(within(crumbs).getByText("Create event")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/v2/organizer?org=kora");
     expect(screen.getAllByRole("link", { name: /Juan Andrés/ })[0]).toHaveAttribute("href", "/profile");

@@ -124,6 +124,21 @@ Preparación: migración `supabase/migrations/20261102170000_events_lineup.sql` 
 - [ ] Evento sin line-up → la sección no aparece.
 - [ ] La app vieja (build anterior) sigue abriendo eventos con line-up sin errores.
 
+### 6.3 Foto del artista (11-02, tarde)
+- [ ] 💻 / 📱 En cada tarjeta de artista: miniatura (iniciales o foto) con un **lápiz** en la esquina; no ocupa más espacio.
+- [ ] Lápiz → opciones: **Usar la foto de Spotify** y **Usar la foto de SoundCloud** (activas solo si ese link del artista es válido), **Foto de Instagram (no disponible)** desactivada, **Subir una foto**, **Quitar foto** (si ya tiene).
+- [ ] Spotify con link de artista (`open.spotify.com/artist/…`) → la miniatura muestra su foto. Si sale "No se pudo obtener la foto", anota el link: Spotify a veces no da foto por el oEmbed público (se puede activar `SPOTIFY_CLIENT_ID`/`SECRET`, ver `guias/SETUP_ENTORNO_DEV.md`).
+- [ ] SoundCloud con usuario o link → su avatar; perfil sin avatar → "That profile has no photo we can use." / mensaje equivalente.
+- [ ] Subir: 💻 elige JPG/PNG → se recorta cuadrado; 📱 galería con recorte 1:1. GIF → rechazado.
+- [ ] Funciona **antes** de publicar (crear evento) y al editar; al guardar, la foto aparece en la página del evento (tarjeta cuadrada) en web y app.
+- [ ] Studio → Storage `event-images/artists/<id de la organización>/…`: un archivo por foto elegida. `events.lineup[].photo_url` apunta ahí.
+- [ ] Rol **viewer** no puede (403).
+
+## 7. Ajustes generales (11-02)
+- [ ] 💻 El logo de Flame lleva al **Inicio** desde cualquier pantalla: barra del asistente, menú lateral del organizador (antes iba a "Mis organizadores") y pantallas de inicio de sesión / registro. 📱 En la app el logo de la barra superior ya iba a Inicio.
+- [ ] 💻 / 📱 Tú → **Mis organizadores**: cada organización muestra tu **rol** (Dueño / Admin / Organizador / Viewer) junto al número de eventos, también en las que están en revisión.
+- [ ] 💻 `/v2/organizer` (Mis organizadores): ahora dentro del marco del asistente (barra superior con las secciones, barra inferior en el celular, pie de página); botón **Tú** para volver; rol en cada tarjeta.
+
 ---
 
 ## Cosas conocidas (no son fallo)
@@ -131,4 +146,5 @@ Preparación: migración `supabase/migrations/20261102170000_events_lineup.sql` 
 - El organizador no ve cuántas personas guardaron su evento (no entra en este paso).
 - Web: el QR se genera en el navegador; si una extensión bloquea `canvas`, la imagen no aparece pero el link sí.
 - Seguir a un organizador todavía **no** envía avisos cuando publica un evento (pendiente de decisión).
-- Line-up sin fotos de artistas por ahora (tarjeta con iniciales).
+- Instagram no permite leer fotos de perfil: la opción aparece desactivada a propósito.
+- Fotos de artistas que se suben y luego no se guardan quedan en Storage (sin limpieza automática por ahora).

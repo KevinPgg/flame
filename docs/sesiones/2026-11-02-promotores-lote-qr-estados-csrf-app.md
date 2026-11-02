@@ -57,6 +57,16 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - Decidido por mí (cambiable): **sin fotos de artistas** (subirlas exige que el evento exista; el flujo de crear sube el flyer después); máximo 20 artistas; el line-up va debajo de los tiers como en el prototipo.
 - Pruebas: §6 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 
+## 7. Pedidos de Kevin (11-02, tarde)
+- **Logo de Flame → Inicio** desde cualquier pantalla (web): `OrganizerShell` (antes iba a Mis organizadores) y `components/auth/WelcomeFrame.tsx`. La barra del asistente y la app ya iban a Inicio.
+- **Rol en "Tú"**: `StatusTag` con el rol en cada organización (web `YouView`, app `You.tsx`, también en `/v2/organizer`).
+- **`/v2/organizer` integrada**: `OrganizersList` ahora va dentro de `AttendeeShell` (pestaña Tú activa), sin `<main>` propio; botón "Tú" en lugar de "App de asistente".
+- **Foto del artista en el line-up**: miniatura con lápiz en cada tarjeta (web: menú; app: hoja). Opciones: Spotify y SoundCloud (oEmbed público; Spotify con respaldo opcional de la Web API si hay `SPOTIFY_CLIENT_ID`/`SECRET`), Instagram **desactivado** (no hay forma pública de leer la foto de perfil; su oEmbed exige token de Meta y solo cubre publicaciones), subir (web recorta 600×600 en el navegador; app recorte 1:1 del sistema), quitar.
+  - API `POST /api/organizer/lineup-photo` (`app/lib/artist-photo.ts`): la foto se **copia a nuestro Storage** `event-images/artists/<org>/<uuid>.<ext>` (no se enlaza a Spotify/SoundCloud); funciona antes de crear el evento; miembros salvo viewer.
+  - lib: `photo_url` en el artista, `isArtistPhotoUrl` (solo nuestro Storage), error `photoInvalid`.
+  - Tests: lib `lineup`, web `lineup-photo.test.ts`, `LineupPhoto.test.tsx`, `OrganizerShell`, `You`; app `EventForms`, `You`.
+- Pruebas: §6.3 y §7 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -69,5 +79,5 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 4. Aplicar la migración `20261102120000_saved_events.sql` y seguir `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 5. Aplicar `20261102150000_organization_follows.sql` y seguir §5 de la guía de pruebas.
 6. Decidir si seguir a un organizador debe avisar cuando publica eventos.
-7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Decidir si se quieren fotos de artistas.
+7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Fotos de artistas: hechas (§7).
 8. Siguiente ítem de fase 4: **Búsqueda** (eventos, lugares, organizadores y artistas).

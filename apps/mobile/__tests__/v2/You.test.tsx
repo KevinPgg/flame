@@ -58,6 +58,11 @@ beforeEach(() => {
 });
 
 describe("You (app)", () => {
+  it("shows your role in each organization (Kevin 2026-11-02)", async () => {
+    await renderV2(<You />);
+    expect(screen.getAllByText("Owner")).toHaveLength(2);
+  });
+
   it("Following (fase 4.2): counter and list with the organizer, its followers and Following", async () => {
     await renderV2(<You />);
     expect(screen.getByLabelText("Following: 1")).toBeTruthy();

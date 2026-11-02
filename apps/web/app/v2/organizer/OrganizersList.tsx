@@ -8,11 +8,13 @@ import OnboardingModal from "../../components/modals/OnboardingModal";
 import { Icon } from "../components/Icon";
 import { OrgAvatar } from "../components/OrgAvatar";
 import { Skeleton } from "../components/Skeleton";
+import { StatusTag } from "../components/StatusTag";
 import { routes } from "../lib/routes";
 
 /**
  * Flame 2.0 · "My organizers" — same content as v1 /profile → My organizers
- * (logo, name, event count, pending approval, create new organizer), as a card grid.
+ * (logo, name, role, event count, pending approval, create new organizer), as a card grid.
+ * Rendered inside the attendee frame (top bar + tabs) since 2026-11-02.
  */
 export default function OrganizersList() {
   const { t } = useI18n();
@@ -21,17 +23,17 @@ export default function OrganizersList() {
   const orgs = data?.organizations ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-[1120px] px-4 pb-24 pt-8 lg:px-10 lg:pt-14">
+    <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-6 lg:px-8 lg:pt-10">
       <header className="mb-8 flex items-center justify-between gap-4">
         <h1 className="font-v2-display-bold text-[30px] leading-none tracking-[-0.03em]">
           {t("organizer.myOrganizers")}
         </h1>
         <Link
-          href={routes.attendeeHome()}
+          href="/profile"
           className="inline-flex h-10 items-center gap-2 rounded-v2-pill bg-v2-ink3 px-4 text-[14px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4"
         >
-          <Icon name="ticket" size={16} />
-          {t("organizer.attendeeApp")}
+          <Icon name="back" size={16} />
+          {t("tabs.you")}
         </Link>
       </header>
 
@@ -57,7 +59,10 @@ export default function OrganizersList() {
                       <span className="block truncate font-v2-display-bold text-[17px] tracking-[-0.02em]">
                         {org.name}
                       </span>
-                      <span className="mt-1 block text-[13px] text-v2-c50">
+                      <span className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-v2-c50">
+                        <StatusTag tone={org.role === "owner" ? "flame" : org.role === "admin" ? "warn" : "neutral"}>
+                          {t(`organizer.roles.${org.role}`)}
+                        </StatusTag>
                         {org.approved
                           ? t("organizer.eventsCount", { count: org.eventCount })
                           : t("organizer.pendingApproval")}
@@ -116,7 +121,7 @@ export default function OrganizersList() {
           refetch();
         }}
       />
-    </main>
+    </div>
   );
 }
 
