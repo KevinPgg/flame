@@ -40,7 +40,7 @@ export function newArtistDraft(over: Partial<Omit<ArtistDraft, "key">> = {}): Ar
 const HANDLE = /^[A-Za-z0-9._]{1,30}$/;
 
 /** "@perdomo.dj" | "instagram.com/perdomo.dj/" | "https://www.instagram.com/perdomo.dj?igsh=…" → "perdomo.dj". */
-export function normalizeInstagram(raw: string): string | null | "invalid" {
+export function normalizeArtistInstagram(raw: string): string | null | "invalid" {
   let v = raw.trim();
   if (!v) return null;
   const m = v.match(/^(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([^/?#]+)/i);
@@ -96,7 +96,7 @@ export function validateLineup(drafts: ArtistDraft[]): Record<string, LineupErro
     const name = d.name.trim();
     if (!name) e[p + "name"] = "artistNameRequired";
     else if (name.length > ARTIST_NAME_MAX) e[p + "name"] = "artistNameTooLong";
-    if (normalizeInstagram(d.instagram) === "invalid") e[p + "instagram"] = "instagramInvalid";
+    if (normalizeArtistInstagram(d.instagram) === "invalid") e[p + "instagram"] = "instagramInvalid";
     if (normalizeSpotify(d.spotify) === "invalid") e[p + "spotify"] = "spotifyInvalid";
     if (normalizeSoundcloud(d.soundcloud) === "invalid") e[p + "soundcloud"] = "soundcloudInvalid";
   }
@@ -109,7 +109,7 @@ export function lineupFromDrafts(drafts: ArtistDraft[]): LineupArtist[] {
     .filter((d) => !isBlank(d))
     .map((d) => {
       const a: LineupArtist = { name: d.name.trim() };
-      const ig = normalizeInstagram(d.instagram);
+      const ig = normalizeArtistInstagram(d.instagram);
       const sp = normalizeSpotify(d.spotify);
       const sc = normalizeSoundcloud(d.soundcloud);
       if (ig && ig !== "invalid") a.instagram = ig;
@@ -135,7 +135,7 @@ export function parseLineup(value: unknown): LineupArtist[] {
     const name = typeof o.name === "string" ? o.name.trim() : "";
     if (!name) continue;
     const a: LineupArtist = { name: name.slice(0, ARTIST_NAME_MAX) };
-    const ig = typeof o.instagram === "string" ? normalizeInstagram(o.instagram) : null;
+    const ig = typeof o.instagram === "string" ? normalizeArtistInstagram(o.instagram) : null;
     const sp = typeof o.spotify === "string" ? normalizeSpotify(o.spotify) : null;
     const sc = typeof o.soundcloud === "string" ? normalizeSoundcloud(o.soundcloud) : null;
     if (ig && ig !== "invalid") a.instagram = ig;

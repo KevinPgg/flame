@@ -490,7 +490,7 @@ export {
   LINEUP_MAX,
   ARTIST_NAME_MAX,
   newArtistDraft,
-  normalizeInstagram,
+  normalizeArtistInstagram,
   normalizeSpotify,
   normalizeSoundcloud,
   validateLineup,

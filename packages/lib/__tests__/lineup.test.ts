@@ -1,7 +1,7 @@
 /** Fase 4.3 Line-up: link normalizers, validation, payload and display parsing. */
 import { describe, it, expect } from "vitest";
 import {
-  normalizeInstagram,
+  normalizeArtistInstagram,
   normalizeSpotify,
   normalizeSoundcloud,
   validateLineup,
@@ -17,11 +17,11 @@ import { buildUpdateEventPayload, editFormFromEvent, emptyEventForm, validateEve
 
 describe("normalizers", () => {
   it("instagram: @, profile URLs, query strings; rejects spaces", () => {
-    expect(normalizeInstagram("@perdomo.dj")).toBe("perdomo.dj");
-    expect(normalizeInstagram("https://www.instagram.com/perdomo.dj/?igsh=abc")).toBe("perdomo.dj");
-    expect(normalizeInstagram("instagram.com/lpm_ec")).toBe("lpm_ec");
-    expect(normalizeInstagram("")).toBeNull();
-    expect(normalizeInstagram("dj perdomo")).toBe("invalid");
+    expect(normalizeArtistInstagram("@perdomo.dj")).toBe("perdomo.dj");
+    expect(normalizeArtistInstagram("https://www.instagram.com/perdomo.dj/?igsh=abc")).toBe("perdomo.dj");
+    expect(normalizeArtistInstagram("instagram.com/lpm_ec")).toBe("lpm_ec");
+    expect(normalizeArtistInstagram("")).toBeNull();
+    expect(normalizeArtistInstagram("dj perdomo")).toBe("invalid");
   });
   it("spotify: open.spotify.com or spotify.link only, without the query", () => {
     expect(normalizeSpotify("https://open.spotify.com/artist/4q3ewBCX7sLwd24euuV69X?si=x")).toBe("https://open.spotify.com/artist/4q3ewBCX7sLwd24euuV69X");
