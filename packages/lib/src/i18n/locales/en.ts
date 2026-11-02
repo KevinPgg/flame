@@ -1092,6 +1092,7 @@ export const en = {
       ticket_received: { title: "Ticket received", hint: "When an organizer sends you a ticket" },
       event_date_changed: { title: "Date changes", hint: "When an event you have tickets for is rescheduled" },
       event_reminder: { title: "Event reminders", hint: "24 hours before events you’re going to" },
+      followed_org_event: { title: "New events", hint: "When an organizer you follow publishes an event" },
       new_rsvp_request: { title: "New RSVP requests", hint: "When someone asks to attend your event" },
       ticket_sold: { title: "Ticket sales", hint: "When a ticket for your event is sold" },
       auth_expiry_warning: { title: "Payment expiring", hint: "When an RSVP card hold is about to expire" },
@@ -1236,6 +1237,7 @@ export const en = {
     organizationApproved: { title: "You’re approved", body: "{name} can now create events on Flame." },
     organizationRejected: { title: "Organizer not approved", body: "{name} wasn’t approved.", bodyReason: "{name} wasn’t approved. Reason: {reason}" },
     teamInvitation: { title: "Team invitation", body: "{org} invited you to join its team as {role}." },
+    followedOrgEvent: { title: "New event from {org}", body: "{event} · {date}", bodyCity: "{event} · {date} · {city}" },
   },
   errors: {
     generic: "Something went wrong. Please try again.",

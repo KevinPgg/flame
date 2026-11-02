@@ -25,6 +25,8 @@
  * ticket_sold           │ Owner/admin    │ v2 event → Purchases (or the org panel)
  * organization_approved │ Org owner      │ /organizer-admin?orgId=Y (→ v2 panel)
  * organization_rejected │ Org owner      │ — (reason in the text; the org is hidden)
+ * team_invitation       │ Invited person │ /profile (card with Accept / Decline)
+ * followed_org_event    │ Followers      │ /event/[id]
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * Expo Router route groups (e.g. (tabs)) are invisible in paths, so
@@ -96,6 +98,8 @@ export function resolveNotificationDeepLink(
   if (type === "organization_rejected") return null;
   // Team invitation (fase 4.5): the card with Accept / Decline lives in "You".
   if (type === "team_invitation") return "/profile";
+  // An organization you follow published an event (fase 4.2): its event page.
+  if (type === "followed_org_event") return eventId ? `/event/${encodeURIComponent(eventId)}` : null;
 
   // User: RSVP rejected — send back to event page so they can retry
   if (type === "rsvp_rejected" && eventId) {

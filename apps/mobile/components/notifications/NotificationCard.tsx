@@ -16,6 +16,7 @@ const TYPE_CONFIG: Record<
   auth_expiry_warning: { icon: "warning-outline", color: "#FF6B35", iconBg: "rgba(255,107,53,0.15)" },
   organization_approved: { icon: "checkmark-circle-outline", color: "#5DDBB1", iconBg: "rgba(93,219,177,0.15)" },
   organization_rejected: { icon: "close-circle-outline", color: "#EA3370", iconBg: "rgba(234,51,112,0.15)" },
+  followed_org_event: { icon: "sparkles-outline", color: "#F7931E", iconBg: "rgba(247,147,30,0.15)" },
 };
 
 const DEFAULT_CONFIG = { icon: "notifications-outline" as const, color: "#9CA3AF", iconBg: "rgba(156,163,175,0.15)" };

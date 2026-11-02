@@ -1,5 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "../../lib/supabase/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -14,6 +14,7 @@ import {
 import { sendDateChangeEmail } from "../../lib/email/date-change-notifications";
 import { fetchCompletedOrderBuyers, inBatches } from "../../lib/utils/event-recipients";
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
+import { notifyFollowersOfNewEvent } from "../../lib/follower-notifications";
 import { requireEventAccess } from "@/app/lib/utils/event-access";
 import { canCreateEvents, canManageAccessCodes, sanitizeLineup, type OrgMemberRole } from "@project-flame/lib";
 import {
@@ -810,6 +811,15 @@ export async function POST(req: NextRequest) {
     // This makes the new event appear immediately without waiting for 60s cache
     revalidatePath("/organizer");
     revalidatePath("/events");
+
+    // Fase 4.2 (decision of Kevin 2026-11-02): tell the organization's followers. After the
+    // response, so publishing does not wait for the fan-out; never fails the request.
+    const announce = () => notifyFollowersOfNewEvent(event);
+    try {
+      after(announce);
+    } catch {
+      void announce(); // outside a request scope (tests / scripts)
+    }
 
     return NextResponse.json({
       event,

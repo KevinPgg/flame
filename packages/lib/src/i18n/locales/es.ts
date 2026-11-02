@@ -1089,6 +1089,7 @@ export const es: Messages = {
       ticket_received: { title: "Ticket recibido", hint: "Cuando un organizador te envía un ticket" },
       event_date_changed: { title: "Cambios de fecha", hint: "Cuando cambia la fecha de un evento al que tienes tickets" },
       event_reminder: { title: "Recordatorios", hint: "24 horas antes de los eventos a los que vas" },
+      followed_org_event: { title: "Eventos nuevos", hint: "Cuando un organizador que sigues publica un evento" },
       new_rsvp_request: { title: "Nuevas solicitudes de RSVP", hint: "Cuando alguien pide asistir a tu evento" },
       ticket_sold: { title: "Ventas de tickets", hint: "Cuando se vende un ticket de tu evento" },
       auth_expiry_warning: { title: "Pago por vencer", hint: "Cuando la retención de tarjeta de un RSVP está por vencer" },
@@ -1230,6 +1231,7 @@ export const es: Messages = {
     organizationApproved: { title: "Ya estás aprobado", body: "{name} ya puede crear eventos en Flame." },
     organizationRejected: { title: "Organizador no aprobado", body: "{name} no fue aprobada.", bodyReason: "{name} no fue aprobada. Motivo: {reason}" },
     teamInvitation: { title: "Invitación de equipo", body: "{org} te invitó a su equipo como {role}." },
+    followedOrgEvent: { title: "Nuevo evento de {org}", body: "{event} · {date}", bodyCity: "{event} · {date} · {city}" },
   },
   errors: {
     generic: "Algo salió mal. Inténtalo de nuevo.",

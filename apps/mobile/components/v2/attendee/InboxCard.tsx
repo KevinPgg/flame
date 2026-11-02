@@ -23,6 +23,7 @@ const ICON: Record<string, IconName> = {
   auth_expiry_warning: "alert",
   organization_approved: "check",
   team_invitation: "user",
+  followed_org_event: "cal",
   organization_rejected: "close",
 };
 

@@ -14,7 +14,9 @@ export type NotificationType =
   | "auth_expiry_warning"
   | "organization_approved"
   | "organization_rejected"
-  | "team_invitation";
+  | "team_invitation"
+  // Fase 4.2 (decision of Kevin 2026-11-02): an organization you follow published an event.
+  | "followed_org_event";
 
 /** Notification types that cannot be disabled by the user in preferences. */
 export const NON_DISMISSABLE_NOTIFICATION_TYPES: ReadonlySet<NotificationType> =

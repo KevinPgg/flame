@@ -13,6 +13,7 @@ export const NOTIFICATION_PREFERENCE_ITEMS: ReadonlyArray<{ type: NotificationTy
   { type: "ticket_received", organizer: false },
   { type: "event_date_changed", organizer: false },
   { type: "event_reminder", organizer: false },
+  { type: "followed_org_event", organizer: false },
   { type: "new_rsvp_request", organizer: true },
   { type: "ticket_sold", organizer: true },
   { type: "auth_expiry_warning", organizer: true },

@@ -24,6 +24,8 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   auth_expiry_warning: true,
   organization_approved: true,
   organization_rejected: true,
+  team_invitation: true,
+  followed_org_event: true,
 };
 
 export function useNotificationPreferences() {

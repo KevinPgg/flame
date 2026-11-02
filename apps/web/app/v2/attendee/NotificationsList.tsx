@@ -21,6 +21,7 @@ const TYPE_ICON: Record<string, IconName> = {
   organization_approved: "check",
   organization_rejected: "close",
   team_invitation: "users",
+  followed_org_event: "cal",
 };
 
 /** "5 min ago", "yesterday", or a date — in the person's language. */

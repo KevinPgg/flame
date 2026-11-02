@@ -36,6 +36,7 @@ export function notificationWebHref(
     case "rsvp_rejected":
     case "event_date_changed":
     case "event_reminder":
+    case "followed_org_event":
       return slugs.event ? `/events/${encodeURIComponent(slugs.event)}` : "/account";
     default:
       return null;
