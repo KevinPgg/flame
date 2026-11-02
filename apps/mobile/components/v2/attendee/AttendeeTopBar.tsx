@@ -23,14 +23,22 @@ export const ATTENDEE_TOPBAR_HEIGHT = 60;
  * (absolute, negative offsets via classes) covered the bell (2026-10-27) — same fixed numbers
  * as the v1 header, which always rendered right.
  */
+export const badgeLabel = (n: number) => (n > 99 ? "99+" : String(n));
+
+/**
+ * Explicit width by number of characters (2026-11-02): with only minWidth, Android measured the
+ * absolute badge before the bold font applied and cut the second digit (21 looked like 2).
+ */
+export const badgeWidth = (label: string) => (label.length <= 1 ? 18 : label.length === 2 ? 24 : 30);
+
 function Circle({ icon, label, onPress, badge }: { icon: IconName; label: string; onPress: () => void; badge?: number }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={4} style={({ pressed }) => [styles.circle, pressed && { opacity: 0.8 }]}>
       <Icon name={icon} size={20} color={c.cream} />
       {badge ? (
-        <View style={styles.badge} pointerEvents="none">
-          <Text style={styles.badgeText} className="font-v2-ui-bold">
-            {badge > 99 ? "99+" : badge}
+        <View style={[styles.badge, { width: badgeWidth(badgeLabel(badge)) }]} pointerEvents="none">
+          <Text style={styles.badgeText} className="font-v2-ui-bold" numberOfLines={1}>
+            {badgeLabel(badge)}
           </Text>
         </View>
       ) : null}
@@ -52,9 +60,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -3,
     right: -3,
-    minWidth: 18,
     height: 18,
-    paddingHorizontal: 4,
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
@@ -62,7 +68,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: c.ink,
   },
-  badgeText: { color: c.cream, fontSize: 10, lineHeight: 12 },
+  badgeText: { color: c.cream, fontSize: 10, lineHeight: 12, includeFontPadding: false, textAlign: "center" },
   // Pin, name and chevron in one row (on Kevin's phone the pin sat above the name, 2026-10-27):
   // the row is its own View in plain styles, the icons in fixed boxes and the text without font
   // padding, so nothing depends on the Pressable's style function or the font's line box.
