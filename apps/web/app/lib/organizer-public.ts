@@ -5,6 +5,7 @@
  */
 import { supabaseAdmin } from "./supabase/server";
 import type { HomeEvent } from "./home-events";
+import { followerCounts } from "./follows";
 
 export type PublicOrganizer = {
   id: string;
@@ -15,6 +16,8 @@ export type PublicOrganizer = {
   instagram_handle: string | null;
   logo_url: string | null;
   cover_image_url: string | null;
+  /** Fase 4.2: people who follow it (count only). */
+  followers_count?: number;
 };
 
 const EVENT_SELECT = `id, name, slug, image_url, starts_at, ends_at, venue, city, requires_rsvp, currency, timezone,
@@ -40,7 +43,13 @@ export async function getPublicOrganizer(slug: string): Promise<{ org: PublicOrg
     instagram_handle: raw.instagram_handle ?? null,
     logo_url: raw.logo_url ?? null,
     cover_image_url: raw.cover_image_url ?? null,
+    followers_count: 0,
   };
+  try {
+    org.followers_count = (await followerCounts(supabaseAdmin, [org.id]))[org.id] ?? 0;
+  } catch (e) {
+    console.error("[organizer-public] follower count failed", e); // the page works without it
+  }
 
   const { data: cohostRows } = await supabaseAdmin.from("event_assignments").select("event_id").eq("cohost_organization_id", org.id);
   const cohostIds = (cohostRows ?? []).map((r) => r.event_id as string);

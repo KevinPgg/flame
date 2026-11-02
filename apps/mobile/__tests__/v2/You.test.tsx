@@ -44,6 +44,10 @@ const mockSaved = {
     { id: "s-old", slug: "s-old", name: "Saved gone", image_url: null, starts_at: iso(-3 * D), ends_at: iso(-3 * D + 3600_000), timezone: "America/Guayaquil", ticket_tiers: [] },
   ],
 };
+const mockFollowing = [{ id: "o-kora", name: "Kora", slug: "kora", logo_url: null, city: "Quito", followers_count: 1200 }];
+jest.mock("../../hooks/useFollowing", () => ({
+  useFollowing: () => ({ orgs: mockFollowing, isLoading: false, isFollowing: () => true, toggle: jest.fn(), refetch: jest.fn() }),
+}));
 jest.mock("../../hooks/useSavedEvents", () => ({
   useSavedEvents: () => ({ events: mockSaved.events, isLoading: false, isSaved: () => true, toggle: jest.fn(), refetch: jest.fn() }),
 }));
@@ -54,6 +58,16 @@ beforeEach(() => {
 });
 
 describe("You (app)", () => {
+  it("Following (fase 4.2): counter and list with the organizer, its followers and Following", async () => {
+    await renderV2(<You />);
+    expect(screen.getByLabelText("Following: 1")).toBeTruthy();
+    expect(screen.getByRole("header", { name: "Following" })).toBeTruthy();
+    expect(screen.getByText("Quito · 1200 followers")).toBeTruthy();
+    expect(screen.getByLabelText("Unfollow Kora")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Kora"));
+    expect(mockNav.push).toHaveBeenCalledWith("/organizer/kora");
+  });
+
   it("Saved (fase 4.1): upcoming first, ended ones after with their tag; hearts to un-save", async () => {
     await renderV2(<You />);
     expect(screen.getByRole("header", { name: "Saved" })).toBeTruthy();

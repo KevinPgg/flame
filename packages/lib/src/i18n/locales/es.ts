@@ -135,6 +135,18 @@ export const es: Messages = {
     history: "Historial",
     noPast: "Los eventos a los que vas aparecen aquí.",
   },
+  follow: {
+    follow: "Seguir",
+    following: "Siguiendo",
+    followName: "Seguir a {name}",
+    unfollowName: "Dejar de seguir a {name}",
+    followers: { one: "{count} seguidor", other: "{count} seguidores" },
+    followersWord: { one: "seguidor", other: "seguidores" },
+    title: "Siguiendo",
+    empty: "Todavía no sigues a nadie",
+    emptyHint: "Sigue organizadores para tener sus eventos en un solo lugar.",
+    find: "Buscar organizadores",
+  },
   saved: {
     title: "Guardados",
     save: "Guardar {name}",

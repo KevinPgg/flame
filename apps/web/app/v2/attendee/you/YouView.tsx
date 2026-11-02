@@ -5,7 +5,8 @@
  * hosting/attending switch): photo, name, e-mail, Settings and Edit profile; counters; "My
  * organizers" with Manage (approved) or Under review, and New organizer (the v1 onboarding);
  * the organizer approvals entry for Flame support; Saved (fase 4.1: hearts, upcoming first, ended
- * ones dimmed after); past events from your tickets. Following is fase 4 (not shown yet).
+ * ones dimmed after); Following (fase 4.2: counter + list with Follow/Following); past events
+ * from your tickets.
  */
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -22,6 +23,8 @@ import { Skeleton } from "../../components/Skeleton";
 import { routes } from "../../lib/routes";
 import { EventTile } from "../EventTile";
 import { useSavedEvents } from "../useSavedEvents";
+import { useFollowing } from "../useFollowing";
+import { FollowButton } from "../FollowButton";
 
 const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
@@ -71,6 +74,7 @@ export default function YouView() {
   const saved = useSavedEvents();
   const savedSplit = useMemo(() => splitSavedEvents(saved.events), [saved.events]);
   const savedCount = saved.events.length;
+  const following = useFollowing();
 
   return (
     <div className="mx-auto max-w-[760px] px-4 pt-6 lg:pt-10">
@@ -95,6 +99,10 @@ export default function YouView() {
         <h1 className="mt-3 font-v2-display-bold text-[28px] tracking-[-0.03em]">{name || p?.email || " "}</h1>
         {name && p?.email && <p className="text-[14px] text-v2-c50">{p.email}</p>}
         <div className="mt-5 flex gap-3">
+          <a href="#following" className="min-w-[110px] rounded-[14px] bg-[#121212] px-4 py-2.5 hover:bg-[#181818]">
+            <b className="block font-v2-display-bold text-[20px]">{following.orgs.length}</b>
+            <span className="text-[12px] text-v2-c50">{t("follow.title")}</span>
+          </a>
           <Link href="/account" className="min-w-[110px] rounded-[14px] bg-[#121212] px-4 py-2.5 hover:bg-[#181818]">
             <b className="block font-v2-display-bold text-[20px]">{attended}</b>
             <span className="text-[12px] text-v2-c50">{t("you.events")}</span>
@@ -174,6 +182,39 @@ export default function YouView() {
             ))}
           </div>
         )}
+      </Section>
+
+      <Section title={t("follow.title")} aside={<span className="text-[13px] text-v2-c50">{following.orgs.length || ""}</span>}>
+        <div id="following">
+          {following.status === "loading" || following.status === "idle" ? (
+            <Skeleton className="h-[64px] w-full rounded-[16px]" />
+          ) : following.orgs.length === 0 ? (
+            <div className="rounded-[16px] bg-[#121212] p-4">
+              <b className="block text-[15px] font-v2-ui-semibold">{t("follow.empty")}</b>
+              <small className="mt-0.5 block text-[13px] text-v2-c50">{t("follow.emptyHint")}</small>
+              <Link href="/discover" className="mt-3 inline-flex h-9 items-center rounded-v2-pill bg-v2-cream px-4 text-[13px] font-v2-ui-semibold text-v2-ink">
+                {t("follow.find")}
+              </Link>
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-2" data-testid="following-list">
+              {following.orgs.map((o) => (
+                <li key={o.id} className="flex items-center gap-3 rounded-[16px] bg-[#121212] p-3">
+                  <Link href={`/organizer/${o.slug}`} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80">
+                    <OrgAvatar name={o.name} logoUrl={o.logo_url} size={48} />
+                    <span className="min-w-0">
+                      <b className="block truncate text-[15px] font-v2-ui-semibold">{o.name}</b>
+                      <small className="block truncate text-[12.5px] text-v2-c50">
+                        {[o.city, t("follow.followers", { count: following.followersOf(o.id, o.followers_count) })].filter(Boolean).join(" · ")}
+                      </small>
+                    </span>
+                  </Link>
+                  <FollowButton org={o} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Section>
 
       <Section

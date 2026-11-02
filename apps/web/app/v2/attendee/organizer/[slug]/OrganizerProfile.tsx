@@ -3,7 +3,7 @@
 /**
  * Flame 2.0 organizer profile on the web (fase 2.4). Prototype `SCREENS.org`: cover, big logo,
  * name, city and Instagram, share; the description; events in a grid (upcoming / past).
- * Followers and Follow are fase 4 (not shown).
+ * Fase 4.2: followers count and Follow / Following.
  */
 import { useState } from "react";
 import type { PublicOrganizer } from "../../../../lib/organizer-public";
@@ -13,16 +13,19 @@ import { LinkifiedText } from "../../../../lib/utils/linkify-text";
 import { Icon } from "../../../components/Icon";
 import { OrgAvatar } from "../../../components/OrgAvatar";
 import { EventTile } from "../../EventTile";
+import { FollowButton } from "../../FollowButton";
+import { useFollowing } from "../../useFollowing";
 
 const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
 export default function OrganizerProfile({ org, upcoming, past }: { org: PublicOrganizer; upcoming: HomeEvent[]; past: HomeEvent[] }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [seg, setSeg] = useState<"up" | "past">("up");
   const [copied, setCopied] = useState(false);
   const ig = org.instagram_handle?.trim().replace(/^@+/, "") || "";
   const cover = org.cover_image_url || org.logo_url;
   const list = seg === "up" ? upcoming : past;
+  const followers = useFollowing().followersOf(org.id, org.followers_count ?? 0);
 
   const share = async () => {
     const url = `${window.location.origin}/organizer/${org.slug}`;
@@ -56,10 +59,11 @@ export default function OrganizerProfile({ org, upcoming, past }: { org: PublicO
       </div>
 
       <div className="isolate px-4 md:px-8">
-        <div className="-mt-12 flex items-end gap-4">
+        <div className="-mt-12 flex items-end justify-between gap-4">
           <span className="relative z-[1] rounded-[22px] border-4 border-black">
             <OrgAvatar name={org.name} logoUrl={org.logo_url} size={96} />
           </span>
+          <FollowButton org={org} baseCount={org.followers_count ?? 0} className="mb-1" />
         </div>
         <h1 className="mt-3 font-v2-display-bold text-[32px] leading-[1.05] tracking-[-0.04em]">{org.name}</h1>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-v2-c70">
@@ -74,6 +78,9 @@ export default function OrganizerProfile({ org, upcoming, past }: { org: PublicO
               @{ig}
             </a>
           )}
+          <span data-testid="org-followers">
+            <b className="font-v2-ui-semibold text-v2-cream">{followers.toLocaleString(locale)}</b> {t("follow.followersWord", { count: followers })}
+          </span>
           <span>{t("organizerPage.eventsCount", { count: upcoming.length })}</span>
         </div>
         {copied && <p className="mt-1 text-[13px] text-v2-c70">{t("home.copied")}</p>}

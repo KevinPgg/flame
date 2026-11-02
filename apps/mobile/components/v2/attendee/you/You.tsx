@@ -3,7 +3,7 @@
  * hosting/attending switch): photo, name, e-mail, Settings (moved here from the top bar) and
  * Edit profile; counters; "My organizers" with Manage (approved, same route as v1) or Under
  * review, and New organizer (the v1 apply sheet); organizer approvals for Flame support; past
- * events from your tickets; Saved (fase 4.1). Following is fase 4 (not shown yet).
+ * events from your tickets; Saved (fase 4.1); Following (fase 4.2: counter + list).
  * Data: the existing useUserProfile, useUserOrgs and useUserTickets.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
@@ -18,6 +18,8 @@ import { useUserProfile } from "../../../../hooks/useUserProfile";
 import { useUserOrgs, type UserOrg } from "../../../../hooks/useUserOrgs";
 import { useUserTickets } from "../../../../hooks/useUserTickets";
 import { useSavedEvents } from "../../../../hooks/useSavedEvents";
+import { useFollowing } from "../../../../hooks/useFollowing";
+import { FollowButton } from "../FollowButton";
 import { EventTile } from "../EventTile";
 import { useMemberRoleContext } from "../../../../contexts/MemberRoleContext";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
@@ -53,16 +55,17 @@ export function You() {
   const attended = past.filter((w) => w.checkedIn > 0).length;
   const saved = useSavedEvents();
   const savedSplit = useMemo(() => splitSavedEvents(saved.events), [saved.events]);
+  const following = useFollowing();
   const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchProfile(), orgsQuery.refetch(), tickets.refetch(), saved.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
+      await Promise.all([refetchProfile(), orgsQuery.refetch(), tickets.refetch(), saved.refetch(), following.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetchProfile, orgsQuery, tickets, saved, queryClient]);
+  }, [refetchProfile, orgsQuery, tickets, saved, following, queryClient]);
 
   const manage = (o: UserOrg) => {
     setSelectedOrgId(o.organizationId);
@@ -92,11 +95,15 @@ export function You() {
         </Text>
         {name && profile?.email ? <Text className="font-v2-ui text-[14px] text-v2-c50">{profile.email}</Text> : null}
         <View className="mt-5 flex-row gap-3">
-          <Pressable onPress={() => router.push("/dashboard" as Href)} accessibilityRole="button" accessibilityLabel={`${t("you.events")}: ${attended}`} className="min-w-[110px] rounded-[14px] bg-[#121212] px-4 py-2.5 active:opacity-80">
+          <View accessibilityLabel={`${t("follow.title")}: ${following.orgs.length}`} className="min-w-[100px] rounded-[14px] bg-[#121212] px-4 py-2.5">
+            <Text className="font-v2-display-bold text-[20px] text-v2-cream">{following.orgs.length}</Text>
+            <Text className="font-v2-ui text-[12px] text-v2-c50">{t("follow.title")}</Text>
+          </View>
+          <Pressable onPress={() => router.push("/dashboard" as Href)} accessibilityRole="button" accessibilityLabel={`${t("you.events")}: ${attended}`} className="min-w-[100px] rounded-[14px] bg-[#121212] px-4 py-2.5 active:opacity-80">
             <Text className="font-v2-display-bold text-[20px] text-v2-cream">{attended}</Text>
             <Text className="font-v2-ui text-[12px] text-v2-c50">{t("you.events")}</Text>
           </Pressable>
-          <View accessibilityLabel={`${t("you.organizers")}: ${orgs.length}`} className="min-w-[110px] rounded-[14px] bg-[#121212] px-4 py-2.5">
+          <View accessibilityLabel={`${t("you.organizers")}: ${orgs.length}`} className="min-w-[100px] rounded-[14px] bg-[#121212] px-4 py-2.5">
             <Text className="font-v2-display-bold text-[20px] text-v2-cream">{orgs.length}</Text>
             <Text className="font-v2-ui text-[12px] text-v2-c50">{t("you.organizers")}</Text>
           </View>
@@ -172,6 +179,40 @@ export function You() {
               </View>
             ))}
           </ScrollView>
+        )}
+      </Section>
+
+      <Section
+        title={t("follow.title")}
+        aside={following.orgs.length ? <Text className="font-v2-ui text-[13px] text-v2-c50">{following.orgs.length}</Text> : undefined}
+      >
+        {following.isLoading ? (
+          <Skeleton width={"100%"} height={64} radius={16} />
+        ) : following.orgs.length === 0 ? (
+          <View className="items-start rounded-[16px] bg-[#121212] p-4">
+            <Text className="font-v2-ui-semibold text-[15px] text-v2-cream">{t("follow.empty")}</Text>
+            <Text className="mt-0.5 font-v2-ui text-[13px] text-v2-c50">{t("follow.emptyHint")}</Text>
+            <View className="mt-3">
+              <Button small variant="primary" label={t("follow.find")} onPress={() => router.push("/discover" as Href)} />
+            </View>
+          </View>
+        ) : (
+          <View className="gap-2" testID="following-list">
+            {following.orgs.map((o) => (
+              <View key={o.id} className="flex-row items-center gap-3 rounded-[16px] bg-[#121212] p-3">
+                <Pressable onPress={() => router.push(`/organizer/${o.slug}` as Href)} accessibilityRole="link" className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-80">
+                  <OrgAvatar name={o.name} logoUrl={o.logo_url} size={48} />
+                  <View className="min-w-0 flex-1">
+                    <Text numberOfLines={1} className="font-v2-ui-semibold text-[15px] text-v2-cream">{o.name}</Text>
+                    <Text numberOfLines={1} className="font-v2-ui text-[12.5px] text-v2-c50">
+                      {[o.city, t("follow.followers", { count: o.followers_count })].filter(Boolean).join(" · ")}
+                    </Text>
+                  </View>
+                </Pressable>
+                <FollowButton org={o} />
+              </View>
+            ))}
+          </View>
         )}
       </Section>
 

@@ -2,7 +2,7 @@
  * Flame 2.0 organizer profile (fase 2.4), app. Prototype `SCREENS.org`: cover (or the logo
  * blurred), big logo, name, city and Instagram, share; the description; events in a 2-column grid
  * with Upcoming / Past. Data: the same hooks as the v1 screen (organizations, the Home's events,
- * co-hosted ids, past events). Followers / Follow are fase 4 and don't show.
+ * co-hosted ids, past events). Fase 4.2: followers count (public API) and Follow / Following.
  */
 import { useCallback, useMemo, useState } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, Share, Text, useWindowDimensions, View } from "react-native";
@@ -18,12 +18,14 @@ import { useOrgCohostEventIds } from "../../../../hooks/useOrgCohostEventIds";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
 import type { FeedEvent } from "../home/EventFeedCard";
 import { EventTile } from "../EventTile";
+import { FollowButton } from "../FollowButton";
+import { useFollowerCount } from "../../../../hooks/useFollowing";
 import { Button, ErrorBox, Icon, OrgAvatar, Skeleton } from "../../ui";
 
 const circle = { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(28,28,28,0.82)" } as const;
 
 export function OrganizerProfile({ slug }: { slug: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -35,6 +37,7 @@ export function OrganizerProfile({ slug }: { slug: string }) {
     | { id: string; name: string; slug: string; logo_url?: string | null; cover_image_url?: string | null; description?: string | null; instagram_handle?: string | null; city?: string | null }
     | undefined;
   const past = usePastOrgEvents(org?.id);
+  const followers = useFollowerCount(org?.id);
   const cohost = useOrgCohostEventIds(org?.id);
 
   const upcoming = useMemo(() => {
@@ -49,11 +52,11 @@ export function OrganizerProfile({ slug }: { slug: string }) {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([events.refetch(), orgs.refetch(), org?.id ? past.refetch() : null, org?.id ? cohost.refetch() : null]);
+      await Promise.all([events.refetch(), orgs.refetch(), org?.id ? past.refetch() : null, org?.id ? cohost.refetch() : null, org?.id ? followers.refetch() : null]);
     } finally {
       setRefreshing(false);
     }
-  }, [events, orgs, past, cohost, org?.id]);
+  }, [events, orgs, past, cohost, followers, org?.id]);
 
   const topRow = (
     <View style={{ paddingTop: insets.top + 8 }} className="absolute left-0 right-0 top-0 z-10 flex-row justify-between px-4">
@@ -118,8 +121,13 @@ export function OrganizerProfile({ slug }: { slug: string }) {
           ) : null}
         </View>
         <View className="px-4">
-          <View style={{ marginTop: -48, alignSelf: "flex-start", borderRadius: 24, borderWidth: 4, borderColor: "#000" }}>
-            <OrgAvatar name={org.name} logoUrl={org.logo_url ?? null} size={92} />
+          <View className="flex-row items-end justify-between">
+            <View style={{ marginTop: -48, borderRadius: 24, borderWidth: 4, borderColor: "#000" }}>
+              <OrgAvatar name={org.name} logoUrl={org.logo_url ?? null} size={92} />
+            </View>
+            <View className="mb-1">
+              <FollowButton org={{ id: org.id, name: org.name, slug: org.slug, logo_url: org.logo_url ?? null, city: org.city ?? null }} />
+            </View>
           </View>
           <Text accessibilityRole="header" className="mt-3 font-v2-display-bold text-[30px] leading-[32px] tracking-[-1px] text-v2-cream">
             {org.name}
@@ -135,6 +143,11 @@ export function OrganizerProfile({ slug }: { slug: string }) {
               <Pressable onPress={() => void Linking.openURL(`https://instagram.com/${ig}`).catch(() => {})} accessibilityRole="link" accessibilityLabel={t("organizerPage.instagram", { handle: ig })}>
                 <Text className="font-v2-ui text-[14px] text-v2-c70">@{ig}</Text>
               </Pressable>
+            ) : null}
+            {followers.data !== undefined ? (
+              <Text testID="org-followers" className="font-v2-ui text-[14px] text-v2-c70">
+                <Text className="font-v2-ui-semibold text-v2-cream">{followers.data.toLocaleString(locale)}</Text> {t("follow.followersWord", { count: followers.data })}
+              </Text>
             ) : null}
             <Text className="font-v2-ui text-[14px] text-v2-c70">{t("organizerPage.eventsCount", { count: upcoming.length })}</Text>
           </View>

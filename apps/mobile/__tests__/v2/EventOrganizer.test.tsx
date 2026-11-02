@@ -33,6 +33,11 @@ jest.mock("../../hooks/useOrganizations", () => ({ useOrganizations: () => mockO
 jest.mock("../../hooks/usePastOrgEvents", () => ({
   usePastOrgEvents: () => ({ data: [{ id: "old", title: "Old night", imageUrl: "", date: "Sep 1" }], refetch: jest.fn() }),
 }));
+// Fase 4.2: follower count comes from the public API; fixed here.
+jest.mock("../../hooks/useFollowing", () => ({
+  useFollowerCount: () => ({ data: 1161, refetch: jest.fn() }),
+  useFollowing: () => ({ orgs: [], isLoading: false, isFollowing: () => false, toggle: jest.fn(), refetch: jest.fn() }),
+}));
 jest.mock("../../hooks/useOrgCohostEventIds", () => ({ useOrgCohostEventIds: () => ({ data: new Set(["co"]), refetch: jest.fn() }) }));
 
 const EVENT = {
@@ -93,6 +98,8 @@ describe("organizer profile (app)", () => {
     await renderV2(<OrganizerProfile slug="club-uno" />);
     expect(screen.getByRole("header", { name: "Club Uno" })).toBeTruthy();
     expect(screen.getByText("3 upcoming events")).toBeTruthy();
+    expect(screen.getByText("1,161 followers")).toBeTruthy(); // fase 4.2 (nested Text reads as one string)
+    expect(screen.getByRole("button", { name: "Follow Club Uno" })).toBeTruthy();
     expect(screen.getByText("Event a")).toBeTruthy();
     expect(screen.getByText("Event co")).toBeTruthy(); // co-hosted
     expect(screen.queryByText("Event c")).toBeNull();

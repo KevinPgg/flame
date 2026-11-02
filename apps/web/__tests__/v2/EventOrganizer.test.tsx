@@ -7,6 +7,7 @@ import { renderV2 } from "./helpers";
 import { EventHeader, EventTopBar, type EventHeaderData } from "../../app/v2/attendee/events/[slug]/EventHeader";
 import { MoreFromOrganizer } from "../../app/v2/attendee/events/[slug]/MoreFromOrganizer";
 import OrganizerProfile from "../../app/v2/attendee/organizer/[slug]/OrganizerProfile";
+import { __resetFollowing } from "../../app/v2/attendee/useFollowing";
 import type { HomeEvent } from "../../app/lib/home-events";
 
 vi.setConfig({ testTimeout: 20_000 });
@@ -72,7 +73,7 @@ describe("event page header (web)", () => {
     // Share lives in the fixed top bar since 2026-10-28 (the header no longer has it).
     const { unmount } = renderV2(
       <>
-        <EventTopBar slug="noche-larga" name="Noche Larga" />
+        <EventTopBar id="ev-noche" slug="noche-larga" name="Noche Larga" />
         <EventHeader event={{ ...EVENT, description: null, requires_rsvp: false }} />
       </>,
     );
@@ -123,7 +124,30 @@ describe("organizer profile (web)", () => {
     await user.click(screen.getByRole("tab", { name: "Past" }));
     expect(screen.getByRole("link", { name: /Event old/ })).toBeInTheDocument();
     expect(screen.queryByText("$15.00")).not.toBeInTheDocument(); // no price on past events
-    expect(screen.queryByText(/follow/i)).not.toBeInTheDocument(); // fase 4
+  });
+
+  it("followers and Follow (fase 4.2): the count moves with the button; signed in", async () => {
+    __resetFollowing();
+    const ORG_ID = "11111111-1111-4111-8111-111111111111";
+    const calls: Array<{ method: string; body: any }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        calls.push({ method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : undefined });
+        if (url === "/api/me/following" && (init?.method ?? "GET") === "GET") return new Response(JSON.stringify({ organizations: [] }));
+        if (url === "/api/me/following") return new Response(JSON.stringify({ organization_id: ORG_ID, following: true, followers_count: 13 }));
+        return new Response("{}", { status: 404 });
+      })
+    );
+    const user = userEvent.setup({ delay: null });
+    renderV2(<OrganizerProfile org={{ ...ORG, id: ORG_ID, followers_count: 12 }} upcoming={[]} past={[]} />);
+    expect(screen.getByTestId("org-followers")).toHaveTextContent("12 followers");
+    await user.click(screen.getByRole("button", { name: "Follow Club Uno" }));
+    expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ organization_id: ORG_ID, following: true });
+    expect(await screen.findByRole("button", { name: "Unfollow Club Uno" })).toHaveTextContent("Following");
+    expect(screen.getByTestId("org-followers")).toHaveTextContent("13 followers");
+    vi.unstubAllGlobals();
+    __resetFollowing();
   });
 
   it("no upcoming events; Spanish", () => {

@@ -2,7 +2,7 @@
 
 Creada el 2026-11-02. `[x]` = ya probado y sigue valiendo; `[ ]` = falta o **cambió** y hay que repetirlo.
 Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
-Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → Seguir organizadores → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
+Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
 
 ---
 
@@ -85,9 +85,30 @@ Estilo nuevo: esquinas casi rectas, muesca de color a la izquierda, texto peque�
 - [ ] Un evento que el organizador pasa a **borrador** deja de verse en Guardados (vuelve si se publica otra vez).
 - [ ] Privacidad: con la **otra cuenta** no se ven los guardados de la primera.
 
+## 5. Seguir organizadores — 4.2
+
+Preparación: migración `supabase/migrations/20261102150000_organization_follows.sql` aplicada. Tests nuevos: web `following`, `EventOrganizer`, `You`; app `Following`, `EventOrganizer`, `You`.
+
+### 5.1 Perfil del organizador
+- [ ] 💻 / 🌐📱 / 📱 Perfil de un organizador (`/organizer/<slug>` o desde un evento): botón **Seguir** (blanco) a la derecha del logo y "**N** seguidores" junto a la ciudad.
+- [ ] Toca **Seguir** → pasa a **Siguiendo** (oscuro) y el número sube en 1 al instante; vuelve a tocar → **Seguir** y baja en 1.
+- [ ] Con la **otra cuenta**, sigue al mismo organizador → el número sube a 2 (recarga el perfil con la primera cuenta).
+- [ ] Sin sesión: 💻 Seguir → Iniciar sesión y vuelve al perfil; 📱 → pantalla de inicio de sesión. El número de seguidores sí se ve sin sesión.
+- [ ] Organizador **en revisión** (no aprobado): su perfil no es público, no se puede seguir.
+- [ ] Studio → `organization_follows`: una fila por persona y organizador; dejar de seguir la borra.
+
+### 5.2 Tú → Siguiendo
+- [ ] 💻 / 📱 Tú: contador **Siguiendo** (primero de los tres); en la web lleva a la sección.
+- [ ] Sección **Siguiendo**: logo, nombre, "Ciudad · N seguidores" y botón **Siguiendo**; tocar la fila abre el perfil.
+- [ ] Dejar de seguir desde ahí → la fila desaparece.
+- [ ] Sin seguir a nadie → "Todavía no sigues a nadie" + **Buscar organizadores** (va a Explorar).
+- [ ] Seguir en la web → app (tira para recargar en Tú) → aparece, y al revés.
+- [ ] Privacidad: nadie ve **quién** te sigue ni a quién sigues; solo el número.
+
 ---
 
 ## Cosas conocidas (no son fallo)
 - Las tarjetas de eventos pasados (perfil del organizador, historial) no llevan corazón, salvo en Guardados.
 - El organizador no ve cuántas personas guardaron su evento (no entra en este paso).
 - Web: el QR se genera en el navegador; si una extensión bloquea `canvas`, la imagen no aparece pero el link sí.
+- Seguir a un organizador todavía **no** envía avisos cuando publica un evento (pendiente de decisión).

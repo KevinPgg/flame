@@ -137,6 +137,18 @@ export const en = {
     history: "History",
     noPast: "Events you go to show up here.",
   },
+  follow: {
+    follow: "Follow",
+    following: "Following",
+    followName: "Follow {name}",
+    unfollowName: "Unfollow {name}",
+    followers: { one: "{count} follower", other: "{count} followers" },
+    followersWord: { one: "follower", other: "followers" },
+    title: "Following",
+    empty: "You don't follow anyone yet",
+    emptyHint: "Follow organizers to find their events in one place.",
+    find: "Find organizers",
+  },
   saved: {
     title: "Saved",
     save: "Save {name}",

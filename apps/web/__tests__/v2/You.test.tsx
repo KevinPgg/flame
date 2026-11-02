@@ -5,6 +5,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderV2, mockFetch } from "./helpers";
 import { __resetSavedEvents } from "../../app/v2/attendee/useSavedEvents";
+import { __resetFollowing } from "../../app/v2/attendee/useFollowing";
 
 const D = 86_400_000;
 const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
@@ -51,6 +52,24 @@ import YouView from "../../app/v2/attendee/you/YouView";
 vi.setConfig({ testTimeout: 20_000 });
 
 describe("You (web)", () => {
+  it("Following (fase 4.2): counter, list with followers, Following button; empty state links to Explore", async () => {
+    __resetFollowing();
+    mockFetch([
+      {
+        match: (u) => u === "/api/me/following",
+        body: { organizations: [{ id: "o-kora", name: "Kora", slug: "kora", logo_url: null, city: "Quito", followers_count: 1200 }] },
+      },
+    ]);
+    renderV2(<YouView />);
+    const list = await screen.findByTestId("following-list");
+    expect(list).toHaveTextContent("Quito · 1200 followers");
+    expect(screen.getByRole("link", { name: /Kora/ })).toHaveAttribute("href", "/organizer/kora");
+    expect(screen.getByRole("button", { name: "Unfollow Kora" })).toHaveTextContent("Following");
+    expect(screen.getByRole("link", { name: /^1\s*Following$/ })).toHaveAttribute("href", "#following");
+    vi.unstubAllGlobals();
+    __resetFollowing();
+  });
+
   it("Saved (fase 4.1): upcoming first, ended after with its tag; empty text when none", async () => {
     __resetSavedEvents();
     const ev = (id: string, name: string, startMs: number) => ({
