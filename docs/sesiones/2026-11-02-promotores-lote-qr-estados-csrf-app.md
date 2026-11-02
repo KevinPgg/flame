@@ -121,6 +121,11 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - **Fase 4 cerrada en código** (4.1–4.6). Falta: tests en local + pruebas reales + aplicar sus migraciones.
 - **Qué queda para la fase 5 (Ensayo y salida)** — detalle en `actual/ESTADO_ACTUAL.md`, fila 5.
 
+## 14. Auditoría contra la lista del cliente (11-02, noche)
+- Kevin pasó la lista del cliente (3 fases) basada en el prototipo. Resultado en `actual/AUDITORIA_REQUISITOS_CLIENTE.md`.
+- Faltan: **Finance**, **Communications** (en el prototipo es solo "Próximamente"; el cliente lo pide como SMS y correo → aclarar alcance), **Editar perfil** completo (@usuario, ciudad, color), **países y ciudades** agrupados, **escáner** con buscador / campo "evento o código". El resto está hecho; varias cosas sin prueba real.
+- Kevin trabajará mejoras de diseño en Claude Design en paralelo.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
