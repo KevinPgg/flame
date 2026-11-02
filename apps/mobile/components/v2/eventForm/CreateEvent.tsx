@@ -39,6 +39,7 @@ import { FormScreen } from "../form/FormScreen";
 import { FlyerPicker, uploadFlyer as uploadFlyerFile, type FlyerFile } from "../form/FlyerPicker";
 import { CityField } from "../form/CityField";
 import { TierFields } from "../form/TierFields";
+import { LineupFields } from "../form/LineupFields";
 import { DateTimeRow, FieldError, Group, Hint, Input, Row, Section, SelectRow, SwitchRow } from "../form/ui";
 
 type Stage = "idle" | "publishing" | "flyer";
@@ -103,7 +104,7 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
 
   const scrollToFirstError = (path: string | null) => {
     if (!path) return;
-    const key = path.startsWith("tiers.") ? `tier:${path.split(".")[1]}` : ["startsAt", "endsAt"].includes(path) ? "when" : ["venue", "city"].includes(path) ? "where" : path === "tiers" ? "tiersSection" : path;
+    const key = path.startsWith("lineup") ? "lineup" : path.startsWith("tiers.") ? `tier:${path.split(".")[1]}` : ["startsAt", "endsAt"].includes(path) ? "when" : ["venue", "city"].includes(path) ? "where" : path === "tiers" ? "tiersSection" : path;
     const y = positions.current[key];
     if (y !== undefined) scroll.current?.scrollTo({ y: Math.max(0, y - 24), animated: true });
   };
@@ -253,6 +254,12 @@ export function CreateEvent({ organization }: { organization: MyOrganization }) 
             className="leading-[20px]"
           />
           <FieldError message={errorText("description")} />
+        </Section>
+      </View>
+
+      <View {...at("lineup")}>
+        <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
+          <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} />
         </Section>
       </View>
 

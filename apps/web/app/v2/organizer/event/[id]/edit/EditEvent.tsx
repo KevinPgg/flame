@@ -28,6 +28,7 @@ import { routes } from "../../../../lib/routes";
 import { OrganizerShell, type ShellUser } from "../../../OrganizerShell";
 import { useOrganizerModel, type Org } from "../../../useOrganizerModel";
 import { FlyerPicker, type FlyerValue } from "../../../event-form/FlyerPicker";
+import { LineupFields } from "../../../event-form/LineupFields";
 import { ViewerTimeHint, FieldError, Group, Row, Section, fieldCls, fieldId } from "../../../event-form/ui";
 
 const EDIT_ORDER = ["startsAt", "endsAt", "venue", "city", "description"] as const;
@@ -137,8 +138,8 @@ export default function EditEvent({
     setMessage(null);
     const current = validateEditEventForm(form, event);
     if (Object.keys(current).length > 0) {
-      const first = EDIT_ORDER.find((k) => current[k]);
-      if (first) document.getElementById(fieldId(first))?.focus();
+      const first = EDIT_ORDER.find((k) => current[k]) ?? Object.keys(current).find((k) => k.startsWith("lineup"));
+      if (first) (document.getElementById(fieldId(first)) ?? document.getElementById(`${fieldId(first)}-error`))?.focus();
       return;
     }
     const preview = buildUpdateEventPayload(form, event, flyerIntent);
@@ -287,6 +288,10 @@ export default function EditEvent({
             className={`${fieldCls} h-auto resize-y py-3 leading-relaxed`}
           />
           <FieldError path="description" message={errorText("description")} />
+        </Section>
+
+        <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
+          <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={saving} />
         </Section>
 
         <Section title={t("eventForm.tiers")}>

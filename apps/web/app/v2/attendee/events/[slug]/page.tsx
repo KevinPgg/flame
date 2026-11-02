@@ -6,6 +6,7 @@ import { getEventBySlug, eventPageMetadata } from "../../../../lib/event-page";
 import { getHomeEvents, type HomeEvent } from "../../../../lib/home-events";
 import { AttendeeShell } from "../../AttendeeShell";
 import { EventHeader, EventTopBar } from "./EventHeader";
+import { Lineup } from "./Lineup";
 import { MoreFromOrganizer } from "./MoreFromOrganizer";
 import { OpenInApp } from "./OpenInApp";
 
@@ -45,7 +46,12 @@ export default async function EventPageV2({ params }: Props) {
             <EventHeader event={event} />
             <OpenInApp slug={event.slug} />
           </>
-        } footer={<MoreFromOrganizer organizer={event.organizations?.name ?? ""} events={more} />} />
+        } footer={
+          <>
+            <Lineup lineup={(event as { lineup?: unknown }).lineup} />
+            <MoreFromOrganizer organizer={event.organizations?.name ?? ""} events={more} />
+          </>
+        } />
     </AttendeeShell>
   );
 }

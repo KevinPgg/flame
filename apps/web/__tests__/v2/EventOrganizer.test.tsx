@@ -156,3 +156,20 @@ describe("organizer profile (web)", () => {
     expect(screen.getByText("Los nuevos eventos de Club Uno aparecerán aquí.")).toBeInTheDocument();
   });
 });
+
+describe("line-up on the event page (fase 4.3)", () => {
+  it("one tile per artist with its links; nothing when the line-up is empty or junk", async () => {
+    const { Lineup } = await import("../../app/v2/attendee/events/[slug]/Lineup");
+    renderV2(
+      <Lineup lineup={[{ name: "DJ Mila Q", instagram: "mila.q", spotify: "https://open.spotify.com/artist/1" }, { name: "Perdomo" }, { name: "" }]} />
+    );
+    expect(screen.getByRole("heading", { name: "Lineup" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("MQ")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "DJ Mila Q on Instagram" })).toHaveAttribute("href", "https://instagram.com/mila.q");
+    expect(screen.getByRole("link", { name: "DJ Mila Q on Spotify" })).toHaveAttribute("href", "https://open.spotify.com/artist/1");
+    renderV2(<Lineup lineup={null} />);
+    renderV2(<Lineup lineup={[{ name: "  " }, "x"]} />);
+    expect(screen.getAllByRole("heading", { name: "Lineup" })).toHaveLength(1);
+  });
+});

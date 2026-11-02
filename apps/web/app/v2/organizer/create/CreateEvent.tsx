@@ -31,6 +31,7 @@ import { OrganizerShell, type ShellUser } from "../OrganizerShell";
 import { useOrganizerModel, type Org } from "../useOrganizerModel";
 import { FlyerPicker, type FlyerValue } from "../event-form/FlyerPicker";
 import { TierFields } from "../event-form/TierFields";
+import { LineupFields } from "../event-form/LineupFields";
 import { ViewerTimeHint, FieldError, Group, Labeled, Row, Section, SwitchRow, fieldCls, fieldId } from "../event-form/ui";
 
 type Stage = "idle" | "publishing" | "flyer";
@@ -294,6 +295,10 @@ export default function CreateEvent({
               className={`${fieldCls} h-auto resize-y py-3 leading-relaxed`}
             />
             <FieldError path="description" message={errorText("description")} />
+          </Section>
+
+          <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
+            <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={busy} />
           </Section>
 
           <Section title={t("eventForm.tiers")} aside={t("eventForm.tiersHint")}>

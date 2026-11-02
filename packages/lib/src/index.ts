@@ -486,6 +486,23 @@ export type { AttendanceOrigin, AttendanceRow, AttendanceSale, AttendanceTransfe
 // Flame 2.0 Home (fase 2.2)
 export { dayKeyIn, groupEventsByDay, cityCounts, priceSummary, feedWhen, feedDayTitle, lowestPriceInfo } from "./utils";
 export { splitSavedEvents, toggleSavedId } from "./utils";
+export {
+  LINEUP_MAX,
+  ARTIST_NAME_MAX,
+  newArtistDraft,
+  normalizeInstagram,
+  normalizeSpotify,
+  normalizeSoundcloud,
+  validateLineup,
+  lineupFromDrafts,
+  draftsFromLineup,
+  parseLineup,
+  sanitizeLineup,
+  artistLinks,
+  sameLineup,
+  artistInitials,
+} from "./organizer/lineup";
+export type { LineupArtist, ArtistDraft, LineupErrorKey } from "./organizer/lineup";
 export type { SavedEventTime } from "./utils";
 export {
   buildWallet,

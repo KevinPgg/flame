@@ -12,6 +12,16 @@ import { localToUtc, utcToLocal } from "../utils/timezone";
 import { normalizeOptionalTicketTierSecretCode } from "../validators/ticket-tier-secret-code";
 import { MAX_TICKET_TIERS_PER_EVENT, TIER_DESCRIPTION_MAX_LENGTH } from "../constants/event-limits";
 import type { FormField, FormFieldType } from "../types/registration-form";
+import {
+  draftsFromLineup,
+  lineupFromDrafts,
+  parseLineup,
+  sameLineup,
+  validateLineup,
+  type ArtistDraft,
+  type LineupArtist,
+  type LineupErrorKey,
+} from "./lineup";
 
 
 /**
@@ -98,6 +108,8 @@ export interface EventFormState {
   currency: string;
   timezone: string;
   tiers: TierDraft[];
+  /** Fase 4.3: artists (optional; empty rows are ignored). */
+  lineup?: ArtistDraft[];
 }
 
 export const QUESTION_TYPES: readonly FormFieldType[] = ["text", "email", "number", "date", "checkbox"];
@@ -197,6 +209,7 @@ export function emptyEventForm(opts: { currency?: string; timezone?: string; fir
     currency: opts.currency ?? "USD",
     timezone: opts.timezone ?? "America/Guayaquil",
     tiers: [newTierDraft(opts.firstTierName ?? "")],
+    lineup: [],
   };
 }
 
@@ -302,7 +315,8 @@ export type EventFormErrorKey =
   "questionLabelTooLong" |
   "questionDuplicate" |
   "questionConflict" |
-  "questionPlaceholderTooLong";
+  "questionPlaceholderTooLong" |
+  LineupErrorKey;
 
 export type EventFormErrors = Record<string, EventFormErrorKey>;
 
@@ -469,6 +483,7 @@ export function validateEventForm(form: EventFormState, now: Date = new Date()):
       }
     }
   }
+  Object.assign(e, validateLineup(form.lineup ?? []));
   return e;
 }
 
@@ -480,6 +495,11 @@ export function firstErrorPath(form: EventFormState, errors: EventFormErrors): s
     const hit = Object.keys(errors).find((k) => k.startsWith(`tiers.${t.key}.`));
     if (hit) return hit;
   }
+  for (const a of form.lineup ?? []) {
+    const hit = Object.keys(errors).find((k) => k.startsWith(`lineup.${a.key}.`));
+    if (hit) return hit;
+  }
+  if (errors.lineup) return "lineup";
   if (errors.slug) return "slug";
   return Object.keys(errors)[0] ?? null;
 }
@@ -499,6 +519,7 @@ export interface CreateEventPayload {
     currency: string;
     timezone: string;
     registration_form_config?: FormField[];
+    lineup?: LineupArtist[];
   };
   ticket_tiers: Array<{
     name: string;
@@ -569,6 +590,7 @@ export function buildCreateEventPayload(
       currency: form.currency,
       timezone: form.timezone,
       ...(fields.length > 0 ? { registration_form_config: fields } : {}),
+      ...(lineupFromDrafts(form.lineup ?? []).length > 0 ? { lineup: lineupFromDrafts(form.lineup ?? []) } : {}),
     },
     ticket_tiers: form.tiers.map((t) => {
       const stages = t.useStages
@@ -611,6 +633,8 @@ export interface EditEventFormState {
   venue: string;
   city: string;
   description: string;
+  /** Fase 4.3. Optional so older callers keep working; undefined = line-up not edited here. */
+  lineup?: ArtistDraft[];
 }
 
 export interface EditableEvent {
@@ -622,6 +646,7 @@ export interface EditableEvent {
   description: string | null;
   timezone?: string | null;
   ticket_tiers?: Array<{ id: string; name: string; sales_end?: string | null }> | null;
+  lineup?: unknown;
 }
 
 const eventTimezone = (event: Pick<EditableEvent, "timezone">) => event.timezone || "America/Guayaquil";
@@ -635,6 +660,7 @@ export function editFormFromEvent(event: EditableEvent): EditEventFormState {
     venue: event.venue ?? "",
     city: event.city ?? "",
     description: event.description ?? "",
+    lineup: draftsFromLineup(event.lineup),
   };
 }
 
@@ -680,6 +706,7 @@ export function validateEditEventForm(form: EditEventFormState, event: EditableE
   if (!city) e.city = "cityRequired";
   else if (city.length > EVENT_CITY_MAX) e.city = "cityTooLong";
   if (form.description.length > EVENT_DESCRIPTION_MAX) e.description = "descriptionTooLong";
+  Object.assign(e, validateLineup(form.lineup ?? []));
 
   const moved = changedDates(form, event);
   if (!moved.starts && !moved.ends) return e;
@@ -709,6 +736,7 @@ export interface UpdateEventPayload {
   city?: string;
   description?: string;
   image_url?: string;
+  lineup?: LineupArtist[];
 }
 
 /**
@@ -736,6 +764,10 @@ export function buildUpdateEventPayload(
   const description = form.description.trim();
   if (description !== (event.description ?? "").trim()) payload.description = description;
   if (imageUrl !== undefined) payload.image_url = imageUrl;
+  if (form.lineup) {
+    const lineup = lineupFromDrafts(form.lineup);
+    if (!sameLineup(lineup, parseLineup(event.lineup))) payload.lineup = lineup;
+  }
   return {
     payload,
     datesChanged: moved.starts || moved.ends,

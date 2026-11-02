@@ -336,6 +336,22 @@ describe("CreateEvent v2", () => {
     expect(eventPost(fetchMock.calls)!.body.ticket_tiers[0].is_hidden).toBe(true);
   });
 
+  it("line-up (fase 4.3): artists go normalized in the request; a bad link blocks publishing", async () => {
+    const { user, fetchMock } = setup();
+    await fillBasics(user);
+    await user.click(screen.getByRole("button", { name: "Add artist" }));
+    await user.type(screen.getByLabelText("Artist name"), "Chuy");
+    await user.type(screen.getByLabelText(/^Instagram/), "@chuy.music");
+    await user.type(screen.getByLabelText(/^Spotify/), "youtube.com/x");
+    await user.click(publishBtn());
+    expect(screen.getByText("Paste a Spotify link (open.spotify.com/…).")).toBeInTheDocument();
+    expect(eventPost(fetchMock.calls)).toBeUndefined();
+    await user.clear(screen.getByLabelText(/^Spotify/));
+    await user.click(publishBtn());
+    await waitFor(() => expect(eventPost(fetchMock.calls)).toBeDefined());
+    expect(eventPost(fetchMock.calls)!.body.event.lineup).toEqual([{ name: "Chuy", instagram: "chuy.music" }]);
+  });
+
   it("speaks Spanish", async () => {
     const { user } = setup({ language: "es" });
     expect(screen.getByRole("heading", { name: "Nuevo evento" })).toBeInTheDocument();

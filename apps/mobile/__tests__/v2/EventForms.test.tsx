@@ -126,6 +126,27 @@ describe("edit event", () => {
   });
 });
 
+describe("line-up (fase 4.3)", () => {
+  it("edit: add an artist with Instagram → PATCH with the normalized list; a bad link blocks saving", async () => {
+    await renderV2(<EditEvent eventId="ev-1" organization={org("owner")} />);
+    expect(await screen.findByDisplayValue("Club")).toBeTruthy();
+    await fireEvent.press(screen.getByText("Add artist"));
+    await fireEvent.changeText(screen.getByLabelText("Artist name 1"), "Chuy");
+    await fireEvent.changeText(screen.getByLabelText("Instagram 1"), "instagram.com/chuy.music");
+    await fireEvent.changeText(screen.getByLabelText("SoundCloud 1"), "https://evil.com/x");
+    await fireEvent.press(screen.getByText("Save changes"));
+    expect(screen.getByText("Paste a SoundCloud link (soundcloud.com/…) or the username.")).toBeTruthy();
+    expect(mockApiClient).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText("SoundCloud 1"), "chuy");
+    await fireEvent.press(screen.getByText("Save changes"));
+    await waitFor(() => expect(mockApiClient).toHaveBeenCalled());
+    expect(JSON.parse((mockApiClient.mock.calls[0] as [string, { body: string }])[1].body)).toEqual({
+      id: "ev-1",
+      lineup: [{ name: "Chuy", instagram: "chuy.music", soundcloud: "https://soundcloud.com/chuy" }],
+    });
+  });
+});
+
 describe("tier editor", () => {
   it("new tier on the defaults: POST with the sales end in Z (not the database's +00:00)", async () => {
     await renderV2(<TierEditor eventId="ev-1" tierId="new" organization={org("owner")} />);

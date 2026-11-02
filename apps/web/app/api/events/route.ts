@@ -15,7 +15,7 @@ import { sendDateChangeEmail } from "../../lib/email/date-change-notifications";
 import { fetchCompletedOrderBuyers, inBatches } from "../../lib/utils/event-recipients";
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
 import { requireEventAccess } from "@/app/lib/utils/event-access";
-import { canCreateEvents, canManageAccessCodes, type OrgMemberRole } from "@project-flame/lib";
+import { canCreateEvents, canManageAccessCodes, sanitizeLineup, type OrgMemberRole } from "@project-flame/lib";
 import {
   ensureUniquePublishedSlug,
   ExhaustedSlugError,
@@ -49,6 +49,8 @@ const createEventSchema = z.object({
     requires_rsvp: z.boolean().default(true), // Whether event requires RSVP approval
     currency: z.enum(currencyCodes).default("USD"),
     timezone: z.enum(timezoneValues).default("America/Guayaquil"),
+    // Fase 4.3 line-up: checked and normalized with sanitizeLineup (@project-flame/lib).
+    lineup: z.unknown().optional(),
     registration_form_config: z
       .array(
         z.object({
@@ -609,6 +611,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const lineupResult = sanitizeLineup(validatedData.event.lineup);
+    if ("error" in lineupResult) {
+      return NextResponse.json({ error: `Invalid line-up: ${lineupResult.error}` }, { status: 400 });
+    }
+
     // Create event and ticket tiers in a transaction
     const { data: event, error: eventError } = await supabaseAdmin
       .from("events")
@@ -627,6 +634,7 @@ export async function POST(req: NextRequest) {
         currency: validatedData.event.currency.toUpperCase(),
         timezone: validatedData.event.timezone,
         markup_fixed_cents: getDefaultFixedFeeCents(validatedData.event.currency),
+        ...(lineupResult.lineup.length > 0 && { lineup: lineupResult.lineup }),
         ...(validatedData.event.registration_form_config &&
           validatedData.event.registration_form_config.length > 0 && {
             registration_form_config:
@@ -853,6 +861,8 @@ const updateEventSchema = z.object({
     )
     .optional()
     .or(z.literal(null)), // null to clear
+  // Fase 4.3 line-up: [] clears it; checked with sanitizeLineup.
+  lineup: z.unknown().optional(),
 });
 
 export async function PATCH(req: NextRequest) {
@@ -976,6 +986,14 @@ export async function PATCH(req: NextRequest) {
           validatedData.registration_form_config.length === 0)
           ? null
           : validatedData.registration_form_config;
+    }
+
+    if (validatedData.lineup !== undefined) {
+      const lineupResult = sanitizeLineup(validatedData.lineup);
+      if ("error" in lineupResult) {
+        return NextResponse.json({ error: `Invalid line-up: ${lineupResult.error}` }, { status: 400 });
+      }
+      updateData.lineup = lineupResult.lineup;
     }
 
     // Update the event

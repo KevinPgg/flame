@@ -2,7 +2,7 @@
 
 Creada el 2026-11-02. `[x]` = ya probado y sigue valiendo; `[ ]` = falta o **cambió** y hay que repetirlo.
 Dispositivos: 💻 PC (navegador) · 🌐📱 navegador del celular · 📱 app.
-Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
+Orden de la fase (decisión 11-02, por riesgo): 4.0 promotores + etiquetas + CSRF de la app → 4.1 Guardar eventos → 4.2 Seguir organizadores → 4.3 Line-up → Line-up → Búsqueda → Invitaciones de equipo → Numeración de tickets. Categorías: descartadas.
 
 ---
 
@@ -105,6 +105,25 @@ Preparación: migración `supabase/migrations/20261102150000_organization_follow
 - [ ] Seguir en la web → app (tira para recargar en Tú) → aparece, y al revés.
 - [ ] Privacidad: nadie ve **quién** te sigue ni a quién sigues; solo el número.
 
+## 6. Line-up — 4.3
+
+Preparación: migración `supabase/migrations/20261102170000_events_lineup.sql` aplicada. Tests nuevos: lib `lineup`; web `events-lineup`, `CreateEvent`, `EditEvent`, `EventOrganizer`; app `EventForms`, `Lineup`.
+
+### 6.1 Crear / editar evento
+- [ ] 💻 / 📱 Crear evento → sección **Line-up** (después de "Acerca de") → **Agregar artista** → tarjeta con Nombre, Instagram, Spotify y SoundCloud (opcionales).
+- [ ] Instagram acepta `@usuario`, `usuario` o el link del perfil; Spotify solo `open.spotify.com/…` o `spotify.link/…`; SoundCloud el link o solo el usuario.
+- [ ] Link equivocado (p. ej. YouTube en Spotify) → mensaje bajo el campo y no publica / no guarda.
+- [ ] Tarjeta con un link pero sin nombre → "Escribe el nombre del artista (o quita la tarjeta)". Tarjeta vacía → se ignora al guardar.
+- [ ] Subir / bajar / quitar artista; el orden se respeta en la página del evento. Con 20 artistas desaparece "Agregar artista".
+- [ ] Editar evento: el line-up aparece cargado; cambiar solo el line-up guarda (sin pedir confirmación de fechas); sin cambios → "No hay cambios".
+- [ ] Studio → `events.lineup`: JSON normalizado (`instagram` sin @, links `https://…`).
+
+### 6.2 Página del evento
+- [ ] 💻 / 🌐📱 / 📱 Evento con line-up → sección **Line-up** después de los tiers: tarjetas cuadradas con iniciales (sin fotos), nombre y botones de Instagram / Spotify / SoundCloud que abren el perfil fuera de Flame.
+- [ ] Desliza horizontal si hay muchos artistas.
+- [ ] Evento sin line-up → la sección no aparece.
+- [ ] La app vieja (build anterior) sigue abriendo eventos con line-up sin errores.
+
 ---
 
 ## Cosas conocidas (no son fallo)
@@ -112,3 +131,4 @@ Preparación: migración `supabase/migrations/20261102150000_organization_follow
 - El organizador no ve cuántas personas guardaron su evento (no entra en este paso).
 - Web: el QR se genera en el navegador; si una extensión bloquea `canvas`, la imagen no aparece pero el link sí.
 - Seguir a un organizador todavía **no** envía avisos cuando publica un evento (pendiente de decisión).
+- Line-up sin fotos de artistas por ahora (tarjeta con iniciales).

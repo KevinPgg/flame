@@ -49,6 +49,7 @@ import { useUserTickets } from "../../hooks/useUserTickets";
 import { attendeeV2Enabled } from "../../lib/v2/flags";
 import { EventHeader } from "../../components/v2/attendee/event/EventHeader";
 import { MoreFromOrganizer, useOrganizerFromFeed } from "../../components/v2/attendee/event/MoreFromOrganizer";
+import { Lineup } from "../../components/v2/attendee/event/Lineup";
 import { AccessCode } from "../../components/v2/attendee/event/AccessCode";
 import { TierList } from "../../components/v2/attendee/event/TierList";
 import { PromoterChip } from "../../components/v2/attendee/event/PromoterChip";
@@ -843,6 +844,7 @@ export default function EventDetailScreen() {
             />
           )}
         </View>
+        {v2 ? <Lineup lineup={(event as { lineup?: unknown }).lineup} /> : null}
         {v2 ? (
           <MoreFromOrganizer
             eventId={event.id}

@@ -34,6 +34,7 @@ import { FormScreen } from "../form/FormScreen";
 import { FlyerPicker, uploadFlyer, type FlyerFile } from "../form/FlyerPicker";
 import { CityField } from "../form/CityField";
 import { DateTimeRow, FieldError, Group, Hint, Input, Row, Section } from "../form/ui";
+import { LineupFields } from "../form/LineupFields";
 
 export function EditEvent({ eventId, organization }: { eventId: string; organization: MyOrganization }) {
   const { t } = useI18n();
@@ -218,6 +219,10 @@ export function EditEvent({ eventId, organization }: { eventId: string; organiza
             className="leading-[20px]"
           />
           <FieldError message={errorText("description")} />
+        </Section>
+
+        <Section title={t("eventForm.lineup")} aside={t("eventForm.lineupHint")}>
+          <LineupFields value={form.lineup ?? []} onChange={(lineup) => update({ lineup })} errorText={errorText} disabled={saving} />
         </Section>
 
         <Section title={t("eventForm.tiers")}>

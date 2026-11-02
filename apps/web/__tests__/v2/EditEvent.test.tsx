@@ -256,6 +256,17 @@ describe("EditEvent v2", () => {
     }
   });
 
+  it("line-up (fase 4.3): pre-filled; adding an artist sends the whole list, nothing else", async () => {
+    const { user, fetchMock } = setup({ event: { lineup: [{ name: "Perdomo", instagram: "perdomo.dj" }] } });
+    expect(await screen.findByDisplayValue("Perdomo")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add artist" }));
+    const names = screen.getAllByLabelText("Artist name");
+    await user.type(names[1]!, "LPM");
+    await user.click(saveBtn());
+    await waitFor(() => expect(patches(fetchMock.calls)).toHaveLength(1));
+    expect(patches(fetchMock.calls)[0]!.body).toEqual({ id: "ev1", lineup: [{ name: "Perdomo", instagram: "perdomo.dj" }, { name: "LPM" }] });
+  });
+
   it("speaks Spanish", async () => {
     setup({ language: "es" });
     expect(await screen.findByRole("heading", { name: "Editar evento" })).toBeInTheDocument();

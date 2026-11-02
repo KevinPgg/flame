@@ -1,4 +1,4 @@
-# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores
+# Sesión 2026-11-02 — fase 4 arranca: promotores (lote + QR), etiquetas de estado, CSRF de pagos en la app, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up
 
 ## Contexto
 Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anteriores. Siguiente fase del plan Flame 2.0 (`actual/FLAME_2_0_VALORACION.md` §3): **fase 4, funcionalidad nueva**. Ninguno de sus ítems existe hoy en la BD (sin tablas `follows`, `saved_events`, invitaciones, line-up ni numeración de tickets).
@@ -47,6 +47,16 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - **Pendiente de decisión de Kevin**: el prototipo dice "te enterarás primero" al seguir → avisar a los seguidores (push/bandeja) cuando el organizador publica un evento. No está hecho; los textos nuevos no lo prometen.
 - Pruebas: §5 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 
+## 6. Fase 4.3 — Line-up, web y app
+- **Migración** `supabase/migrations/20261102170000_events_lineup.sql`: `events.lineup jsonb NOT NULL DEFAULT '[]'` con CHECK (array, máx. 20). `get_event_with_tiers` ya devuelve `to_jsonb(e)`, así que la app lo recibe sin tocar el RPC; las versiones viejas lo ignoran.
+- **lib** `packages/lib/src/organizer/lineup.ts`: artista `{ name, instagram?, spotify?, soundcloud? }`; normalizadores (Instagram `@`/link → usuario; Spotify solo `open.spotify.com`/`spotify.link`; SoundCloud link o usuario), `validateLineup`, `lineupFromDrafts`, `parseLineup` (para mostrar, tolera basura), `sanitizeLineup` (servidor, estricto), `artistLinks`, `artistInitials`. Integrado en `event-form.ts` (crear: `lineup` en el estado, errores `lineup.<key>.<campo>`, payload; editar: precarga y se envía solo si cambió). Test: `packages/lib/__tests__/lineup.test.ts`.
+- **API** `POST/PATCH /api/events`: campo `lineup` validado con `sanitizeLineup` (400 si un link no vale; `[]` lo borra). Test: `__tests__/api/organizer/events-lineup.test.ts`.
+- **Web**: `v2/organizer/event-form/LineupFields.tsx` en crear y editar evento (sección después de "Acerca de"); `v2/attendee/events/[slug]/Lineup.tsx` en la página del evento después de los tiers (tarjetas con iniciales y tono por nombre, iconos propios simples, no logos de marca). `Event` de `useOrganizerData` con `lineup?`.
+- **App**: `components/v2/form/LineupFields.tsx` en crear/editar; `components/v2/attendee/event/Lineup.tsx` en `app/event/[id].tsx` (solo v2).
+- i18n: `eventForm.lineup*`, `eventForm.artistName*`, `eventForm.addArtist`, errores nuevos; `event.lineup`, `event.artistOn`.
+- Decidido por mí (cambiable): **sin fotos de artistas** (subirlas exige que el evento exista; el flujo de crear sube el flyer después); máximo 20 artistas; el line-up va debajo de los tiers como en el prototipo.
+- Pruebas: §6 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -59,4 +69,5 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 4. Aplicar la migración `20261102120000_saved_events.sql` y seguir `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 5. Aplicar `20261102150000_organization_follows.sql` y seguir §5 de la guía de pruebas.
 6. Decidir si seguir a un organizador debe avisar cuando publica eventos.
-7. Siguiente ítem de fase 4: **Line-up** (artistas por evento con IG/Spotify/SoundCloud, en crear/editar evento y en la página del evento).
+7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Decidir si se quieren fotos de artistas.
+8. Siguiente ítem de fase 4: **Búsqueda** (eventos, lugares, organizadores y artistas).

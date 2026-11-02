@@ -25,6 +25,8 @@ interface Event {
   name: string;
   slug: string;
   description: string;
+  /** Fase 4.3 line-up (events.lineup jsonb); read with parseLineup. */
+  lineup?: unknown;
   status: string;
   starts_at: string;
   ends_at: string;
