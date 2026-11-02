@@ -87,6 +87,35 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - Ajustes del mismo pedido: eventos de Explorar más grandes (web destacados 260–300 px y resultados máx. 3 columnas; app destacados ~72 % del ancho); app: el fondo difuminado del flyer cubre todo el encabezado hasta "Acerca de" con fundido a negro (antes altura fija de 700 px).
 - Pruebas: §9 y §10 de `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 
+## 10. Correo de invitación no llega — diagnóstico Brevo (11-02, noche)
+- Log: `[team-invitations] e-mail failed … BrevoError 401 "unrecognised IP address 2800:bf0:…"` y luego `POST …/invitations 200`.
+- **Causa [Seguro]**: la cuenta de Brevo tiene activo el **bloqueo por IPs autorizadas** (Security → Authorized IPs). La llamada a la API sale desde la IPv6 del ISP de la PC de desarrollo, que no está en la lista, y Brevo la rechaza antes de enviar. **No es un bug del código.**
+- Afecta a **todos** los correos por Brevo desde esa máquina (tickets, RSVP, cambio de fecha, invitaciones), no solo a invitaciones.
+- Que lleguen correos "de `…@11637143.brevosend.com`" no contradice nada: es otro problema. `FROM_EMAIL`/`BREVO_SENDER_EMAIL` en `apps/web/.env` es una dirección **@gmail.com**; Brevo no puede firmar como gmail (DMARC) y reescribe el remitente a su dominio compartido. Peor entregabilidad (spam) y se ve poco profesional.
+- La app se comportó como se diseñó en 4.5: la invitación se crea (200), se ve en la app de la persona y la pantalla Equipo muestra "enviada, sin correo" (`invites.sentNoEmail`).
+- **Arreglo (en Brevo, no en código)**:
+  1. Brevo → Security → Authorized IPs → **desactivar el bloqueo** (recomendado). Añadir la IP no sirve de mucho: la IPv6 de casa rota, y en Vercel las IPs de salida de las funciones también cambian.
+  2. [Probable] Si producción usa la **misma cuenta/clave** de Brevo, producción también está fallando con el mismo 401: revisar logs de Vercel buscando `unrecognised IP address`.
+  3. Autenticar un dominio propio en Brevo (DKIM + DMARC, p. ej. `flme.co`) y usar `FROM_EMAIL=noreply@<dominio>`; así desaparece el remitente `brevosend.com`. El código ya usa `noreply@flme.co` por defecto si `FROM_EMAIL` no está.
+
+## 11. Aviso a seguidores cuando se publica un evento (decisión de Kevin 11-02)
+- **Decisión**: sí avisar a los seguidores cuando un organizador publica un evento.
+- En Flame todo evento nace publicado (`POST /api/events` solo acepta `status: "published"`; no hay borradores), así que "publicar" = **crear**. Editar no vuelve a avisar.
+- **lib**: tipo de notificación `followed_org_event` (desactivable; no está en `NON_DISMISSABLE…`), en `NOTIFICATION_PREFERENCE_ITEMS` con las de asistente; i18n `settings.notif.followed_org_event` ("Eventos nuevos") y `pushes.followedOrgEvent` (título "Nuevo evento de {org}", cuerpo "Evento · fecha · ciudad").
+- **Web** `app/lib/follower-notifications.ts` → `notifyFollowersOfNewEvent(event)`: seguidores de la organización con paginación (más de 1000), **sin los miembros** de la organización, sin quienes lo apagaron en Ajustes; idioma de cada persona; fecha en la zona horaria del evento; bandeja + push con `sendPushNotification` en tandas de 10; nunca lanza error. Se llama desde `POST /api/events` con `after()` de Next (después de responder: crear el evento no espera el envío).
+- Enlaces: web (campana) → `/events/<slug>`; app → `/event/<id>`; icono calendario en web y app (`InboxCard`, `NotificationsList`), v1 `NotificationCard` con icono propio.
+- Arreglo de paso: `DEFAULT_PREFERENCES` de la app (`hooks/useNotificationPreferences.ts`) no tenía `team_invitation` (4.5) → `tsc` de mobile habría fallado; añadido junto con el tipo nuevo.
+- Sin migración (usa `organization_follows` y `notifications`).
+- Test: `apps/web/__tests__/api/organizer/follower-notifications.test.ts`. Pruebas reales: §5.3 de `PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+- [Probable] Límite: con muchos miles de seguidores el envío en tandas de 10 puede acercarse al tiempo máximo de la función en Vercel; al volumen actual sobra. Si crece, pasar a una cola/cron.
+
+## 12. Fase 4.6 Numeración de tickets — revisión antes de tocar la compra (11-02, noche)
+- **[Seguro] En el prototipo el número es por persona, no por evento**: `ACTS.payNow` asigna `n` contando solo los tickets **de esa persona** para ese evento (`S.tickets.filter(x => x.ev === e.id)`, todos `holder:'me'`), y la pantalla del ticket muestra "Ticket 1 / Ticket 2" para cambiar entre los tuyos. No hay un correlativo 1, 2, 3… entre todos los compradores.
+- **Ya está hecho**: "Ticket N de M" en la web (`v2/attendee/tickets/[id]/TicketView.tsx`) y en la app (`TicketPager.tsx`) desde la 2.3; el escáner muestra "Ticket N de M" de la orden (`sequence_number` = posición en la orden, sale del QR, `api/qr-scanner/verify`).
+- La valoración (`actual/FLAME_2_0_VALORACION.md` §2.3) lo describió como "correlativa por evento con asignación dentro del RPC de compra": **lectura equivocada del prototipo**. Corregido abajo.
+- **Decisión pendiente de Kevin**: (a) cerrar la 4.6 como cubierta (recomendado), o (b) añadir además un número de serie por evento (#0001…) — sería columna + backfill + trigger `BEFORE INSERT` en `tickets` con contador por evento (no dentro del RPC); toca el camino de compra, así que entraría en la evaluación del proceso de compra que Kevin ya planificó para después de Flame 2.0.
+- No se cambió código en este punto.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -98,8 +127,9 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 3. Revisar visualmente las etiquetas nuevas; si no convencen, se cambia en un solo componente por plataforma.
 4. Aplicar la migración `20261102120000_saved_events.sql` y seguir `docs/PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
 5. Aplicar `20261102150000_organization_follows.sql` y seguir §5 de la guía de pruebas.
-6. Decidir si seguir a un organizador debe avisar cuando publica eventos.
+6. ~~Decidir aviso a seguidores~~ → hecho (§11). Correr `follower-notifications.test.ts` y seguir §5.3 de la guía.
+6b. Brevo: desactivar el bloqueo de IPs autorizadas y revisar si producción tiene el mismo 401 (§10).
 7. Aplicar `20261102170000_events_lineup.sql` y seguir §6 de la guía de pruebas. Fotos de artistas: hechas (§7).
 8. Seguir §8 de la guía de pruebas (búsqueda).
 9. Aplicar `20261102190000_organization_invitations.sql`, borrar la carpeta vacía `apps/web/app/invite/` y `_to_delete/web-app-invite-duplicado/`, seguir §9–§10.
-10. Último ítem de fase 4: **Numeración de tickets** (toca el RPC de compra).
+10. Fase 4.6 Numeración: el prototipo pide número **por persona**, ya hecho en 2.3 (§12). Decidir si además se quiere serie por evento (iría a la evaluación de compra).

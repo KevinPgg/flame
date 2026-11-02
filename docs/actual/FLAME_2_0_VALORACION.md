@@ -54,7 +54,7 @@
 | Categorías (Concert, Celebration…) | [Seguro] no existe | Columna en `events` + filtro |
 | Búsqueda de eventos, venues, organizadores y artistas | [Probable] hoy solo por nombre de evento | Endpoint de búsqueda nuevo (depende de line-up) |
 | Miembro "Invited" hasta aceptar | [Seguro] `organization_members` no tiene estado ni invitaciones | Tabla/estado de invitación + email + aceptar. Toca RLS de miembros (zona con fixes recientes de PII) |
-| Numeración de tickets correlativa (1, 2, 3…) | [Seguro] `tickets` no tiene número | Columna + backfill + asignación **dentro del RPC de compra** → toca el camino de pago endurecido |
+| Numeración de tickets | **Corregido 2026-11-02**: el prototipo numera los tickets **de cada persona** por evento ("Ticket 1 de 2"), ya hecho en la fase 2.3; no pide correlativo por evento | Nada. Una serie por evento (#0001…) sería opcional: trigger en `tickets`, evaluar junto al proceso de compra |
 | Ajustes de usuario (ciudad, idioma, preferencias de notificación) | [Probable] parcial | Campos en `users` / tabla de preferencias |
 
 ---

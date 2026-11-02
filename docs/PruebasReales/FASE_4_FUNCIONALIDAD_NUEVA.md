@@ -105,6 +105,17 @@ Preparación: migración `supabase/migrations/20261102150000_organization_follow
 - [ ] Seguir en la web → app (tira para recargar en Tú) → aparece, y al revés.
 - [ ] Privacidad: nadie ve **quién** te sigue ni a quién sigues; solo el número.
 
+### 5.3 Aviso de evento nuevo a seguidores (11-02, noche)
+Necesita dos cuentas: **A** (dueño/admin de Kora) y **B** (sigue a Kora, no es miembro). B con la app instalada y sesión iniciada para el push.
+- [ ] 💻 o 📱 A crea un evento en Kora → 📱 B recibe push "**Nuevo evento de Kora**" / "New event from Kora" con "Nombre · fecha y hora del evento · ciudad" en el idioma de B. Crear el evento **no tarda más** que antes.
+- [ ] 📱 Tocar el push o la fila en la bandeja → abre la página de ese evento (la fila muestra el flyer).
+- [ ] 💻 B en la web: la campana muestra el aviso; al tocarlo abre `/events/<slug>`.
+- [ ] La hora del aviso es la del evento (zona del evento), no la del servidor.
+- [ ] A (o cualquier miembro de Kora que además la siga) **no** recibe el aviso.
+- [ ] 💻 / 📱 B en Ajustes → Notificaciones: interruptor **Eventos nuevos** (con los de asistente). Apagarlo → A crea otro evento → B no recibe nada (ni push ni bandeja).
+- [ ] Alguien que no sigue a Kora no recibe nada.
+- [ ] Editar un evento existente **no** vuelve a avisar (solo al crearlo).
+
 ## 6. Line-up — 4.3
 
 Preparación: migración `supabase/migrations/20261102170000_events_lineup.sql` aplicada. Tests nuevos: lib `lineup`; web `events-lineup`, `CreateEvent`, `EditEvent`, `EventOrganizer`; app `EventForms`, `Lineup`.
@@ -186,7 +197,8 @@ Necesitas: cuenta **dueño/admin** (A), una cuenta **existente** que no esté en
 - Las tarjetas de eventos pasados (perfil del organizador, historial) no llevan corazón, salvo en Guardados.
 - El organizador no ve cuántas personas guardaron su evento (no entra en este paso).
 - Web: el QR se genera en el navegador; si una extensión bloquea `canvas`, la imagen no aparece pero el link sí.
-- Seguir a un organizador todavía **no** envía avisos cuando publica un evento (pendiente de decisión).
+- El aviso a seguidores sale solo al **crear** el evento (en Flame todo evento nace publicado; no hay borradores). Si se borra el evento después, el aviso queda en la bandeja.
+- Correos de Brevo en local: si el log dice `unrecognised IP address`, es el bloqueo de IPs de Brevo (ver sesión 11-02 §10), no la app.
 - Instagram no permite leer fotos de perfil: la opción aparece desactivada a propósito.
 - Fotos de artistas que se suben y luego no se guardan quedan en Storage (sin limpieza automática por ahora).
 - Invitaciones: el alta directa de miembros (`POST /api/organizations/[id]/members`) sigue existiendo para la app v1; la v2 solo invita.
