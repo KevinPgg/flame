@@ -61,10 +61,11 @@ const base = {
 };
 
 describe("settings, signed in", () => {
-  it("account from the API, language, version; organizer notifications only for members", async () => {
+  it("account row opens our own security screen (no profile card); language, version; organizer notifications only for members", async () => {
     await renderV2(<UserSettings />);
-    expect(await screen.findByText("Ana Ruiz")).toBeTruthy();
-    expect(screen.getByText("ana@x.com")).toBeTruthy();
+    expect(screen.queryByText("Ana Ruiz")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Password, e-mails and security"));
+    expect(mockPush).toHaveBeenCalledWith("/v2/account-security");
     expect(screen.getByLabelText(/^Language: English/)).toBeTruthy();
     expect(screen.getByText("Version 1.2.3")).toBeTruthy();
     expect(await screen.findByRole("switch", { name: "Event reminders" })).toBeTruthy();

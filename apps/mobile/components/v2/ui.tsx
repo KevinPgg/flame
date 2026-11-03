@@ -48,6 +48,7 @@ const ICONS = {
   help: "help-circle-outline",
   share: "share-outline",
   lock: "lock-closed-outline",
+  link: "link-outline",
   heart: "heart-outline",
   pencil: "pencil",
   heartFill: "heart",

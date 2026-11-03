@@ -16,17 +16,12 @@ import {
 import { useI18n } from "../../lib/i18n";
 import { useIsSupportAdmin, useAdminOrganizations } from "../../lib/hooks/useAdminOrganizations";
 import { Icon, type IconName } from "../components/Icon";
-import { OrgAvatar } from "../components/OrgAvatar";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { routes } from "../lib/routes";
 import type { ShellUser } from "../organizer/OrganizerShell";
 
 const ghost =
   "inline-flex h-10 items-center justify-center gap-2 rounded-v2-pill bg-v2-ink3 px-4 text-[13.5px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4 disabled:opacity-50";
-const input =
-  "h-11 w-full min-w-0 rounded-v2-md bg-v2-ink3 px-4 text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none focus:ring-1 focus:ring-v2-c30 read-only:text-v2-c70";
-const label = "mb-1.5 block text-[12.5px] text-v2-c70";
-const card = "flex flex-col gap-5 rounded-v2-card bg-v2-ink2 p-4 sm:p-6";
 
 /**
  * One Settings for the person (decision 2026-10-23: settings live in three places only — Clerk
@@ -35,7 +30,8 @@ const card = "flex flex-col gap-5 rounded-v2-card bg-v2-ink2 p-4 sm:p-6";
  * security), language, notifications (GET/PUT /api/me/notification-preferences), organizer
  * approvals (Flame support only), sign out, delete account.
  */
-export default function AccountView({ me }: { me: ShellUser | null }) {
+// `me` stays in the props (the page passes it) though the account card moved to Edit profile.
+export default function AccountView(_props: { me: ShellUser | null }) {
   const { t } = useI18n();
   const router = useRouter();
   return (
@@ -55,7 +51,7 @@ export default function AccountView({ me }: { me: ShellUser | null }) {
         </Link>
       </header>
       <main className="mx-auto flex max-w-[640px] flex-col gap-7 px-4 pb-24 pt-6 lg:pt-10">
-        <AccountSection me={me} />
+        <AccountSection />
         <LanguageSection />
         <NotificationsSection />
         <SupportSection />
@@ -100,38 +96,16 @@ function RowLink({ icon, title, hint, onClick, href, badge }: { icon: IconName; 
   );
 }
 
-function AccountSection({ me }: { me: ShellUser | null }) {
+/** Account: only the way into Clerk's own page (password, e-mails, security). Name and photo are
+ * edited from You → Edit profile (2026-11-02: Kevin asked to take the profile card out of Settings). */
+function AccountSection() {
   const { t } = useI18n();
   const clerk = useClerk();
+  if (typeof clerk.openUserProfile !== "function") return null;
   return (
     <Block title={t("userSettings.account")}>
-      <div className={card}>
-        <div className="flex items-center gap-4">
-          <OrgAvatar name={me?.name || "?"} logoUrl={me?.imageUrl} size={56} round />
-          <p className="text-[13px] text-v2-c50">{t("userSettings.accountHint")}</p>
-        </div>
-        <div>
-          <label htmlFor="st-name" className={label}>
-            {t("orgSettings.fullName")}
-          </label>
-          <input id="st-name" className={input} value={me?.name || t("orgSettings.empty")} readOnly />
-        </div>
-        <div>
-          <label htmlFor="st-email" className={label}>
-            {t("orgSettings.email")}
-          </label>
-          <input id="st-email" className={input} value={me?.email || t("orgSettings.empty")} readOnly />
-        </div>
-      </div>
-      <div className="mt-2.5">
-        <RowLink icon="user" title={t("you.editProfile")} href="/profile/edit" />
-      </div>
-      {typeof clerk.openUserProfile === "function" && (
-        <div className="mt-2.5">
-          {/* Clerk's own profile (password, e-mails, security, photo): the "Clerk account management" place. */}
-          <RowLink icon="shield" title={t("userSettings.manageAccount")} onClick={() => clerk.openUserProfile()} />
-        </div>
-      )}
+      {/* Clerk's own profile opens as a window over this page (no redirect). */}
+      <RowLink icon="shield" title={t("userSettings.manageAccount")} onClick={() => clerk.openUserProfile()} />
     </Block>
   );
 }

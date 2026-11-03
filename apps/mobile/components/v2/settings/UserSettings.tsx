@@ -2,7 +2,7 @@
  * One Settings for the person (decision 2026-10-23: settings live in three places only — Clerk
  * account management, this, and the organization's settings in Manage). Replaces the v1
  * Settings, Account (personal tab) and Notifications screens:
- * account (who you are + Edit profile, Clerk portal for password/e-mails) · language · notifications · scan tickets ·
+ * account (password, e-mails and devices — our own screen, AccountSecurity) · language · notifications · scan tickets ·
  * help & legal · sign out · delete account · version. Web API only (GET /api/me/profile,
  * /api/me/language, /api/me/notification-preferences, /api/upload-profile-image, /api/user/delete).
  */
@@ -26,7 +26,6 @@ import {
 import { useI18n } from "../../../lib/i18n";
 import { apiClient, apiGet } from "../../../lib/api";
 import { PUBLIC_SITE_URL } from "../../../lib/v2/organizer-api";
-import { clerkAccountPortalUrl } from "../../../lib/v2/clerk-portal";
 import { deregisterPushToken } from "../../../lib/notifications";
 import { SCANNING_SUPPORTED } from "../../../lib/scanner-platform";
 import { useOptionalAuth } from "../../../hooks/useOptionalAuth";
@@ -36,8 +35,6 @@ import { useOptionalAttendeeCity } from "../../../contexts/AttendeeCityContext";
 import { DEFAULT_CITY_ALL, DEFAULT_CITY_AUTO } from "../../../lib/v2/default-city";
 import { attendeeV2Enabled } from "../../../lib/v2/flags";
 import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, type IconName } from "../ui";
-import { useMyProfile } from "../../../hooks/v2/useMyProfile";
-import { ProfileAvatar } from "../attendee/you/ProfileAvatar";
 import { Group, SelectRow, Toggle } from "../form/ui";
 
 
@@ -112,7 +109,6 @@ export function UserSettings() {
     router.replace("/" as Href);
   };
 
-  const portal = clerkAccountPortalUrl(process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY, process.env.EXPO_PUBLIC_CLERK_ACCOUNT_URL);
   const version = Application.nativeApplicationVersion;
 
   return (
@@ -129,14 +125,10 @@ export function UserSettings() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
         {signedIn && (
           <Block title={t("userSettings.account")}>
-            <AccountCard />
-            {portal && (
-              <View className="mt-3">
-                <Group>
-                  <LinkRow icon="settings" label={t("userSettings.manageAccount")} hint={t("userSettings.manageAccountHint")} onPress={() => void open(portal)} external />
-                </Group>
-              </View>
-            )}
+            {/* Name and photo: You → Edit profile. Password, e-mails, devices: our own screen (2026-11-02, no browser). */}
+            <Group>
+              <LinkRow icon="lock" label={t("userSettings.manageAccount")} hint={t("accountSecurity.rowHint")} onPress={() => router.push("/v2/account-security" as Href)} />
+            </Group>
           </Block>
         )}
 
@@ -273,34 +265,6 @@ function LinkRow({ icon, label, hint, onPress, external }: { icon: IconName; lab
       </View>
       <Icon name="chev" size={16} color={c.c50} />
     </Pressable>
-  );
-}
-
-/** Who you're signed in as; name and photo are changed in Edit profile (2026-11-02). */
-function AccountCard() {
-  const { t } = useI18n();
-  const router = useRouter();
-  const profile = useMyProfile();
-
-  if (profile.isLoading) return <Skeleton width="100%" height={120} radius={16} />;
-  if (profile.isError || !profile.data) return <ErrorBox message={t("userSettings.loadError")} onRetry={() => void profile.refetch()} />;
-  const p = profile.data;
-  const name = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
-
-  return (
-    <View className="gap-3 rounded-v2-card bg-v2-ink2 p-4">
-      <View className="flex-row items-center gap-4">
-        <ProfileAvatar name={name} email={p.email} photo={p.photo_url} color={p.avatar_color} size={64} />
-        <View className="min-w-0 flex-1">
-          <Text numberOfLines={1} className="font-v2-ui-semibold text-[17px] text-v2-cream">{name || "—"}</Text>
-          <Text numberOfLines={1} className="font-v2-ui text-[13px] text-v2-c70">{p.email}</Text>
-          <Text className="mt-1 font-v2-ui text-[12px] text-v2-c50">{t("userSettings.accountHint")}</Text>
-        </View>
-      </View>
-      <View className="flex-row flex-wrap gap-2">
-        <Button small icon="pencil" label={t("you.editProfile")} onPress={() => router.push("/v2/profile/edit" as Href)} />
-      </View>
-    </View>
   );
 }
 

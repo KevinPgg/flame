@@ -207,13 +207,13 @@ describe("My account v2 (separate from organization settings)", () => {
     expect(screen.queryByLabelText("Language")).not.toBeInTheDocument();
   });
 
-  it("account from Clerk (read-only), Clerk's own profile, link back to my organizers, sign out", async () => {
+  it("no profile card (Edit profile lives in You); Clerk's own profile, link back to my organizers, sign out", async () => {
     const { user } = setup({ account: true });
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Password, e-mails and security/ }));
     expect(clerk.openUserProfile).toHaveBeenCalled();
-    expect(screen.getByLabelText("Full name")).toHaveValue("Ana Pérez");
-    expect(screen.getByLabelText("Email")).toHaveValue("ana@x.com");
+    expect(screen.queryByLabelText("Full name")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit profile" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "My organizers" })).toHaveAttribute("href", "/v2/organizer");
     await user.click(screen.getByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(clerk.signOut).toHaveBeenCalled());
