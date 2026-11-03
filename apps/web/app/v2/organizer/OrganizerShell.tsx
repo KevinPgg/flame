@@ -62,7 +62,7 @@ export function OrganizerShell({
   pastEvents?: OrganizerEvent[];
   activeEventId?: string;
   /** Highlighted entry of the menu (team / payouts / settings live in Manage). */
-  section?: "events" | "rsvps" | "manage" | "team" | "payouts" | "settings";
+  section?: "events" | "rsvps" | "manage" | "team" | "payouts" | "finance" | "settings";
   /** Title of the sticky top bar. */
   title: string;
   crumbs?: Crumb[];
@@ -84,7 +84,7 @@ export function OrganizerShell({
   }, [drawer]);
 
   type NavItem = { key: string; icon: IconName; label: string; href: string; active?: boolean; badge?: number };
-  const inManage = section === "manage" || section === "team" || section === "payouts" || section === "settings";
+  const inManage = section === "manage" || section === "team" || section === "payouts" || section === "finance" || section === "settings";
   const nav: NavItem[] = [
     { key: "events", icon: "cal", label: t("tabs.events"), href: routes.dashboard(organization.slug), active: section === "events" },
     { key: "rsvps", icon: "rsvp", label: t("tabs.rsvps"), href: routes.rsvps(organization.slug), badge: pending, active: section === "rsvps" },

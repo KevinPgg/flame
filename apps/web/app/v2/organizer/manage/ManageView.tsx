@@ -17,7 +17,7 @@ type PayoutSummary =
  * "Manage organization" — the prototype's hub (OW_SCREENS.manage), same as the app's ManageHub:
  * everything about running the organization that isn't a specific event. Every org-level tool
  * added later is a new row here, never a new menu entry (decision 2026-10-23). Owner / admin.
- * Finance and Communications from the prototype don't exist yet (fase 4) and aren't shown.
+ * Finance added 2026-11-02; Communications from the prototype comes in a later delivery.
  */
 export default function ManageView({
   organization,
@@ -65,6 +65,7 @@ export default function ManageView({
   const rows: Array<{ key: string; icon: IconName; title: string; sub: string | null; href: string }> = [
     { key: "team", icon: "users", title: t("manage.team"), sub: membersLine, href: routes.team(organization.slug) },
     { key: "payouts", icon: "bank", title: t("manage.payouts"), sub: payoutLine, href: routes.payouts(organization.slug) },
+    { key: "finance", icon: "chart", title: t("manage.finance"), sub: t("manage.financeSub"), href: routes.finance(organization.slug) },
     { key: "settings", icon: "settings", title: t("manage.settings"), sub: t("manage.settingsSub"), href: routes.settings(organization.slug) },
   ];
 

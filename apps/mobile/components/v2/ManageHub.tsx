@@ -1,8 +1,8 @@
 /**
  * "Manage organization" — the prototype's hub (OW_SCREENS.manage): everything about running the
  * organization that isn't a specific event. Every org-level tool added later is a new row here,
- * never a new tab. Owner/admin only. Rows open their v1 screen until 1b.5. Finance and
- * Communications from the prototype don't exist yet (fase 4) and aren't shown.
+ * never a new tab. Owner/admin only. Finance added 2026-11-02; Communications from the prototype
+ * comes in a later delivery.
  */
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Redirect, useRouter, type Href } from "expo-router";
@@ -57,6 +57,7 @@ export function ManageHub({ organization }: { organization: MyOrganization }) {
   const rows: Array<{ key: string; icon: IconName; title: string; sub: string | null; href: string }> = [
     { key: "team", icon: "users", title: t("manage.team"), sub: membersLine, href: routes.team(organization) },
     { key: "payouts", icon: "bank", title: t("manage.payouts"), sub: payoutLine, href: routes.payouts(organization) },
+    { key: "finance", icon: "chart", title: t("manage.finance"), sub: t("manage.financeSub"), href: routes.finance(organization) },
     { key: "settings", icon: "settings", title: t("manage.settings"), sub: t("manage.settingsSub"), href: routes.settings(organization) },
   ];
 

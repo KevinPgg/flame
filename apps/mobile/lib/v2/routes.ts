@@ -29,6 +29,7 @@ export const routes = {
   /** Manage → Team, Payouts, Organization settings (fase 1b.5). */
   team: (org: OrgRef) => `/v2/organizer/team?org=${encodeURIComponent(org.slug)}`,
   payouts: (org: OrgRef) => `/v2/organizer/payouts?org=${encodeURIComponent(org.slug)}`,
+  finance: (org: OrgRef) => `/v2/organizer/finance?org=${encodeURIComponent(org.slug)}`,
   settings: (org: OrgRef) => `/v2/organizer/settings?org=${encodeURIComponent(org.slug)}`,
   // outside the organizer
   myOrganizers: () => "/profile",

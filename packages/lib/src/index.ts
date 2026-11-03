@@ -282,6 +282,8 @@ export {
   bankOrderNetCents,
   PROMO_DISCOUNT_OPTIONS,
 } from "./organizer/event-detail";
+export { organizationFinance } from "./organizer/finance";
+export type { FinanceEvent, FinanceRow, OrganizationFinance } from "./organizer/finance";
 export type {
   PurchaseRow,
   TierRow,
@@ -534,3 +536,18 @@ export { normalizeSearch, searchExplore, featuredFirst, organizerCover, latestFl
 export type { ArtistResult } from "./utils";
 export type { HoldCountdown, MyEventState, Wallet, WalletEvent, WalletRequest, WalletRequestState, WalletWhen, WalletEventInfo, TicketPrice, TicketQr } from "./utils";
 export type { FeedDay, FeedEventTime, PriceSummary, LowestPriceInfo, PriceableTier } from "./utils";
+
+// ============================================================================
+// PROFILE (Edit profile, 2026-11-02)
+// ============================================================================
+export {
+  PROFILE_COLORS,
+  PROFILE_NAME_MAX,
+  isDefaultProfileImage,
+  profilePhoto,
+  profileInitials,
+  profileColor,
+  validateProfile,
+  profileFormFrom,
+} from "./utils/profile";
+export type { ProfileForm, ProfileUpdate, ProfileErrorKey } from "./utils/profile";

@@ -35,6 +35,8 @@ it("rows with live numbers; each opens its screen", async () => {
   expect(mockPush).toHaveBeenCalledWith("/v2/organizer/team?org=kora");
   await fireEvent.press(screen.getByLabelText("Settings"));
   expect(mockPush).toHaveBeenCalledWith("/v2/organizer/settings?org=kora");
+  await fireEvent.press(screen.getByLabelText("Finance"));
+  expect(mockPush).toHaveBeenCalledWith("/v2/organizer/finance?org=kora");
 });
 
 it("Stripe not connected", async () => {

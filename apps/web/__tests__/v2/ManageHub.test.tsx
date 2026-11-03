@@ -66,6 +66,7 @@ describe("Manage hub v2", () => {
     expect(payouts).toHaveAttribute("href", "/v2/organizer/payouts?org=kora");
     expect(await within(payouts).findByText("$1,250.50 available")).toBeInTheDocument();
     expect(within(main).getByRole("link", { name: /Settings/ })).toHaveAttribute("href", "/v2/organizer/settings?org=kora");
+    expect(within(main).getByRole("link", { name: /Finance/ })).toHaveAttribute("href", "/v2/organizer/finance?org=kora");
   });
 
   it("Stripe not connected → asks to connect", async () => {

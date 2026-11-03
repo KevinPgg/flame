@@ -21,6 +21,7 @@ export const routes = {
   manage: (slug: string) => `/v2/organizer/manage?${q(slug)}`,
   team: (slug: string) => `/v2/organizer/team?${q(slug)}`,
   payouts: (slug: string) => `/v2/organizer/payouts?${q(slug)}`,
+  finance: (slug: string) => `/v2/organizer/finance?${q(slug)}`,
   settings: (slug: string) => `/v2/organizer/settings?${q(slug)}`,
   /** The person's one Settings (account, language, notifications…); not tied to an organization. */
   account: () => "/v2/account",
