@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
 import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cityCounts, feedDayTitle, flameV2Colors as c, groupEventsByDay, type FeedDay } from "@project-flame/lib";
+import { cityCounts, feedDayTitle, flameV2Colors as c, groupEventsByDay, sameCity, type FeedDay } from "@project-flame/lib";
 import { useI18n } from "../../../../lib/i18n";
 import { useAppEvents } from "../../../../hooks/useAppEvents";
 import { useAttendeeCity } from "../../../../contexts/AttendeeCityContext";
@@ -42,7 +42,7 @@ export function HomeFeed() {
     applyDefault(resolveDefaultCity(defaultPref, cities.map((x) => x.city)));
   }, [touched, defaultPref, cities, events.length, applyDefault]);
 
-  const shown = useMemo(() => (city.city ? events.filter((e) => e.city === city.city) : events), [events, city.city]);
+  const shown = useMemo(() => (city.city ? events.filter((e) => sameCity(e.city, city.city!)) : events), [events, city.city]);
   const items = useMemo<Item[]>(() => {
     const title = (d: FeedDay<FeedEvent>) =>
       d.when === "now" ? t("home.now") : d.when === "today" ? t("home.today") : d.when === "tomorrow" ? t("home.tomorrow") : capitalize(feedDayTitle(d, locale));

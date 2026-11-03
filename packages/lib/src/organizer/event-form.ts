@@ -9,6 +9,7 @@
  * so the organizer sees the problem next to the field instead of a generic 400.
  */
 import { localToUtc, utcToLocal } from "../utils/timezone";
+import { canonicalCity } from "../utils/places";
 import { normalizeOptionalTicketTierSecretCode } from "../validators/ticket-tier-secret-code";
 import { MAX_TICKET_TIERS_PER_EVENT, TIER_DESCRIPTION_MAX_LENGTH } from "../constants/event-limits";
 import type { FormField, FormFieldType } from "../types/registration-form";
@@ -100,6 +101,9 @@ export interface EventFormState {
   /** Once the organizer edits the link by hand we stop deriving it from the name. */
   slugEdited: boolean;
   venue: string;
+  /** Venue picked from Google Places (2026-11-02): its address and place id; "" = typed by hand. */
+  venueAddress?: string;
+  venuePlaceId?: string;
   city: string;
   startsAt: string;
   endsAt: string;
@@ -511,6 +515,8 @@ export interface CreateEventPayload {
     slug: string;
     city: string;
     venue: string;
+    venue_address?: string;
+    venue_place_id?: string;
     starts_at: string;
     ends_at: string;
     description?: string;
@@ -580,8 +586,9 @@ export function buildCreateEventPayload(
       organization_id: organizationId,
       name: form.name.trim(),
       slug: form.slug,
-      city: form.city.trim(),
+      city: canonicalCity(form.city),
       venue: form.venue.trim(),
+      ...(form.venuePlaceId?.trim() ? { venue_place_id: form.venuePlaceId.trim(), venue_address: (form.venueAddress ?? "").trim() } : {}),
       starts_at: toUtc(form.startsAt, form.timezone),
       ends_at: endsAt,
       ...(description ? { description } : {}),
@@ -631,6 +638,9 @@ export interface EditEventFormState {
   startsAt: string;
   endsAt: string;
   venue: string;
+  /** Google Places pick (2026-11-02); optional so older callers keep working. */
+  venueAddress?: string;
+  venuePlaceId?: string;
   city: string;
   description: string;
   /** Fase 4.3. Optional so older callers keep working; undefined = line-up not edited here. */
@@ -642,6 +652,8 @@ export interface EditableEvent {
   starts_at: string;
   ends_at: string;
   venue: string | null;
+  venue_address?: string | null;
+  venue_place_id?: string | null;
   city: string | null;
   description: string | null;
   timezone?: string | null;
@@ -658,6 +670,8 @@ export function editFormFromEvent(event: EditableEvent): EditEventFormState {
     startsAt: utcToLocal(event.starts_at, tz),
     endsAt: utcToLocal(event.ends_at, tz),
     venue: event.venue ?? "",
+    venueAddress: event.venue_address ?? "",
+    venuePlaceId: event.venue_place_id ?? "",
     city: event.city ?? "",
     description: event.description ?? "",
     lineup: draftsFromLineup(event.lineup),
@@ -733,6 +747,9 @@ export interface UpdateEventPayload {
   starts_at?: string;
   ends_at?: string;
   venue?: string;
+  /** Sent together with the venue when the place changed; null clears a previous pick. */
+  venue_address?: string | null;
+  venue_place_id?: string | null;
   city?: string;
   description?: string;
   image_url?: string;
@@ -759,8 +776,15 @@ export function buildUpdateEventPayload(
   }
   const venue = form.venue.trim();
   if (venue !== (event.venue ?? "")) payload.venue = venue;
-  const city = form.city.trim();
-  if (city !== (event.city ?? "")) payload.city = city;
+  if (form.venuePlaceId !== undefined) {
+    const placeId = form.venuePlaceId.trim();
+    if (placeId !== (event.venue_place_id ?? "")) {
+      payload.venue_place_id = placeId || null;
+      payload.venue_address = placeId ? (form.venueAddress ?? "").trim() : null;
+    }
+  }
+  // Only when the person changed it (an old "guayaquil" isn't rewritten just by opening the form).
+  if (form.city.trim() !== (event.city ?? "").trim()) payload.city = canonicalCity(form.city);
   const description = form.description.trim();
   if (description !== (event.description ?? "").trim()) payload.description = description;
   if (imageUrl !== undefined) payload.image_url = imageUrl;

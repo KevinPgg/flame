@@ -31,6 +31,8 @@ interface Event {
   starts_at: string;
   ends_at: string;
   venue: string;
+  venue_address?: string | null;
+  venue_place_id?: string | null;
   city: string;
   image_url: string;
   organization_id: string;

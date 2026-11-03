@@ -551,3 +551,20 @@ export {
   profileFormFrom,
 } from "./utils/profile";
 export type { ProfileForm, ProfileUpdate, ProfileErrorKey } from "./utils/profile";
+
+// ============================================================================
+// PLACES (countries & cities catalog, venue on Maps — 2026-11-02)
+// ============================================================================
+export {
+  COUNTRIES,
+  findCatalogCity,
+  canonicalCity,
+  cityDefaults,
+  groupCitiesByCountry,
+  sameCity,
+  venueMapsUrl,
+  newPlacesSessionToken,
+  VENUE_ADDRESS_MAX,
+  VENUE_PLACE_ID_MAX,
+} from "./utils/places";
+export type { CountryCode, CatalogCity, CatalogCountry, CityGroup } from "./utils/places";

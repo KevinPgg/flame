@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   cityCounts,
+  groupCitiesByCountry,
+  sameCity,
   DEFAULT_CATALOG_CITY,
   feedDayTitle,
   feedWhen,
@@ -83,10 +85,12 @@ function EventCard({ event, onShare }: { event: HomeEvent; onShare: (e: HomeEven
  * a computer: the cards sit in a grid (2–3 per row) instead of one long column.
  */
 export default function HomeView({ events, failed }: { events: HomeEvent[]; failed: boolean }) {
-  const { t, locale } = useI18n();
+  const { t, locale, language } = useI18n();
   const router = useRouter();
   const cities = useMemo(() => cityCounts(events), [events]);
-  const [city, setCity] = useState<string | null>(() => (cities.some((c) => c.city === DEFAULT_CATALOG_CITY) ? DEFAULT_CATALOG_CITY : null));
+  // 2026-11-02: grouped by country (catalog), spellings merged ("Lisbon" = "Lisboa").
+  const groups = useMemo(() => groupCitiesByCountry(cities), [cities]);
+  const [city, setCity] = useState<string | null>(() => (cities.some((c) => sameCity(c.city, DEFAULT_CATALOG_CITY)) ? DEFAULT_CATALOG_CITY : null));
   const [picking, setPicking] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -96,8 +100,35 @@ export default function HomeView({ events, failed }: { events: HomeEvent[]; fail
     return () => clearTimeout(id);
   }, [toast]);
 
-  const shown = useMemo(() => (city ? events.filter((e) => e.city === city) : events), [events, city]);
+  const shown = useMemo(() => (city ? events.filter((e) => sameCity(e.city, city)) : events), [events, city]);
   const days = useMemo(() => groupEventsByDay(shown), [shown]);
+
+  const cityOption = (c: { city: string | null; count: number }) => {
+    const on = c.city === city;
+    const label = c.city ?? t("common.allCities");
+    return (
+      <button
+        key={c.city ?? "__all"}
+        type="button"
+        role="radio"
+        aria-checked={on}
+        aria-label={`${label}, ${t("home.events", { count: c.count })}`}
+        onClick={() => {
+          setCity(c.city);
+          setPicking(false);
+        }}
+        className="flex w-full items-center gap-3 rounded-[10px] px-1 py-2.5 text-left hover:bg-v2-ink3"
+      >
+        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-[1.5px] ${on ? "border-v2-cream bg-v2-cream text-v2-ink" : "border-v2-c30"}`}>
+          {on && <Icon name="check" size={12} strokeWidth={3.4} />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <b className="block text-[15px] font-v2-ui-semibold">{label}</b>
+          <small className="text-[12.5px] text-v2-c50">{t("home.events", { count: c.count })}</small>
+        </span>
+      </button>
+    );
+  };
   const dayTitle = (d: FeedDay<HomeEvent>) =>
     d.when === "now" ? t("home.now") : d.when === "today" ? t("home.today") : d.when === "tomorrow" ? t("home.tomorrow") : capitalize(feedDayTitle(d, locale));
 
@@ -170,32 +201,17 @@ export default function HomeView({ events, failed }: { events: HomeEvent[]; fail
       <Modal open={picking} title={t("home.cityTitle")} onClose={() => setPicking(false)} closeOnBackdrop>
         <p className="-mt-1 mb-3 text-[13.5px] text-v2-c70">{t("home.cityLead")}</p>
         <div role="radiogroup" aria-label={t("home.cityTitle")} className="flex flex-col">
-          {[{ city: null as string | null, count: events.length }, ...cities].map((c) => {
-            const on = c.city === city;
-            const label = c.city ?? t("common.allCities");
-            return (
-              <button
-                key={c.city ?? "__all"}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                aria-label={`${label}, ${t("home.events", { count: c.count })}`}
-                onClick={() => {
-                  setCity(c.city);
-                  setPicking(false);
-                }}
-                className="flex items-center gap-3 rounded-[10px] px-1 py-2.5 text-left hover:bg-v2-ink3"
-              >
-                <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-[1.5px] ${on ? "border-v2-cream bg-v2-cream text-v2-ink" : "border-v2-c30"}`}>
-                  {on && <Icon name="check" size={12} strokeWidth={3.4} />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[15px] font-v2-ui-semibold">{label}</b>
-                  <small className="text-[12.5px] text-v2-c50">{t("home.events", { count: c.count })}</small>
-                </span>
-              </button>
-            );
-          })}
+          {cityOption({ city: null, count: events.length })}
+          {groups.map((g) => (
+            <div key={g.country?.code ?? "other"} className="mt-2">
+              <div className="flex items-center gap-2 px-1 pb-1 pt-2 text-[12.5px] font-v2-ui-semibold uppercase tracking-[0.06em] text-v2-c50">
+                <span aria-hidden className="text-[16px] normal-case">{g.country?.flag ?? "🌍"}</span>
+                <span className="flex-1">{g.country ? g.country.name[language] : t("home.otherCities")}</span>
+                <span className="normal-case tracking-normal">{t("home.events", { count: g.count })}</span>
+              </div>
+              <div className="ml-[17px] border-l-2 border-[#1c1c1c] pl-2">{g.cities.map((c) => cityOption(c))}</div>
+            </div>
+          ))}
         </div>
       </Modal>
 

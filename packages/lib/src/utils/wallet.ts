@@ -10,6 +10,7 @@
  * - The courtesy (promotional) QR keeps v1's content exactly, including its `ticketNumber`
  *   (position among the same event + tier, in the order the rows arrive).
  */
+import { venueMapsUrl } from "./places";
 import type { QRCodeData } from "../types";
 import type { UserTicket } from "../types/ticket";
 import { getOrderDisplayCents } from "../pricing/calculations";
@@ -216,7 +217,9 @@ export function walletOrganizer(e: WalletEventInfo | null | undefined): string |
 }
 
 /** Maps link for the venue (Directions). */
-export function directionsUrl(e: { venue?: string | null; city?: string | null }): string | null {
+export function directionsUrl(e: { venue?: string | null; city?: string | null; venue_address?: string | null; venue_place_id?: string | null }): string | null {
+  // 2026-11-02: a venue picked from Google Places opens that exact place.
+  if (e.venue_place_id) return venueMapsUrl(e);
   const q = [e.venue, e.city].filter(Boolean).join(", ");
   return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null;
 }

@@ -16,7 +16,7 @@ import { fetchCompletedOrderBuyers, inBatches } from "../../lib/utils/event-reci
 import { sendPushToEventTicketHolders } from "../../lib/push-notifications";
 import { notifyFollowersOfNewEvent } from "../../lib/follower-notifications";
 import { requireEventAccess } from "@/app/lib/utils/event-access";
-import { canCreateEvents, canManageAccessCodes, sanitizeLineup, type OrgMemberRole } from "@project-flame/lib";
+import { canCreateEvents, canManageAccessCodes, canonicalCity, sanitizeLineup, type OrgMemberRole } from "@project-flame/lib";
 import {
   ensureUniquePublishedSlug,
   ExhaustedSlugError,
@@ -42,6 +42,9 @@ const createEventSchema = z.object({
       ),
     city: z.string().min(1, "City is required").max(100),
     venue: z.string().min(1, "Venue is required").max(200),
+    // 2026-11-02: venue picked from Google Places (address + place id); optional.
+    venue_address: z.string().max(300).optional(),
+    venue_place_id: z.string().max(300).optional(),
     starts_at: z.string().datetime(), // REQUIRED - no .optional()
     ends_at: z.string().datetime(), // REQUIRED - no .optional()
     description: z.string().optional(),
@@ -624,8 +627,12 @@ export async function POST(req: NextRequest) {
         organization_id: validatedData.event.organization_id,
         name: validatedData.event.name,
         slug: finalSlug,
-        city: validatedData.event.city,
+        city: canonicalCity(validatedData.event.city), // catalog spelling ("gye" → "Guayaquil")
         venue: validatedData.event.venue,
+        ...(validatedData.event.venue_place_id && {
+          venue_place_id: validatedData.event.venue_place_id,
+          venue_address: validatedData.event.venue_address || null,
+        }),
         starts_at: validatedData.event.starts_at,
         ends_at: validatedData.event.ends_at,
         description: validatedData.event.description || null,
@@ -848,6 +855,8 @@ const updateEventSchema = z.object({
   starts_at: z.string().datetime().optional(),
   ends_at: z.string().datetime().optional(),
   venue: z.string().min(1).max(200).optional(),
+  venue_address: z.string().max(300).nullable().optional(),
+  venue_place_id: z.string().max(300).nullable().optional(),
   city: z.string().min(1).max(100).optional(),
   description: z.string().max(520).optional().or(z.literal("")), // Short description; empty string to clear (matches CreateEventForm maxLength)
   image_url: z.string().url().optional().or(z.literal("")), // Supabase Storage URL or empty string to remove
@@ -978,7 +987,11 @@ export async function PATCH(req: NextRequest) {
     if (validatedData.starts_at) updateData.starts_at = validatedData.starts_at;
     if (validatedData.ends_at) updateData.ends_at = validatedData.ends_at;
     if (validatedData.venue) updateData.venue = validatedData.venue;
-    if (validatedData.city) updateData.city = validatedData.city;
+    if (validatedData.venue_place_id !== undefined) {
+      updateData.venue_place_id = validatedData.venue_place_id || null;
+      updateData.venue_address = validatedData.venue_place_id ? validatedData.venue_address || null : null;
+    }
+    if (validatedData.city) updateData.city = canonicalCity(validatedData.city);
     if (validatedData.description !== undefined) {
       updateData.description = validatedData.description || null;
     }

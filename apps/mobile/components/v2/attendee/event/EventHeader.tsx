@@ -23,11 +23,14 @@ export type EventHeaderData = {
   ends_at: string;
   timezone?: string | null;
   venue?: string | null;
+  /** Google Places pick (2026-11-02): address under the venue; Directions opens that exact place. */
+  venue_address?: string | null;
+  venue_place_id?: string | null;
   city?: string | null;
   requires_rsvp?: boolean | null;
 };
 
-function Row({ icon, label, value, action, tone }: { icon: IconName; label?: string; value: string; action?: { label: string; onPress: () => void }; tone?: "flame" }) {
+function Row({ icon, label, value, sub, action, tone }: { icon: IconName; label?: string; value: string; sub?: string | null; action?: { label: string; onPress: () => void }; tone?: "flame" }) {
   return (
     <View className="flex-row items-center gap-3">
       <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tone === "flame" ? c.flame : c.ink3 }} className="items-center justify-center">
@@ -36,6 +39,7 @@ function Row({ icon, label, value, action, tone }: { icon: IconName; label?: str
       <View className="min-w-0 flex-1">
         {label ? <Text className="font-v2-ui text-[12px] text-v2-c50">{label}</Text> : null}
         <Text className="font-v2-ui-semibold text-[14.5px] text-v2-cream">{value}</Text>
+        {sub ? <Text className="font-v2-ui text-[12.5px] text-v2-c50">{sub}</Text> : null}
       </View>
       {action ? (
         <Pressable onPress={action.onPress} accessibilityRole="link" className="rounded-v2-pill bg-v2-ink3 px-3 py-1.5 active:bg-v2-ink4">
@@ -115,6 +119,7 @@ export function EventHeader({
             icon="pin"
             label={t("event.venue")}
             value={where}
+            sub={event.venue_address}
             action={maps ? { label: t("ticket.directions"), onPress: () => void Linking.openURL(maps).catch(() => {}) } : undefined}
           />
         ) : null}

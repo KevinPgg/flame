@@ -33,6 +33,7 @@ import { Button, ConfirmDialog, ErrorBox, Icon, Skeleton } from "../ui";
 import { FormScreen } from "../form/FormScreen";
 import { FlyerPicker, uploadFlyer, type FlyerFile } from "../form/FlyerPicker";
 import { CityField } from "../form/CityField";
+import { VenueField } from "../form/VenueField";
 import { DateTimeRow, FieldError, Group, Hint, Input, Row, Section } from "../form/ui";
 import { LineupFields } from "../form/LineupFields";
 
@@ -195,15 +196,31 @@ export function EditEvent({ eventId, organization }: { eventId: string; organiza
 
         <Section title={t("eventForm.where")}>
           <Group>
-            <Row label={t("eventForm.venue")}>
-              <Input bare value={form.venue} onChangeText={(venue) => update({ venue })} placeholder={t("eventForm.venuePlaceholder")} invalid={inv("venue")} editable={!saving} accessibilityLabel={t("eventForm.venue")} />
-            </Row>
+            {/* City first (2026-11-02): it narrows the venue suggestions to its country. */}
             <Row label={t("eventForm.city")}>
-              <CityField value={form.city} onChange={(city) => update({ city })} placeholder={t("eventForm.cityPlaceholder")} invalid={inv("city")} editable={!saving} accessibilityLabel={t("eventForm.city")} />
+              <CityField
+                value={form.city}
+                onChange={(city) => update({ city })}
+                placeholder={t("eventForm.cityPick")}
+                invalid={inv("city")}
+                editable={!saving}
+                accessibilityLabel={t("eventForm.city")}
+              />
+            </Row>
+            <Row label={t("eventForm.venue")}>
+              <VenueField
+                value={{ venue: form.venue, venueAddress: form.venueAddress ?? "", venuePlaceId: form.venuePlaceId ?? "" }}
+                city={form.city}
+                onChange={(v) => update(v)}
+                placeholder={t("eventForm.venuePlaceholder")}
+                invalid={inv("venue")}
+                editable={!saving}
+                accessibilityLabel={t("eventForm.venue")}
+              />
             </Row>
           </Group>
-          <FieldError message={errorText("venue")} />
           <FieldError message={errorText("city")} />
+          <FieldError message={errorText("venue")} />
         </Section>
 
         <Section title={t("eventForm.about")} aside={`${form.description.length}/${EVENT_DESCRIPTION_MAX}`}>

@@ -10,6 +10,7 @@ import {
   SUPPORTED_CURRENCIES,
   SUPPORTED_TIMEZONES,
   buildCreateEventPayload,
+  cityDefaults,
   emptyEventForm,
   firstErrorPath,
   getNowInTimezone,
@@ -23,7 +24,8 @@ import {
   type TierDraft,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { CityAutocompleteField } from "../../../components/organizer/CityAutocompleteField";
+import { CityField } from "../event-form/CityField";
+import { VenueField } from "../event-form/VenueField";
 import { Icon } from "../../components/Icon";
 import { apiErrorMessage } from "../../lib/api-error";
 import { routes } from "../../lib/routes";
@@ -257,29 +259,34 @@ export default function CreateEvent({
 
           <Section title={t("eventForm.where")}>
             <Group>
-              <Row label={t("eventForm.venue")} htmlFor={fieldId("venue")}>
-                <input
-                  id={fieldId("venue")}
-                  value={form.venue}
-                  onChange={(e) => update({ venue: e.target.value })}
-                  placeholder={t("eventForm.venuePlaceholder")}
-                  aria-invalid={inv("venue")}
-                  className={`${fieldCls} h-10 bg-v2-ink3`}
-                />
-              </Row>
+              {/* City first (2026-11-02): it narrows the venue suggestions to its country. */}
               <Row label={t("eventForm.city")} htmlFor={fieldId("city")}>
-                <CityAutocompleteField
+                <CityField
                   id={fieldId("city")}
                   value={form.city}
-                  onChange={(city) => update({ city })}
-                  placeholder={t("eventForm.cityPlaceholder")}
                   disabled={busy}
-                  className={`${fieldCls} h-10 bg-v2-ink3`}
+                  invalid={inv("city")}
+                  onChange={(city) => {
+                    // A city from the list suggests its time zone and currency (both stay editable below).
+                    const d = cityDefaults(city);
+                    update(d ? { city, timezone: d.timezone, currency: d.currency } : { city });
+                  }}
+                />
+              </Row>
+              <Row label={t("eventForm.venue")} htmlFor={fieldId("venue")}>
+                <VenueField
+                  id={fieldId("venue")}
+                  value={{ venue: form.venue, venueAddress: form.venueAddress ?? "", venuePlaceId: form.venuePlaceId ?? "" }}
+                  city={form.city}
+                  onChange={(v) => update(v)}
+                  placeholder={t("eventForm.venuePlaceholder")}
+                  disabled={busy}
+                  invalid={inv("venue")}
                 />
               </Row>
             </Group>
-            <FieldError path="venue" message={errorText("venue")} />
             <FieldError path="city" message={errorText("city")} />
+            <FieldError path="venue" message={errorText("venue")} />
           </Section>
 
           <Section title={t("eventForm.about")} aside={`${form.description.length}/${EVENT_DESCRIPTION_MAX}`}>

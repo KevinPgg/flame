@@ -245,7 +245,8 @@ describe("create event", () => {
     await fireEvent.press(screen.getByLabelText(/^Starts:/));
     await fireEvent.press(screen.getByText("Done"));
     await fireEvent.changeText(screen.getByLabelText("Venue"), "Luna Rooftop");
-    await fireEvent.changeText(screen.getByLabelText("City"), "Guayaquil");
+    await fireEvent.press(screen.getByLabelText("City: Pick the city"));
+    await fireEvent.press(screen.getByRole("radio", { name: "Guayaquil" }));
     await fireEvent.changeText(screen.getByLabelText("Tier name"), "General");
     await fireEvent.changeText(screen.getByLabelText("Price"), "12,50");
     await fireEvent.changeText(screen.getByLabelText("Spots"), "80");
@@ -270,7 +271,8 @@ describe("create event", () => {
     await fireEvent.press(screen.getByLabelText(/^Starts:/));
     await fireEvent.press(screen.getByText("Done"));
     await fireEvent.changeText(screen.getByLabelText("Venue"), "Luna");
-    await fireEvent.changeText(screen.getByLabelText("City"), "Guayaquil");
+    await fireEvent.press(screen.getByLabelText("City: Pick the city"));
+    await fireEvent.press(screen.getByRole("radio", { name: "Guayaquil" }));
     await fireEvent.changeText(screen.getByLabelText("Tier name"), "General");
     await fireEvent.changeText(screen.getByLabelText("Price"), "10");
     await fireEvent.changeText(screen.getByLabelText("Spots"), "50");

@@ -18,7 +18,8 @@ import {
 } from "@project-flame/lib";
 import type { Event as OrganizerEvent } from "../../../../../lib/hooks/useOrganizerData";
 import { useI18n } from "../../../../../lib/i18n";
-import { CityAutocompleteField } from "../../../../../components/organizer/CityAutocompleteField";
+import { CityField } from "../../../event-form/CityField";
+import { VenueField } from "../../../event-form/VenueField";
 import { Icon } from "../../../../components/Icon";
 import { ConfirmDialog } from "../../../../components/ConfirmDialog";
 import { ErrorBox } from "../../../../components/ErrorBox";
@@ -250,29 +251,23 @@ export default function EditEvent({
 
         <Section title={t("eventForm.where")}>
           <Group>
-            <Row label={t("eventForm.venue")} htmlFor={fieldId("venue")}>
-              <input
-                id={fieldId("venue")}
-                value={form.venue}
-                onChange={(e) => update({ venue: e.target.value })}
-                placeholder={t("eventForm.venuePlaceholder")}
-                aria-invalid={inv("venue")}
-                className={`${fieldCls} h-10 bg-v2-ink3`}
-              />
-            </Row>
             <Row label={t("eventForm.city")} htmlFor={fieldId("city")}>
-              <CityAutocompleteField
-                id={fieldId("city")}
-                value={form.city}
-                onChange={(city) => update({ city })}
-                placeholder={t("eventForm.cityPlaceholder")}
+              <CityField id={fieldId("city")} value={form.city} onChange={(city) => update({ city })} disabled={saving} invalid={inv("city")} />
+            </Row>
+            <Row label={t("eventForm.venue")} htmlFor={fieldId("venue")}>
+              <VenueField
+                id={fieldId("venue")}
+                value={{ venue: form.venue, venueAddress: form.venueAddress ?? "", venuePlaceId: form.venuePlaceId ?? "" }}
+                city={form.city}
+                onChange={(v) => update(v)}
+                placeholder={t("eventForm.venuePlaceholder")}
                 disabled={saving}
-                className={`${fieldCls} h-10 bg-v2-ink3`}
+                invalid={inv("venue")}
               />
             </Row>
           </Group>
-          <FieldError path="venue" message={errorText("venue")} />
           <FieldError path="city" message={errorText("city")} />
+          <FieldError path="venue" message={errorText("venue")} />
         </Section>
 
         <Section title={t("eventForm.about")} aside={`${form.description.length}/${EVENT_DESCRIPTION_MAX}`}>

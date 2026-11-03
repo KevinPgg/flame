@@ -24,6 +24,9 @@ export type EventHeaderData = {
   ends_at: string;
   timezone: string | null;
   venue: string | null;
+  /** Google Places pick (2026-11-02): street address and place id → "Directions" opens that place. */
+  venue_address?: string | null;
+  venue_place_id?: string | null;
   city: string | null;
   requires_rsvp: boolean | null;
   organizations: { name: string; slug: string; logo_url?: string | null };
@@ -88,6 +91,7 @@ export function EventHeader({ event }: { event: EventHeaderData }) {
               <div className="min-w-0 flex-1">
                 <small className="block text-[12px] text-v2-c50">{t("event.venue")}</small>
                 <b className="block text-[14.5px] font-v2-ui-semibold">{where}</b>
+                {event.venue_address ? <small className="block text-[12.5px] text-v2-c50">{event.venue_address}</small> : null}
               </div>
               {maps && (
                 <a href={maps} target="_blank" rel="noreferrer" className="shrink-0 self-center rounded-v2-pill bg-v2-ink3 px-3 py-1.5 text-[12.5px] font-v2-ui-semibold hover:bg-v2-ink4">
