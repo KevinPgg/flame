@@ -7,7 +7,7 @@
  * Data: the existing useUserProfile, useUserOrgs and useUserTickets.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View, Linking } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +28,8 @@ import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
 import { BecomeOrganizerSheet } from "../../../navigation/BecomeOrganizerSheet";
 import { OrgApprovalsEntry } from "../../support/OrgApprovals";
 import { Button, Icon, OrgAvatar, Skeleton, StatusTag } from "../../ui";
+import { useMyProfile } from "../../../../hooks/v2/useMyProfile";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -98,6 +100,7 @@ export function You() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { profile, isLoading: profileLoading, refetch: refetchProfile } = useUserProfile();
+  const me = useMyProfile();
   const orgsQuery = useUserOrgs();
   const tickets = useUserTickets();
   const { setSelectedOrgId } = useMemberRoleContext();
@@ -114,7 +117,7 @@ export function You() {
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchProfile(), orgsQuery.refetch(), tickets.refetch(), saved.refetch(), following.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
+      await Promise.all([refetchProfile(), me.refetch(), orgsQuery.refetch(), tickets.refetch(), saved.refetch(), following.refetch(), queryClient.refetchQueries({ queryKey: ["admin"], type: "active" })]);
     } finally {
       setRefreshing(false);
     }
@@ -135,18 +138,22 @@ export function You() {
         {profileLoading && !profile ? (
           <Skeleton width={84} height={84} radius={42} />
         ) : (
-          <View style={{ width: 84, height: 84, borderRadius: 42, overflow: "hidden", backgroundColor: c.ink3 }} className="items-center justify-center">
-            {profile?.profile_image_url ? (
-              <Image source={{ uri: profile.profile_image_url }} style={{ width: 84, height: 84 }} contentFit="cover" />
-            ) : (
-              <Text className="font-v2-display-bold text-[28px] text-v2-cream">{(name[0] ?? profile?.email?.[0] ?? "?").toUpperCase()}</Text>
-            )}
-          </View>
+          <ProfileAvatar
+            name={name}
+            email={profile?.email}
+            photo={me.data ? me.data.photo_url : (profile?.profile_image_url ?? null)}
+            color={me.data?.avatar_color ?? null}
+          />
         )}
         <Text accessibilityRole="header" className="mt-3 text-center font-v2-display-bold text-[28px] tracking-[-0.8px] text-v2-cream">
           {name || profile?.email || " "}
         </Text>
         {name && profile?.email ? <Text className="font-v2-ui text-[14px] text-v2-c50">{profile.email}</Text> : null}
+        {me.data?.instagram ? (
+          <Pressable onPress={() => void Linking.openURL(`https://instagram.com/${encodeURIComponent(me.data!.instagram!)}`)} accessibilityRole="link" hitSlop={6}>
+            <Text className="mt-1 font-v2-ui text-[14px] text-v2-c70">@{me.data.instagram}</Text>
+          </Pressable>
+        ) : null}
         <View className="mt-5 flex-row gap-3">
           <View accessibilityLabel={`${t("follow.title")}: ${following.orgs.length}`} className="min-w-[100px] rounded-[14px] bg-[#121212] px-4 py-2.5">
             <Text className="font-v2-display-bold text-[20px] text-v2-cream">{following.orgs.length}</Text>
@@ -162,7 +169,7 @@ export function You() {
           </View>
         </View>
         <View className="mt-4 flex-row gap-2">
-          <Button small label={t("you.editProfile")} onPress={() => router.push("/settings" as Href)} />
+          <Button small label={t("you.editProfile")} onPress={() => router.push("/v2/profile/edit" as Href)} />
           <Button small icon="settings" label={t("userSettings.title")} onPress={() => router.push("/settings" as Href)} />
         </View>
       </View>

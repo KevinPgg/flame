@@ -49,6 +49,7 @@ beforeEach(() => {
   );
   mockApiGet.mockReset().mockImplementation(async (url: string) => {
     if (url === "/api/user/profile") return { id: "u1", email: "ana@x.com", first_name: "Ana", last_name: "Ruiz", profile_image_url: null };
+    if (url === "/api/me/profile") return { email: "ana@x.com", first_name: "Ana", last_name: "Ruiz", instagram: null, avatar_color: null, photo_url: null };
     if (url === "/api/me/notification-preferences") return { preferences: base };
     if (url === "/api/organizations") return { organizations: orgs };
     throw new Error(url);

@@ -21,6 +21,10 @@ jest.mock("../../components/v2/support/OrgApprovals", () => ({ OrgApprovalsEntry
 jest.mock("../../hooks/useUserProfile", () => ({
   useUserProfile: () => ({ profile: { first_name: "Ana", last_name: "Ruiz", email: "ana@x.com", profile_image_url: null }, isLoading: false, refetch: jest.fn() }),
 }));
+jest.mock("../../hooks/v2/useMyProfile", () => ({
+  MY_PROFILE_KEY: ["v2", "my-profile"],
+  useMyProfile: () => ({ data: { email: "ana@x.com", first_name: "Ana", last_name: "Ruiz", instagram: "ana.ruiz", avatar_color: "#1B4D3E", photo_url: null }, refetch: jest.fn() }),
+}));
 jest.mock("../../hooks/useUserOrgs", () => ({
   useUserOrgs: () => ({
     data: [
@@ -105,6 +109,10 @@ describe("You (app)", () => {
     expect(screen.getByText("ana@x.com")).toBeTruthy();
     expect(screen.getByLabelText("Events: 1")).toBeTruthy();
     expect(screen.getByLabelText("Organizers: 2")).toBeTruthy();
+    expect(screen.getByText("@ana.ruiz")).toBeTruthy();
+    expect(screen.getByText("AR")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Edit profile" }));
+    expect(mockNav.push).toHaveBeenCalledWith("/v2/profile/edit");
     await fireEvent.press(screen.getByRole("button", { name: "Settings" }));
     expect(mockNav.push).toHaveBeenCalledWith("/settings");
     await fireEvent.press(screen.getByRole("button", { name: "Manage Club Uno" }));

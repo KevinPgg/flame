@@ -26,6 +26,8 @@ import { useSavedEvents } from "../useSavedEvents";
 import { useFollowing } from "../useFollowing";
 import { FollowButton } from "../FollowButton";
 import { StatusTag } from "../../components/StatusTag";
+import { ProfileAvatar } from "../ProfileAvatar";
+import { useMyProfile } from "../useMyProfile";
 
 const circle = "inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(28,28,28,0.82)] text-v2-cream hover:bg-v2-ink4";
 
@@ -140,6 +142,7 @@ function SupportEntry() {
 export default function YouView() {
   const { t, locale } = useI18n();
   const profile = useUserProfile();
+  const me = useMyProfile();
   const orgs = useUserOrganizations();
   const tickets = useUserTickets();
   const [newOrg, setNewOrg] = useState(false);
@@ -164,17 +167,20 @@ export default function YouView() {
         {profile.isLoading && !p ? (
           <Skeleton className="h-[84px] w-[84px] rounded-full" />
         ) : (
-          <span className="inline-flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full bg-v2-ink3 text-[28px] font-v2-display-bold">
-            {p?.profile_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element -- profile photo from storage
-              <img src={p.profile_image_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              (name[0] ?? p?.email?.[0] ?? "?").toUpperCase()
-            )}
-          </span>
+          <ProfileAvatar
+            name={name}
+            email={p?.email}
+            photo={me.data ? me.data.photo_url : (p?.profile_image_url ?? null)}
+            color={me.data?.avatar_color ?? null}
+          />
         )}
         <h1 className="mt-3 font-v2-display-bold text-[28px] tracking-[-0.03em]">{name || p?.email || " "}</h1>
         {name && p?.email && <p className="text-[14px] text-v2-c50">{p.email}</p>}
+        {me.data?.instagram ? (
+          <a href={`https://instagram.com/${encodeURIComponent(me.data.instagram)}`} target="_blank" rel="noopener noreferrer" className="mt-1 text-[14px] text-v2-c70 hover:underline">
+            @{me.data.instagram}
+          </a>
+        ) : null}
         <div className="mt-5 flex gap-3">
           <a href="#following" className="min-w-[110px] rounded-[14px] bg-[#121212] px-4 py-2.5 hover:bg-[#181818]">
             <b className="block font-v2-display-bold text-[20px]">{following.orgs.length}</b>
@@ -189,7 +195,7 @@ export default function YouView() {
             <span className="text-[12px] text-v2-c50">{t("you.organizers")}</span>
           </a>
         </div>
-        <Link href="/v2/account" className="mt-4 inline-flex h-9 items-center rounded-v2-pill bg-v2-ink3 px-4 text-[13px] font-v2-ui-semibold hover:bg-v2-ink4">
+        <Link href="/profile/edit" className="mt-4 inline-flex h-9 items-center rounded-v2-pill bg-v2-ink3 px-4 text-[13px] font-v2-ui-semibold hover:bg-v2-ink4">
           {t("you.editProfile")}
         </Link>
       </div>

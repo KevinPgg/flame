@@ -2,17 +2,15 @@
  * One Settings for the person (decision 2026-10-23: settings live in three places only — Clerk
  * account management, this, and the organization's settings in Manage). Replaces the v1
  * Settings, Account (personal tab) and Notifications screens:
- * account (photo, name, e-mail, Clerk portal) · language · notifications · scan tickets ·
- * help & legal · sign out · delete account · version. Web API only (GET /api/user/profile,
+ * account (who you are + Edit profile, Clerk portal for password/e-mails) · language · notifications · scan tickets ·
+ * help & legal · sign out · delete account · version. Web API only (GET /api/me/profile,
  * /api/me/language, /api/me/notification-preferences, /api/upload-profile-image, /api/user/delete).
  */
 import { useState, type ReactNode } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import * as WebBrowser from "expo-web-browser";
 import * as Application from "expo-application";
 import {
@@ -26,7 +24,7 @@ import {
   type NotificationType,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { apiClient, apiGet, apiUploadFormData } from "../../../lib/api";
+import { apiClient, apiGet } from "../../../lib/api";
 import { PUBLIC_SITE_URL } from "../../../lib/v2/organizer-api";
 import { clerkAccountPortalUrl } from "../../../lib/v2/clerk-portal";
 import { deregisterPushToken } from "../../../lib/notifications";
@@ -38,10 +36,10 @@ import { useOptionalAttendeeCity } from "../../../contexts/AttendeeCityContext";
 import { DEFAULT_CITY_ALL, DEFAULT_CITY_AUTO } from "../../../lib/v2/default-city";
 import { attendeeV2Enabled } from "../../../lib/v2/flags";
 import { Button, ConfirmDialog, ErrorBox, ErrorText, Icon, Skeleton, type IconName } from "../ui";
+import { useMyProfile } from "../../../hooks/v2/useMyProfile";
+import { ProfileAvatar } from "../attendee/you/ProfileAvatar";
 import { Group, SelectRow, Toggle } from "../form/ui";
-import { Avatar } from "../people/PeoplePicker";
 
-type Profile = { id: string; email: string; first_name: string | null; last_name: string | null; profile_image_url: string | null };
 
 /** Best-effort step: never throws (also when the callee returns nothing). */
 async function quietly(fn: () => unknown) {
@@ -52,7 +50,6 @@ async function quietly(fn: () => unknown) {
   }
 }
 
-export const PROFILE_KEY = ["v2", "me-profile"];
 export const NOTIF_KEY = ["v2", "me-notification-preferences"];
 
 export function UserSettings() {
@@ -279,66 +276,21 @@ function LinkRow({ icon, label, hint, onPress, external }: { icon: IconName; lab
   );
 }
 
+/** Who you're signed in as; name and photo are changed in Edit profile (2026-11-02). */
 function AccountCard() {
   const { t } = useI18n();
-  const queryClient = useQueryClient();
-  const { getToken } = useOptionalAuth();
-  const profile = useQuery<Profile>({ queryKey: PROFILE_KEY, queryFn: () => apiGet("/api/user/profile", getToken) });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState(false);
+  const router = useRouter();
+  const profile = useMyProfile();
 
   if (profile.isLoading) return <Skeleton width="100%" height={120} radius={16} />;
   if (profile.isError || !profile.data) return <ErrorBox message={t("userSettings.loadError")} onRetry={() => void profile.refetch()} />;
   const p = profile.data;
   const name = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
 
-  const change = async () => {
-    setError(false);
-    try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) return setError(true);
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 1 });
-      if (result.canceled || !result.assets[0]) return;
-      setBusy(true);
-      const a = result.assets[0];
-      const out = await ImageManipulator.manipulateAsync(a.uri, a.width && a.width > 800 ? [{ resize: { width: 800 } }] : [], { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG });
-      const body = new FormData();
-      body.append("file", { uri: out.uri, name: "photo.jpg", type: "image/jpeg" } as unknown as Blob);
-      body.append("type", "personal");
-      await apiUploadFormData("/api/upload-profile-image", body, getToken);
-      await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
-    } catch {
-      setError(true);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const remove = async () => {
-    setBusy(true);
-    setError(false);
-    try {
-      const path = p.profile_image_url ? new URL(p.profile_image_url).pathname.split("/object/public/profile-images/")[1] : null;
-      if (!path) throw new Error("unknown photo url");
-      await apiClient(`/api/upload-profile-image?path=${encodeURIComponent(path)}&type=personal`, { method: "DELETE", getToken });
-      await queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
-    } catch {
-      setError(true);
-    } finally {
-      setBusy(false);
-      setConfirmRemove(false);
-    }
-  };
-
   return (
     <View className="gap-3 rounded-v2-card bg-v2-ink2 p-4">
       <View className="flex-row items-center gap-4">
-        {p.profile_image_url ? (
-          <Image source={{ uri: p.profile_image_url }} style={{ width: 64, height: 64, borderRadius: 32 }} accessibilityIgnoresInvertColors />
-        ) : (
-          <Avatar name={name || p.email} size={64} />
-        )}
+        <ProfileAvatar name={name} email={p.email} photo={p.photo_url} color={p.avatar_color} size={64} />
         <View className="min-w-0 flex-1">
           <Text numberOfLines={1} className="font-v2-ui-semibold text-[17px] text-v2-cream">{name || "—"}</Text>
           <Text numberOfLines={1} className="font-v2-ui text-[13px] text-v2-c70">{p.email}</Text>
@@ -346,11 +298,8 @@ function AccountCard() {
         </View>
       </View>
       <View className="flex-row flex-wrap gap-2">
-        <Button small icon="camera" label={busy ? t("userSettings.photoUploading") : t("userSettings.photoChange")} onPress={() => void change()} disabled={busy} />
-        {p.profile_image_url ? <Button small variant="danger" label={t("userSettings.photoRemove")} onPress={() => setConfirmRemove(true)} disabled={busy} /> : null}
+        <Button small icon="pencil" label={t("you.editProfile")} onPress={() => router.push("/v2/profile/edit" as Href)} />
       </View>
-      {error ? <ErrorText>{t("userSettings.photoError")}</ErrorText> : null}
-      <ConfirmDialog open={confirmRemove} message={t("userSettings.photoRemoveConfirm")} confirmLabel={t("userSettings.photoRemove")} busy={busy} onConfirm={() => void remove()} onCancel={() => setConfirmRemove(false)} />
     </View>
   );
 }

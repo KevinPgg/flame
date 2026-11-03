@@ -10,6 +10,7 @@ const V2_SCREENS: Record<string, string> = {
   "/account": "/v2/attendee/tickets", // 2.3 My tickets
   "/discover": "/v2/attendee/explore", // 2.5 Explore (public, indexable)
   "/profile": "/v2/attendee/you", // 2.6 You
+  "/profile/edit": "/v2/attendee/you/edit", // Edit profile (2026-11-02)
   "/purchase": "/v2/attendee/purchase", // 3.3 payment screen (same logic, v2 view)
   "/purchase/success": "/v2/attendee/purchase/success", // 3.3 "You're in" (B5)
 };
@@ -24,7 +25,7 @@ const V2_PATTERNS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
 ];
 
 /** Paths that only exist in v2: with ATTENDEE_V1=true they go home instead of a 404. */
-const V2_ONLY = new Set(["/notifications"]);
+const V2_ONLY = new Set(["/notifications", "/profile/edit"]);
 
 export type AttendeeRoute = { rewrite: string } | { redirect: string } | null;
 
@@ -43,7 +44,7 @@ export function attendeeV2Route(pathname: string, v1: boolean): AttendeeRoute {
 }
 
 /** Public paths whose v2 screen needs a signed-in person (checked before rewriting). */
-export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account", "/profile", "/purchase", "/purchase/success"]);
+export const ATTENDEE_SIGNED_IN = new Set(["/notifications", "/account", "/profile", "/profile/edit", "/purchase", "/purchase/success"]);
 
 export function attendeeNeedsSignIn(pathname: string): boolean {
   const path = clean(pathname);

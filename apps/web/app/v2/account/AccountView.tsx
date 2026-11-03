@@ -123,6 +123,9 @@ function AccountSection({ me }: { me: ShellUser | null }) {
           <input id="st-email" className={input} value={me?.email || t("orgSettings.empty")} readOnly />
         </div>
       </div>
+      <div className="mt-2.5">
+        <RowLink icon="user" title={t("you.editProfile")} href="/profile/edit" />
+      </div>
       {typeof clerk.openUserProfile === "function" && (
         <div className="mt-2.5">
           {/* Clerk's own profile (password, e-mails, security, photo): the "Clerk account management" place. */}

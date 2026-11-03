@@ -13,6 +13,10 @@ const st = vi.hoisted(() => ({ admin: false }));
 vi.mock("../../app/lib/hooks/useUserProfile", () => ({
   useUserProfile: () => ({ profile: { first_name: "Ana", last_name: "Ruiz", email: "ana@x.com", profile_image_url: null }, isLoading: false }),
 }));
+vi.mock("../../app/v2/attendee/useMyProfile", () => ({
+  MY_PROFILE_KEY: ["me-profile"],
+  useMyProfile: () => ({ data: { email: "ana@x.com", first_name: "Ana", last_name: "Ruiz", instagram: "ana.ruiz", avatar_color: "#1B4D3E", photo_url: null } }),
+}));
 vi.mock("../../app/lib/hooks/useOrganizations", () => ({
   useUserOrganizations: () => ({
     isLoading: false,
@@ -115,7 +119,9 @@ describe("You (web)", () => {
     renderV2(<YouView />);
     expect(screen.getByRole("heading", { level: 1, name: "Ana Ruiz" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/v2/account");
-    expect(screen.getByRole("link", { name: "Edit profile" })).toHaveAttribute("href", "/v2/account");
+    expect(screen.getByRole("link", { name: "Edit profile" })).toHaveAttribute("href", "/profile/edit");
+    expect(screen.getByRole("link", { name: "@ana.ruiz" })).toHaveAttribute("href", "https://instagram.com/ana.ruiz");
+    expect(screen.getByText("AR")).toBeInTheDocument(); // initials on the chosen colour (no photo)
     expect(screen.getByRole("link", { name: /Club Uno/ })).toHaveAttribute("href", "/organizer?org=club-uno");
     expect(screen.getByText("Under review")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Old night/ })).toHaveAttribute("href", "/account/ticket/t1");
