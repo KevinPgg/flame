@@ -12,7 +12,7 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ falta · 🧪 hecho pero sin prueba re
 | Sistema de diseño | ✅ | fase 0 |
 | Navegación island + encabezado que se esconde | ✅ | fases 1b/2 |
 | Home | ✅ | 2.2 |
-| Selector de ciudad | 🟡 | 2.2. Lista plana de ciudades; el prototipo agrupa **por país** (ver "Nuevos países y ciudades") |
+| Selector de ciudad | ✅🧪 (agrupado por país, 11-02) | 2.2. Lista plana de ciudades; el prototipo agrupa **por país** (ver "Nuevos países y ciudades") |
 | Explore | ✅🧪 | 2.5 + 4.4 (artistas, seguidores, recientes). Categorías **descartadas** por Kevin (el prototipo las tenía) |
 | Página del evento | ✅🧪 | 2.4 + corrección 10-28 + corazón (4.1) + seguir (4.2) + line-up (4.3) |
 | Checkout y RSVP | ✅ | fase 3 |
@@ -28,7 +28,7 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ falta · 🧪 hecho pero sin prueba re
 | Compra por tier (selector del tier, access code en el evento, descuento en checkout) | ✅🧪 | 3.1–3.3 + corrección 10-28: "¿Tienes código de acceso?" en hoja, descuento y promotor en el checkout. Pendiente solo la prueba real (`PruebasReales/FASE_3_PAGOS.md`) |
 | RSVP con un solo interruptor | ✅ | |
 | Datos separados por organizador | ✅ | |
-| Escáner que busca cualquier evento | 🟡 | App: lista de **tus** eventos escaneables, sin buscador; el código de acceso vive en otra pantalla (v1). El prototipo tiene **un solo campo "nombre del evento o código de acceso"**. Web no escanea (decisión de Kevin 10-16) |
+| Escáner que busca cualquier evento | 🟡 (Kevin: se mantiene sin cambios) | App: lista de **tus** eventos escaneables, sin buscador; el código de acceso vive en otra pantalla (v1). El prototipo tiene **un solo campo "nombre del evento o código de acceso"**. Web no escanea (decisión de Kevin 10-16) |
 | Menú del organizador en 4 (Events, RSVPs, Scan, Manage) | ✅ | App: 4. Web: 3 (sin Scan, por la misma decisión) — explicarlo al cliente. Manage solo para dueño/admin |
 
 ## Fase 3 del cliente — funciones nuevas
@@ -39,12 +39,12 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ falta · 🧪 hecho pero sin prueba re
 | RSVP con preguntas por invitado | ✅🧪 | 3.4 (`_guests`) |
 | Links de promotor en lote | ✅🧪 | fase 4 (pegar lista + QR) |
 | Pestaña Breakdown por evento | ✅ | 1b.2a / web |
-| Manage organization | 🟡 | Hub hecho (Equipo, Pagos, Ajustes). **Faltan las filas Finance y Communications** |
+| Manage organization | 🟡 (Finance hecho; Communications en otra entrega) | Hub hecho (Equipo, Pagos, Ajustes). **Faltan las filas Finance y Communications** |
 | Payouts con números reales | ✅ | Saldos reales de Stripe Connect (multi-país). Lo que el prototipo muestra de "transferencias bancarias cobradas directo" no existe en Flame |
-| Finance | ❌ | Prototipo: total de la organización (ingresos, tickets, vía promotores, disponible para retirar) + tabla por evento. Solo lectura |
+| Finance | ✅🧪 (11-02) | Prototipo: total de la organización (ingresos, tickets, vía promotores, disponible para retirar) + tabla por evento. Solo lectura |
 | Communications (SMS y correo) | ❌ / ⚠️ alcance | **En el prototipo es solo una pantalla "Coming soon"** (límites de correos de marketing y SMS). El cliente lo escribe como si fuera envío real de SMS y correo: confirmar alcance |
-| Editar perfil | 🟡 | Hoy el botón lleva a Ajustes/cuenta. Prototipo: hoja con nombre, **@usuario**, ciudad y color de avatar |
-| Nuevos países y ciudades | 🟡 | Prototipo: Ecuador, Estados Unidos, España, Panamá, Portugal, México, con ciudades agrupadas. Hoy: ciudad en texto libre, sin país en el evento, lista plana; faltan zonas horarias de Lisboa y Panamá (Madrid sí). Monedas: USD/EUR/MXN ya cubren esos países |
+| Editar perfil | ✅🧪 (11-02) | Hoy el botón lleva a Ajustes/cuenta. Prototipo: hoja con nombre, **@usuario**, ciudad y color de avatar |
+| Nuevos países y ciudades | ✅🧪 (11-02, catálogo + lugar con Google Places) | Prototipo: Ecuador, Estados Unidos, España, Panamá, Portugal, México, con ciudades agrupadas. Hoy: ciudad en texto libre, sin país en el evento, lista plana; faltan zonas horarias de Lisboa y Panamá (Madrid sí). Monedas: USD/EUR/MXN ya cubren esos países |
 
 ## Qué falta (para cumplir) — propuesta en orden de riesgo
 

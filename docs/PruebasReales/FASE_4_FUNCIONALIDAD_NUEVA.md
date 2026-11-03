@@ -196,6 +196,35 @@ Necesitas: cuenta **dueño/admin** (A), una cuenta **existente** que no esté en
 
 ---
 
+## 12. Finanzas (11-02, noche) — 💻 y 📱, dueño/admin
+- [ ] Manage → **Finanzas** (nueva fila): ingresos totales (con nº de eventos; otras monedas al lado), tickets vendidos, por promotores, **listo para retirar** (toca → Pagos; sin Stripe dice "Conecta Stripe en Pagos").
+- [ ] Tabla por evento, más reciente primero; tocar una fila abre el **Desglose** de ese evento. Los números de cada fila = "Total para el organizador" de su Desglose.
+- [ ] Organizador (rol organizer): no ve Manage/Finanzas.
+
+## 13. Editar perfil (11-02, noche) — aplicar antes `20261102210000_users_profile_fields.sql`
+- [ ] 💻 Tú → **Editar perfil** abre `/profile/edit`; 📱 Tú → Editar perfil abre la pantalla nueva.
+- [ ] Cambiar nombre/apellido → Guardar → vuelve a Tú con el nombre nuevo; en Clerk (dashboard) el usuario también cambió. Si Clerk lo rechaza: "No pudimos cambiar tu nombre".
+- [ ] Instagram: pegar `instagram.com/usuario?igsh=…` o `@usuario` → se guarda `usuario`; en Tú se ve `@usuario` y abre Instagram. Texto inválido → error y no guarda.
+- [ ] Sin foto: elegir un color → el avatar (Tú, Ajustes, Editar perfil) muestra iniciales sobre ese color. Una cuenta nueva (foto por defecto de Clerk) cuenta como "sin foto".
+- [ ] Subir foto (💻 recorte cuadrado; 📱 recorte del sistema) / Quitar foto.
+- [ ] Ajustes ya **no** tiene la tarjeta de perfil ni el botón Editar perfil.
+
+## 14. Contraseña, correos y seguridad en la app (11-02, noche) — 📱
+- [ ] Ajustes → "Contraseña, correos y seguridad" abre una pantalla **dentro de la app** (no el navegador / accounts.dev).
+- [ ] Correos: el principal con etiqueta; **Agregar correo** → llega un código → Verificar → aparece; **Hacer principal**; **Quitar** (con confirmación).
+- [ ] Contraseña: con contraseña pide la actual; cuenta solo Google/Apple → "Agregar contraseña". Contraseña actual incorrecta → mensaje de Clerk. Casilla "Cerrar sesión en mis otros dispositivos" (activa por defecto).
+- [ ] Cuentas conectadas (Google/Apple) listadas.
+- [ ] Dispositivos: este marcado "Este dispositivo"; cerrar sesión en otro (p. ej. la web) → esa sesión se cierra.
+- [ ] Si Clerk pide re-verificar (sesión vieja): mensaje "cierra sesión y vuelve a entrar".
+- [ ] 💻 Web: la fila abre la ventana de Clerk sobre la página (sin salir).
+
+## 15. Ciudades y lugar (11-02, noche) — aplicar `20261102220000_events_venue_place.sql`; llave: `docs/guias/GOOGLE_PLACES_API_KEY.md`
+- [ ] 💻/📱 Crear evento: **Ciudad** primero, lista agrupada por país (🇪🇨 🇺🇸 🇪🇸 🇵🇦 🇵🇹 🇲🇽) + "Otra ciudad…" (texto libre). Elegir Madrid → zona horaria Europe/Madrid y moneda EUR en "Más opciones" (se pueden cambiar).
+- [ ] **Lugar**: al escribir 3 letras salen lugares del país de la ciudad; elegir uno → nombre + dirección + "Abrir en Maps" (abre ese lugar exacto). Escribir de nuevo borra el lugar elegido. Sin llave: texto libre, sin errores.
+- [ ] Editar evento: un evento viejo con ciudad fuera de la lista abre en modo texto; cambiar el lugar por otro de la lista o por texto libre guarda bien (texto libre borra la dirección guardada).
+- [ ] Página del evento (💻/📱): dirección bajo el lugar; "Cómo llegar" abre el lugar exacto.
+- [ ] Inicio (💻/📱): el selector de ciudad agrupa por país; ciudades fuera de la lista en "Otras ciudades"; "Lisbon" y "Lisboa" cuentan como una.
+
 ## Cosas conocidas (no son fallo)
 - Las tarjetas de eventos pasados (perfil del organizador, historial) no llevan corazón, salvo en Guardados.
 - El organizador no ve cuántas personas guardaron su evento (no entra en este paso).

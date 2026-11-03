@@ -126,6 +126,29 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 - Faltan: **Finance**, **Communications** (en el prototipo es solo "Próximamente"; el cliente lo pide como SMS y correo → aclarar alcance), **Editar perfil** completo (@usuario, ciudad, color), **países y ciudades** agrupados, **escáner** con buscador / campo "evento o código". El resto está hecho; varias cosas sin prueba real.
 - Kevin trabajará mejoras de diseño en Claude Design en paralelo.
 
+## 15. Finanzas, Editar perfil, seguridad de cuenta, ciudades y lugar (11-02, noche)
+Pedido de Kevin tras la auditoría: 1) Finanzas como el prototipo, 2) Editar perfil propio separado de Ajustes (con Clerk), 3) países y ciudades. Después: quitar la tarjeta de perfil de Ajustes, pantalla propia en la app para contraseña/correos (sin accounts.dev), ciudades = lista + lugar con autocompletado.
+
+**Finanzas (web y app)** — Manage → Finanzas. `packages/lib/src/organizer/finance.ts` (`organizationFinance`): misma regla que el Desglose (tarjeta neto + transferencias; gratis no cuentan; solo eventos propios). Saldo "listo para retirar" del mismo resumen de Stripe de Pagos. Web `v2/organizer/finance/`, app `components/v2/manage/FinanceScreen.tsx` + `app/v2/organizer/finance.tsx`. Sin migración. Dueño/admin.
+
+**Editar perfil** — [Seguro] no hace falta dejar Clerk: el nombre se cambia con la Backend API de Clerk (`users.updateUser`) desde nuestra API; Instagram y color en `users`; la foto con `/api/upload-profile-image` (ya existía). Dejar Clerk = rehacer login Google/Apple, sesiones, recuperación, JWT de Supabase en la app y webhooks: descartado.
+- Migración `20261102210000_users_profile_fields.sql` (`users.instagram`, `users.avatar_color` con CHECK). Antes de aplicarla nombre y foto funcionan; Instagram/color no se guardan.
+- lib `utils/profile.ts` (8 colores del prototipo, validación, iniciales, la foto por defecto de Clerk = sin foto). API `GET/PATCH /api/me/profile` (si Clerk rechaza el nombre → 502 y no se guarda nada).
+- Web `/profile/edit` (reescrita a `v2/attendee/you/edit`), app `/v2/profile/edit`. Tú muestra avatar con color/foto y @instagram.
+- [Probable] En Clerk Dashboard deben estar activados nombre y apellido; si no, el cambio de nombre falla con aviso.
+
+**Ajustes** — sin tarjeta de perfil (web y app). Web: la fila abre `clerk.openUserProfile()` (ventana sobre la página). App: pantalla propia `components/v2/settings/AccountSecurity.tsx` (`/v2/account-security`) con el SDK de Clerk: correos (agregar con código, principal, quitar), contraseña (cambiar o agregar si solo Google/Apple; cerrar otras sesiones), cuentas conectadas, dispositivos (cerrar sesión en otros). Si Clerk pide re-verificar → mensaje de volver a entrar.
+
+**Ciudades y lugar** (decisión de Kevin: lista de ciudades + autocompletado del lugar).
+- lib `utils/places.ts`: catálogo del prototipo (EC, US, ES, PA, PT, MX) con alias ("gye", "NYC", "Lisbon"…), `canonicalCity`, `cityDefaults` (zona y moneda), `groupCitiesByCountry`, `sameCity`, `venueMapsUrl` (link de Maps sin API), `newPlacesSessionToken`. Zonas nuevas: America/Panama, Cancun, Merida, Europe/Lisbon.
+- Migración `20261102220000_events_venue_place.sql` (`events.venue_address`, `events.venue_place_id`). `POST/PATCH /api/events` aceptan ambos y guardan la ciudad con la grafía del catálogo.
+- API nueva `GET /api/places/venues` y `/api/places/venues/[placeId]` (Places API **New**, solo con sesión iniciada, token de sesión, detalles solo `id,formattedAddress` = Essentials, límite por persona; sin llave → 503 y el campo queda como texto). La ruta v1 `/api/places/autocomplete` (legacy, ciudades) sigue para la v1.
+- Formularios web/app: ciudad desde la lista (agrupada por país, "Otra ciudad…" a texto; eventos viejos fuera de la lista abren en texto), lugar con sugerencias del país de la ciudad; al elegir ciudad en Crear, sugiere zona y moneda. Inicio web/app: selector agrupado por país. Página del evento: dirección y "Cómo llegar" al lugar exacto.
+- Llave: `docs/guias/GOOGLE_PLACES_API_KEY.md` (Kevin la crea con su cuenta para dev; otra para producción).
+- Pruebas: §12–§15 de `PruebasReales/FASE_4_FUNCIONALIDAD_NUEVA.md`.
+- Verificado ejecutando en la VM: `organizationFinance`, `validateProfile`, catálogo/agrupación/alias, payloads de crear/editar con lugar, `directionsUrl`. Tests escritos (lib `places`, `organizer-finance`; web `Finance`, `EditProfile`, `me-profile`, `places-venues`, `VenueCityFields`, `Settings`, `You`, `ManageHub`; app `Finance`, `EditProfile`, `AccountSecurity`, `UserSettings`, `You`, `ManageHub`, `EventForms`) — correr en local.
+- Para borrar a mano: carpeta vacía `apps/web/__tests__/api/me/` y `_to_delete/tmp-2026-11-02/`.
+
 ## Verificación
 - Lógica de `parsePromoterNames` / `promoterCodeFor` / `buildPromoterBatch` ejecutada en la VM: todo pasa.
 - Lógica de `splitSavedEvents` / `toggleSavedId` ejecutada en la VM: pasa.
@@ -143,3 +166,4 @@ Kevin pide avanzar con el plan aunque quedan pruebas/correcciones de fases anter
 8. Seguir §8 de la guía de pruebas (búsqueda).
 9. Aplicar `20261102190000_organization_invitations.sql`, borrar la carpeta vacía `apps/web/app/invite/` y `_to_delete/web-app-invite-duplicado/`, seguir §9–§10.
 10. Fase 4.6 cerrada sin cambios (§12). Probar la insignia de la campana con 10+ notificaciones (§13).
+11. Aplicar `20261102210000_users_profile_fields.sql` y `20261102220000_events_venue_place.sql`; crear la llave de Google (`guias/GOOGLE_PLACES_API_KEY.md`); seguir §12–§15 de la guía de pruebas.
