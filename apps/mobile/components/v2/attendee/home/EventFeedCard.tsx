@@ -55,7 +55,8 @@ export function usePriceLine() {
   };
 }
 
-export function EventFeedCard({ event }: { event: FeedEvent }) {
+/** `inset` (default): own side margins, as in Home. The organizer page passes false (already padded). */
+export function EventFeedCard({ event, inset = true }: { event: FeedEvent; inset?: boolean }) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const priceLine = usePriceLine()(event);
@@ -71,7 +72,7 @@ export function EventFeedCard({ event }: { event: FeedEvent }) {
   };
 
   return (
-    <View className="mb-[30px] px-4">
+    <View className={inset ? "mb-[30px] px-4" : "mb-[30px]"}>
       <View className="mb-2.5 flex-row items-center justify-between">
         {org ? (
           <Pressable

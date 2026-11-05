@@ -121,6 +121,8 @@ describe("organizer profile (web)", () => {
     expect(screen.getByText("2 upcoming events")).toBeInTheDocument();
     expect(screen.getByText("Techno every Friday")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Event a/ })).toHaveAttribute("href", "/events/ev-a");
+    // Upcoming use the Home full-flyer card (Kevin 2026-11-05): organizer row + share on each one.
+    expect(screen.getAllByRole("button", { name: /Share .*Event/ })).toHaveLength(2);
     await user.click(screen.getByRole("tab", { name: "Past" }));
     expect(screen.getByRole("link", { name: /Event old/ })).toBeInTheDocument();
     expect(screen.queryByText("$15.00")).not.toBeInTheDocument(); // no price on past events

@@ -71,3 +71,15 @@ Producción resolvió lo mismo, y **mejor**:
   - `create-payment-intent.test.ts` (6): los mocks de hold no traen `currency` y la ruta exige la moneda de la reserva desde antes (igual en `Flme_comp`; test idéntico al de producción).
   - `purchase-page.integration.test.tsx` (7) y `payment-protection.test.ts` (necesita Supabase real: "Supabase client not initialized"): página `/purchase` v1 y test sin cambios desde el baseline.
   - `OrganizerShell.test.tsx` "Finish Stripe setup" y `HomeFeed.test.tsx` "All cities": código sin cambios; repetir aislados para saber si son intermitentes.
+
+## 8. Corrección: página del organizador (asistente) con flyers grandes
+- Pedido de Kevin (11-05, con captura del prototipo `SCREENS.org` → `bFeed`): próximos eventos con la tarjeta grande del Inicio en el celular y flyers más grandes en PC.
+- **Web:** la tarjeta del Inicio pasó a `app/v2/attendee/EventFeedCard.tsx` (compartida; `HomeView.tsx` la importa). En `attendee/organizer/[slug]/OrganizerProfile.tsx`: próximos con `EventFeedCard` (1 por fila en teléfono, 2 en PC dentro del ancho de 900 px; compartir evento con hoja nativa o copiar + aviso), pasados siguen como mosaicos pero máximo 3 por fila (antes 4).
+- **App:** `OrganizerProfile.tsx` usa `EventFeedCard` (prop nueva `inset={false}` porque la página ya tiene márgenes); pasados sin cambios (2 por fila).
+- Tests: `EventOrganizer.test.tsx` web y app comprueban el botón de compartir de cada tarjeta.
+
+## 9. Probar la app en iPhone (desarrollo)
+- Expo Go no sirve: la app usa `expo-dev-client` (SDK 54) y Expo Go de la App Store solo corre el SDK más reciente → hace falta un **development build** propio, compilado en la nube con EAS (Windows no compila iOS).
+- Requisitos: acceso a una cuenta **Apple Developer de pago** (el equipo de producción es `6LD6F5HM59`, Apple ID `hello@flme.co`) y a la cuenta de Expo dueña del proyecto EAS (`75f6c24d-…`).
+- Pasos: `eas device:create` (registrar el UDID del iPhone) → `eas build --profile development-device --platform ios` → instalar desde el QR → activar **Modo desarrollador** en el iPhone → `npx expo start -c` en el PC → abrir la app, aceptar "Red local".
+- Ojo: el perfil `development-device` tiene `EXPO_PUBLIC_API_URL=https://www.flme.co` (producción) para el bundle embebido; con Metro manda el `.env` local, pero si la app abre sin conectarse a Metro apunta a producción.

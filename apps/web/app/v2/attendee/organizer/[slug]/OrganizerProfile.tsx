@@ -2,10 +2,12 @@
 
 /**
  * Flame 2.0 organizer profile on the web (fase 2.4). Prototype `SCREENS.org`: cover, big logo,
- * name, city and Instagram, share; the description; events in a grid (upcoming / past).
+ * name, city and Instagram, share; the description; events (upcoming / past). Upcoming use the
+ * Home full-flyer card (prototype `bFeed`, Kevin 2026-11-05): one per row on a phone, two on a
+ * computer; past stay as tiles, three per row at most so the flyers aren't small.
  * Fase 4.2: followers count and Follow / Following.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PublicOrganizer } from "../../../../lib/organizer-public";
 import type { HomeEvent } from "../../../../lib/home-events";
 import { useI18n } from "../../../../lib/i18n";
@@ -13,6 +15,7 @@ import { LinkifiedText } from "../../../../lib/utils/linkify-text";
 import { Icon } from "../../../components/Icon";
 import { OrgAvatar } from "../../../components/OrgAvatar";
 import { EventTile } from "../../EventTile";
+import { EventFeedCard } from "../../EventFeedCard";
 import { FollowButton } from "../../FollowButton";
 import { useFollowing } from "../../useFollowing";
 
@@ -22,6 +25,25 @@ export default function OrganizerProfile({ org, upcoming, past }: { org: PublicO
   const { t, locale } = useI18n();
   const [seg, setSeg] = useState<"up" | "past">("up");
   const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  // Share one event of the list (same as Home): native sheet, or copy the link.
+  const shareEvent = async (e: HomeEvent) => {
+    const url = `${window.location.origin}/events/${e.slug}`;
+    try {
+      if (typeof navigator.share === "function") return void (await navigator.share({ title: e.name, url }));
+      await navigator.clipboard.writeText(url);
+      setToast(t("home.copied"));
+    } catch {
+      /* dismissed */
+    }
+  };
   const ig = org.instagram_handle?.trim().replace(/^@+/, "") || "";
   const cover = org.cover_image_url || org.logo_url;
   const list = seg === "up" ? upcoming : past;
@@ -110,14 +132,26 @@ export default function OrganizerProfile({ org, upcoming, past }: { org: PublicO
             <p className="font-v2-display-bold text-[18px]">{t("organizerPage.noUpcoming")}</p>
             {seg === "up" && <p className="mt-1 text-[14px] text-v2-c70">{t("organizerPage.noUpcomingBody", { name: org.name })}</p>}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+        ) : seg === "up" ? (
+          <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
             {list.map((e) => (
-              <EventTile key={e.id} event={e} past={seg === "past"} />
+              <EventFeedCard key={e.id} event={e} onShare={(ev) => void shareEvent(ev)} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3">
+            {list.map((e) => (
+              <EventTile key={e.id} event={e} past />
             ))}
           </div>
         )}
       </div>
+
+      {toast && (
+        <div role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-v2-pill bg-v2-cream px-4 py-2 text-[13.5px] font-v2-ui-semibold text-v2-ink lg:bottom-8">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

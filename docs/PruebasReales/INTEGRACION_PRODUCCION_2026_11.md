@@ -37,3 +37,9 @@ Rama `integracion/prod-2026-11`. `[ ]` = falta. Dispositivos: 💻 PC (navegador
 
 ## 5. Crear evento v1 en la app (cambios de producción)
 - [ ] 📱 Crear evento (v1) en EUR → el campo de precio dice la moneda del evento (no "USD"); escribir el precio y tocar **Crear** sin salir del campo → el tier se guarda con ese precio (no 0).
+
+## 6. Página del organizador (asistente) con flyers grandes
+- [ ] 📱 App → tocar un organizador (desde un evento o Inicio) → Próximos: tarjetas grandes como en Inicio (organizador arriba, flyer 4:5 con título, fecha y precio, corazón y compartir); Pasados igual que antes.
+- [ ] 🌐📱 Web en el celular → `/organizer/<slug>` → una tarjeta grande por fila.
+- [ ] 💻 Web en PC → dos tarjetas grandes por fila; Pasados máximo 3 por fila.
+- [ ] 💻 Compartir de una tarjeta → copia `…/events/<slug>` y aparece "copiado" abajo (o hoja nativa en el celular).

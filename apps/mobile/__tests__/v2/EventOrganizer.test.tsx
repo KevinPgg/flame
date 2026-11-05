@@ -102,6 +102,8 @@ describe("organizer profile (app)", () => {
     expect(screen.getByRole("button", { name: "Follow Club Uno" })).toBeTruthy();
     expect(screen.getByText("Event a")).toBeTruthy();
     expect(screen.getByText("Event co")).toBeTruthy(); // co-hosted
+    // Upcoming use the Home full-flyer card (Kevin 2026-11-05): each one has its own share.
+    expect(screen.getByRole("button", { name: "Share Event a" })).toBeTruthy();
     expect(screen.queryByText("Event c")).toBeNull();
     await fireEvent.press(screen.getByRole("link", { name: "Instagram @clubuno" }));
     expect(open).toHaveBeenCalledWith("https://instagram.com/clubuno");

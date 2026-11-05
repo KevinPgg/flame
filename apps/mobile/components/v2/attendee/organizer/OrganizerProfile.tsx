@@ -16,8 +16,7 @@ import { useOrganizations } from "../../../../hooks/useOrganizations";
 import { usePastOrgEvents } from "../../../../hooks/usePastOrgEvents";
 import { useOrgCohostEventIds } from "../../../../hooks/useOrgCohostEventIds";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
-import type { FeedEvent } from "../home/EventFeedCard";
-import { EventTile } from "../EventTile";
+import { EventFeedCard, type FeedEvent } from "../home/EventFeedCard";
 import { FollowButton } from "../FollowButton";
 import { useFollowerCount } from "../../../../hooks/useFollowing";
 import { Button, ErrorBox, Icon, OrgAvatar, Skeleton } from "../../ui";
@@ -173,9 +172,10 @@ export function OrganizerProfile({ slug }: { slug: string }) {
                 <Text className="mt-1 text-center font-v2-ui text-[14px] text-v2-c70">{t("organizerPage.noUpcomingBody", { name: org.name })}</Text>
               </View>
             ) : (
-              <View className="flex-row flex-wrap" style={{ gap: 12, rowGap: 22 }}>
+              // Same full-flyer card as Home (prototype `SCREENS.org` → `bFeed`, Kevin 2026-11-05).
+              <View>
                 {upcoming.map((e) => (
-                  <EventTile key={e.id} event={e} width={tileW} />
+                  <EventFeedCard key={e.id} event={e} inset={false} />
                 ))}
               </View>
             )
