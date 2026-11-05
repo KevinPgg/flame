@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
       const form = await req.formData();
       organizationId = String(form.get("organizationId") ?? "");
       const f = form.get("file");
-      file = f instanceof File ? f : null;
+      // A form field is either a string or a file. `instanceof File` breaks when the File class of
+      // the runtime differs from the one that parsed the form (jsdom tests), so check the shape.
+      file = f && typeof f !== "string" ? (f as File) : null;
     } else {
       const body = (await req.json()) as { organizationId?: unknown; source?: unknown; url?: unknown };
       organizationId = typeof body.organizationId === "string" ? body.organizationId : "";

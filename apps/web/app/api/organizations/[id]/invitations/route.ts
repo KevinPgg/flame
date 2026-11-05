@@ -30,7 +30,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Failed to load invitations" }, { status: 500 });
   }
   return NextResponse.json({
-    invitations: ((data ?? []) as Invitation[]).map(({ status: _s, ...i }) => ({ ...i, state: invitationState({ status: "pending", expires_at: i.expires_at }) })),
+    // Pick the public fields explicitly: the invite token must never reach this list, even if
+    // the select above changes or the client returns extra columns.
+    invitations: ((data ?? []) as Invitation[]).map(({ id, email, role, created_at, expires_at }) => ({
+      id,
+      email,
+      role,
+      created_at,
+      expires_at,
+      state: invitationState({ status: "pending", expires_at }),
+    })),
   });
 }
 

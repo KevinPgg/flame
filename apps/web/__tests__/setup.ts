@@ -99,3 +99,17 @@ Object.assign(navigator.mediaDevices, {
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
 });
+
+// jsdom implements window.scrollTo but not Element.scrollTo / scrollBy (used by the v2 ticket
+// strip, TicketView.tsx). Without this, clicking the chips/arrows throws an uncaught TypeError
+// that vitest reports as "Unhandled Errors" and can make other tests flaky.
+if (typeof Element !== "undefined" && !Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = function scrollTo(this: Element, arg?: ScrollToOptions | number, y?: number) {
+    const opts = typeof arg === "number" ? { left: arg, top: y } : (arg ?? {});
+    if (opts.left !== undefined) this.scrollLeft = opts.left;
+    if (opts.top !== undefined) this.scrollTop = opts.top;
+  } as Element["scrollTo"];
+}
+if (typeof Element !== "undefined" && !Element.prototype.scrollBy) {
+  Element.prototype.scrollBy = function scrollBy() {} as Element["scrollBy"];
+}

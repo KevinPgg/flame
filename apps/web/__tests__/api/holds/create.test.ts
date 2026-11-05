@@ -53,6 +53,13 @@ function createMockQueryBuilder(returnData: unknown, error: unknown = null) {
   };
 }
 
+function createMockHoldsLookup() {
+  const builder: Record<string, unknown> = {};
+  for (const m of ["select", "eq", "is", "gt", "order"]) builder[m] = vi.fn().mockReturnValue(builder);
+  builder.limit = vi.fn().mockResolvedValue({ data: [], error: null });
+  return builder;
+}
+
 function mockTables(tierOverrides: Record<string, unknown> = {}) {
   const event = { id: EVENT_ID, name: "EUR Test", slug: "eur-test", requires_rsvp: false };
   const tier = {
@@ -72,7 +79,11 @@ function mockTables(tierOverrides: Record<string, unknown> = {}) {
   };
   (supabaseAdmin!.from as ReturnType<typeof vi.fn>).mockImplementation(
     (table: string) =>
-      createMockQueryBuilder(table === "events" ? event : tier),
+      // Flame 2.0 (fase 3, B4): the route first looks for a hold of this tier whose payment is
+      // already running (`holds` … .is/.gt/.limit). None here → it goes on to the RPC.
+      table === "holds"
+        ? createMockHoldsLookup()
+        : createMockQueryBuilder(table === "events" ? event : tier),
   );
 }
 

@@ -71,15 +71,22 @@ describe("POST /api/organizer/lineup-photo", () => {
   });
 
   it("upload: stores the file; refuses other types", async () => {
-    const form = new FormData();
-    form.append("organizationId", ORG);
-    form.append("file", new File([new Uint8Array([1, 2])], "a.jpg", { type: "image/jpeg" }));
-    const res = await POST(new NextRequest("http://localhost/api/organizer/lineup-photo", { method: "POST", body: form }));
-    expect(res.status).toBe(200);
-    const bad = new FormData();
-    bad.append("organizationId", ORG);
-    bad.append("file", new File([new Uint8Array([1])], "a.gif", { type: "image/gif" }));
-    expect((await POST(new NextRequest("http://localhost/api/organizer/lineup-photo", { method: "POST", body: bad }))).status).toBe(400);
+    // jsdom can't send a FormData body through NextRequest and its File has no arrayBuffer():
+    // hand the route the parsed form directly (same pattern as settings-api.test.ts).
+    const upload = (name: string, type: string, data: Uint8Array) => {
+      const file = Object.assign(new File([data], name, { type }), { arrayBuffer: async () => data.buffer.slice(0) });
+      const form = new FormData();
+      form.append("organizationId", ORG);
+      form.append("file", file);
+      const request = new NextRequest("http://localhost/api/organizer/lineup-photo", {
+        method: "POST",
+        headers: { "content-type": "multipart/form-data; boundary=test" },
+      });
+      Object.defineProperty(request, "formData", { value: async () => form });
+      return POST(request);
+    };
+    expect((await upload("a.jpg", "image/jpeg", new Uint8Array([1, 2]))).status).toBe(200);
+    expect((await upload("a.gif", "image/gif", new Uint8Array([1]))).status).toBe(400);
   });
 
   it("viewers and strangers can't; 401 signed out", async () => {

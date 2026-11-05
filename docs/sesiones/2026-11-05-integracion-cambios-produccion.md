@@ -56,3 +56,18 @@ Producción resolvió lo mismo, y **mejor**:
 - **Verificación:** `tsc` de `packages/lib` limpio en la VM; tests (vitest/jest) no corren en la VM (binarios de Windows) → correr en el PC. Pruebas en `PruebasReales/INTEGRACION_PRODUCCION_2026_11.md`.
 - **Observación (no tocada):** `SendTab.tsx` (enviar tickets) espera 60 s, pero `promotional-tickets` y `bank-transfer-tickets` no declaran `maxDuration`; si en Vercel caen al límite por defecto, el problema es el mismo que W7-H5. Revisar antes de producción.
 - **Pendiente antes de Vercel:** confirmar a qué Supabase apuntan las variables de Preview; no aplicar nuestras migraciones en la BD de producción para probar.
+
+## 7. Resultado de tests en el PC (2026-11-05 tarde) y arreglos
+- `tsc` web: 0 errores. `tsc` mobile: 40 errores **previos** (14 de 15 archivos sin tocar desde el commit inicial; `useRsvpManagement.ts:266` es deuda W6-E1 documentada por producción).
+- **Causados por la integración (arreglados):**
+  - `apps/web/__tests__/api/holds/create.test.ts` (test nuevo de producción): su mock no cubría la consulta de "pago en curso" de la fase 3 (`holds` … `.is/.gt/.limit`) → 500. Mock ampliado; la ruta no cambia.
+  - `apps/mobile/__tests__/v2/Rsvps.test.tsx`: el mock de `lib/api` no exportaba `LONG_MUTATION_TIMEOUT_MS` (→ `undefined`); ahora lo exporta y la expectativa es 75 s.
+- **Previos, de nuestro código v2 (arreglados):**
+  - `team-invitations.test.ts`: el falso Supabase devuelve filas completas; la ruta `GET /api/organizations/[id]/invitations` ahora elige los campos explícitamente (el token nunca sale en la lista, pase lo que pase con el `select`).
+  - `lineup-photo.test.ts`: jsdom no envía `FormData` por `NextRequest`; el test usa el patrón de `settings-api.test.ts`. La ruta acepta el archivo por forma (`typeof f !== "string"`) en vez de `instanceof File`.
+  - "Unhandled Errors" `el.scrollTo is not a function` (`TicketView.tsx`, test `Tickets.test.tsx`): polyfill de `Element.scrollTo/scrollBy` en `apps/web/__tests__/setup.ts`.
+  - Mobile: 5 fallos eran timeouts de 5 s con suites de 45–70 s → `testTimeout: 20000` en `apps/mobile/jest.config.js`.
+- **Previos, sin tocar (no los causa la integración):**
+  - `create-payment-intent.test.ts` (6): los mocks de hold no traen `currency` y la ruta exige la moneda de la reserva desde antes (igual en `Flme_comp`; test idéntico al de producción).
+  - `purchase-page.integration.test.tsx` (7) y `payment-protection.test.ts` (necesita Supabase real: "Supabase client not initialized"): página `/purchase` v1 y test sin cambios desde el baseline.
+  - `OrganizerShell.test.tsx` "Finish Stripe setup" y `HomeFeed.test.tsx` "All cities": código sin cambios; repetir aislados para saber si son intermitentes.

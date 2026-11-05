@@ -21,6 +21,7 @@ jest.mock("../../lib/api", () => ({
   apiDelete: jest.fn(),
   apiPatch: jest.fn(),
   apiClient: (...a: unknown[]) => mockApiClient(...a),
+  LONG_MUTATION_TIMEOUT_MS: 75_000,
 }));
 jest.mock("../../hooks/useStripeConnect", () => ({ useStripeConnect: () => ({ status: null, isLoading: false }) }));
 const mockExport = jest.fn(async () => {});
@@ -94,7 +95,7 @@ describe("RSVP requests of an event", () => {
     expect(mockApiClient).not.toHaveBeenCalled();
     await fireEvent.press(screen.getAllByText("Approve").at(-1)!);
     await waitFor(() =>
-      expect(mockApiClient).toHaveBeenCalledWith("/api/organizer/rsvps/r-ana/approve", expect.objectContaining({ method: "PATCH", timeoutMs: 60_000 })),
+      expect(mockApiClient).toHaveBeenCalledWith("/api/organizer/rsvps/r-ana/approve", expect.objectContaining({ method: "PATCH", timeoutMs: 75_000 })),
     );
     expect(await screen.findByText("Ana Ruiz approved")).toBeTruthy();
   });
