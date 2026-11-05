@@ -96,6 +96,9 @@ supabase/.temp/
 # Version base App
 /Flme_comp
 
+#Version modificada
+/Flame_cambios
+
 #version nueva, diseño
 /flame-2.0
 
