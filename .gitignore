@@ -93,6 +93,8 @@ errors-log.json
 supabase/.temp/
 
 
+#notas-desarrollo
+/docs/notas.txt
 # Version base App
 /Flme_comp
 
