@@ -25,7 +25,6 @@ import { EventTile } from "../EventTile";
 import { useSavedEvents } from "../useSavedEvents";
 import { useFollowing } from "../useFollowing";
 import { FollowButton } from "../FollowButton";
-import { StatusTag } from "../../components/StatusTag";
 import { ProfileAvatar } from "../ProfileAvatar";
 import { useMyProfile } from "../useMyProfile";
 
@@ -211,7 +210,7 @@ export default function YouView() {
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-[15px] font-v2-ui-semibold">{o.name}</b>
                   <span className="mt-1 flex items-center gap-2">
-                    <StatusTag tone={o.role === "owner" ? "flame" : o.role === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${o.role}`)}</StatusTag>
+                    <small className="text-[12.5px] text-v2-c50">{t(`organizer.roles.${o.role}`)}</small>
                     <small className="text-[12.5px] text-v2-c50">{t("you.eventsCount", { count: o.eventCount })}</small>
                   </span>
                 </span>

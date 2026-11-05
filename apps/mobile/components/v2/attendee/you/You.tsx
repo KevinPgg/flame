@@ -27,7 +27,7 @@ import { useMemberRoleContext } from "../../../../contexts/MemberRoleContext";
 import { getTabBarPaddingBottom } from "../../../navigation/CustomTabBar";
 import { BecomeOrganizerSheet } from "../../../navigation/BecomeOrganizerSheet";
 import { OrgApprovalsEntry } from "../../support/OrgApprovals";
-import { Button, Icon, OrgAvatar, Skeleton, StatusTag } from "../../ui";
+import { Button, Icon, OrgAvatar, Skeleton } from "../../ui";
 import { useMyProfile } from "../../../../hooks/v2/useMyProfile";
 import { ProfileAvatar } from "./ProfileAvatar";
 
@@ -87,11 +87,11 @@ function MyInvitations() {
   );
 }
 
-/** Your role in the organization (Kevin 2026-11-02). */
+/** Your role in the organization: plain muted text, no badge, no uppercase (Kevin 2026-11-05). */
 function RoleTag({ role }: { role: string }) {
   const { t } = useI18n();
   const known = ["owner", "admin", "organizer", "viewer"].includes(role) ? role : "viewer";
-  return <StatusTag tone={known === "owner" ? "flame" : known === "admin" ? "warn" : "neutral"}>{t(`organizer.roles.${known}` as "organizer.roles.owner")}</StatusTag>;
+  return <Text className="font-v2-ui text-[12.5px] text-v2-c50">{t(`organizer.roles.${known}` as "organizer.roles.owner")}</Text>;
 }
 
 export function You() {
