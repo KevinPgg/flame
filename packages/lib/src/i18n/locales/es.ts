@@ -1191,6 +1191,7 @@ export const es: Messages = {
       event_date_changed: { title: "Cambios de fecha", hint: "Cuando cambia la fecha de un evento al que tienes tickets" },
       event_reminder: { title: "Recordatorios", hint: "24 horas antes de los eventos a los que vas" },
       followed_org_event: { title: "Eventos nuevos", hint: "Cuando un organizador que sigues publica un evento" },
+      team_invitation: { title: "Invitaciones de equipo", hint: "Cuando una organización te invita a su equipo" },
       new_rsvp_request: { title: "Nuevas solicitudes de RSVP", hint: "Cuando alguien pide asistir a tu evento" },
       ticket_sold: { title: "Ventas de tickets", hint: "Cuando se vende un ticket de tu evento" },
       auth_expiry_warning: { title: "Pago por vencer", hint: "Cuando la retención de tarjeta de un RSVP está por vencer" },

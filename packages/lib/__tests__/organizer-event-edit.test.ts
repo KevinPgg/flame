@@ -33,8 +33,11 @@ describe("editFormFromEvent", () => {
       startsAt: "2026-11-30T21:00",
       endsAt: "2026-12-01T02:00",
       venue: "Porto",
+      venueAddress: "",
+      venuePlaceId: "",
       city: "Guayaquil",
       description: "Line-up TBA",
+      lineup: [],
     });
     expect(editFormFromEvent({ ...EVENT, timezone: "Europe/Madrid" }).startsAt).toBe("2026-12-01T03:00");
   });

@@ -23,6 +23,11 @@ import type { ShellUser } from "../organizer/OrganizerShell";
 const ghost =
   "inline-flex h-10 items-center justify-center gap-2 rounded-v2-pill bg-v2-ink3 px-4 text-[13.5px] font-v2-ui-semibold text-v2-c90 hover:bg-v2-ink4 disabled:opacity-50";
 
+const input =
+  "h-11 w-full min-w-0 rounded-v2-md bg-v2-ink3 px-4 text-[14px] text-v2-cream placeholder:text-v2-c50 focus:outline-none focus:ring-1 focus:ring-v2-c30 read-only:text-v2-c70";
+const label = "mb-1.5 block text-[12.5px] text-v2-c70";
+const card = "flex flex-col gap-5 rounded-v2-card bg-v2-ink2 p-4 sm:p-6";
+
 /**
  * One Settings for the person (decision 2026-10-23: settings live in three places only — Clerk
  * account management, this, and the organization's settings in Manage). Same sections as the

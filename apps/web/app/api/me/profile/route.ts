@@ -100,5 +100,5 @@ export async function PATCH(req: NextRequest) {
     // The name may already be in Clerk; the webhook will copy it. Instagram/colour were not saved.
     return NextResponse.json({ error: "Failed to save", code: "PROFILE_NOT_SAVED" }, { status: 500 });
   }
-  return NextResponse.json({ ...shape(data as Row), ...(migrated ? {} : { pendingMigration: true }) });
+  return NextResponse.json({ ...shape(data as unknown as Row), ...(migrated ? {} : { pendingMigration: true }) });
 }

@@ -64,7 +64,6 @@ export const en = {
     showAllCities: "Show all cities",
   },
   event: {
-    lineup: "Lineup",
     artistOn: "{name} on {service}",
     getTickets: "Get tickets",
     requestToJoin: "Request to join",
@@ -1194,6 +1193,7 @@ export const en = {
       event_date_changed: { title: "Date changes", hint: "When an event you have tickets for is rescheduled" },
       event_reminder: { title: "Event reminders", hint: "24 hours before events you’re going to" },
       followed_org_event: { title: "New events", hint: "When an organizer you follow publishes an event" },
+      team_invitation: { title: "Team invitations", hint: "When an organization invites you to its team" },
       new_rsvp_request: { title: "New RSVP requests", hint: "When someone asks to attend your event" },
       ticket_sold: { title: "Ticket sales", hint: "When a ticket for your event is sold" },
       auth_expiry_warning: { title: "Payment expiring", hint: "When an RSVP card hold is about to expire" },
