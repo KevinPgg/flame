@@ -12,6 +12,12 @@ export {
   normalizeOptionalTicketTierSecretCode,
 } from "./ticket-tier-secret-code";
 
+// Stripe metadata (money-bearing values returned as strings)
+export {
+  parseMetadataCents,
+  isPresentMetadataValue,
+} from "./stripe-metadata";
+
 // Cedula Validation
 export type { CedulaValidationResult } from "./cedula";
 export { validateCedula, formatCedula, cleanCedula } from "./cedula";

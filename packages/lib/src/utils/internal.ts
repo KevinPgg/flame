@@ -14,4 +14,5 @@
 export const INTERNAL_ORG_IDS: string[] = [
   "f21bf79f-30cf-41ec-8ee2-d0e08b4b920b", // FLAME
   "aff4e5f8-8b3c-432a-a317-8c2823db4c76", // MXFT
+  "760fe7d7-9ea8-4a66-b8fb-eded2daad62b", // Flame Test Spain (EUR / ES Connect testing)
 ];

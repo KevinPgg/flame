@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { supabaseAdmin } from "../../lib/supabase/server";
 import { z } from "zod";
@@ -10,10 +10,21 @@ import { sendPushNotification, sendPushToOrgMembersByRole } from "../../lib/push
 import { getBaseUrl } from "../../lib/utils/url";
 import { revalidatePath } from "next/cache";
 import { stripe } from "../../lib/stripe/stripe";
-import { filterFieldsForTier,
+import {
+  filterFieldsForTier,
   validateRsvpGuests,
   RSVP_GUESTS_KEY,
+  parseMetadataCents,
+  isPresentMetadataValue,
 } from "@project-flame/lib";
+
+// This route fans out to Stripe, ~12 Supabase round-trips, the RSVP RPC and
+// (previously) two blocking email sends. With no maxDuration declared it ran on
+// Vercel's ~15s default, which is also the mobile client's timeout
+// (DEFAULT_TIMEOUT_MS in apps/mobile/lib/api.ts) -- so both sides gave up at the
+// same moment under load. 60s gives the server real headroom; the email work
+// below is deferred with after() so the response itself stays fast.
+export const maxDuration = 60;
 
 // Helper function to cancel PaymentIntent and release customer funds
 async function cancelPaymentIntentSafely(
@@ -203,6 +214,9 @@ export async function POST(req: NextRequest) {
     let registration_data = parsedRegistrationData;
     let promotional_code_id = parsedPromotionalCodeId;
     let discount_amount_cents = 0; // Initialize discount amount
+    // Set when a money-bearing PaymentIntent metadata field is present but
+    // unparseable. Checked before create_rsvp_atomic runs (W7-H6 follow-up).
+    let invalidMoneyMetadataField: string | null = null;
 
     if (pendingRsvpId) {
       if (!paymentIntentId) {
@@ -360,12 +374,18 @@ export async function POST(req: NextRequest) {
     // Validate Payment Intent if provided (Auth & Capture Flow)
     // Skip Stripe validation for free promo codes (handled separately)
     const isFreePromo = paymentIntentId?.startsWith("free_promo_");
-    
+
+    // Hoisted so the metadata block below can reuse it instead of retrieving the
+    // same PaymentIntent a second time (one fewer Stripe round-trip on the
+    // checkout path, and no second chance to fail).
+    let retrievedPaymentIntent: import("stripe").Stripe.PaymentIntent | undefined;
+
     if (paymentIntentId && !isFreePromo) {
       try {
         const paymentIntent = await stripe.paymentIntents.retrieve(
           paymentIntentId
         );
+        retrievedPaymentIntent = paymentIntent;
 
         // NOTE: validStatuses includes "succeeded" to handle idempotent/retry scenarios
         // where a prior webhook already captured the PaymentIntent. This allows RSVP creation
@@ -515,14 +535,35 @@ export async function POST(req: NextRequest) {
     let paymentMetadata: Record<string, any> | undefined;
     if (paymentIntentId && !isFreePromo) {
       try {
-        const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+        // Reuse the PaymentIntent already fetched above. Retrieving again risked
+        // a second, independent failure whose `catch` left `paymentMetadata`
+        // undefined — silently skipping the discount extraction (leaving
+        // `discount_amount_cents` at 0) and never setting base_price_cents /
+        // total_amount_cents on the order. Same silently-wrong-number class as
+        // the rest of W7-H6, arriving via a failed read instead of a bad value.
+        const pi =
+          retrievedPaymentIntent ??
+          (await stripe.paymentIntents.retrieve(paymentIntentId));
         paymentMetadata = pi.metadata;
         
-        // Extract discount amount if available in metadata
-        if (paymentMetadata?.discountAmountCents) {
-          const discount = parseInt(paymentMetadata.discountAmountCents, 10);
-          if (Number.isFinite(discount)) {
+        // Extract discount amount if available in metadata.
+        //
+        // A present-but-invalid value must NOT fall through: `discount_amount_cents`
+        // initialises to 0, so silently keeping that default would record "no
+        // discount" on an RSVP whose PaymentIntent was created WITH one, and pass
+        // 0 into create_rsvp_atomic. That is the same silently-wrong-number class
+        // W7-H6 removed from basePriceCents. Flagged here and refused below,
+        // before the RPC runs.
+        if (isPresentMetadataValue(paymentMetadata?.discountAmountCents)) {
+          const discount = parseMetadataCents(paymentMetadata.discountAmountCents);
+          if (discount !== null) {
             discount_amount_cents = discount;
+          } else {
+            console.error("Invalid discountAmountCents in PaymentIntent metadata:", {
+              paymentIntentId,
+              rawValue: paymentMetadata.discountAmountCents,
+            });
+            invalidMoneyMetadataField = "discountAmountCents";
           }
         }
 
@@ -532,7 +573,13 @@ export async function POST(req: NextRequest) {
           promotional_code_id = paymentMetadata.promotionalCodeId;
         }
       } catch (e) {
-        console.warn("Failed to retrieve PI metadata for RSVP update:", e);
+        // Cannot proceed: without metadata we would write an RSVP with a zeroed
+        // discount and no price fields. Refused below, before the RPC runs.
+        console.error("Failed to read PaymentIntent metadata for RSVP:", {
+          paymentIntentId,
+          error: e,
+        });
+        invalidMoneyMetadataField = "metadata_unavailable";
       }
     }
 
@@ -906,6 +953,31 @@ export async function POST(req: NextRequest) {
 
     // Create the RSVP atomically using database function
     // This prevents race conditions by locking rows and validating availability in a single transaction
+    // W7-H6 follow-up: refuse rather than write a financial record we know is
+    // wrong. Deliberately NOT cancelling the authorization — it is valid, this is
+    // our data problem, and cancelling would destroy the buyer's money. It stays
+    // capturable for manual review and expires by itself within 7 days.
+    if (invalidMoneyMetadataField) {
+      console.error("Refusing to create RSVP with invalid money metadata:", {
+        paymentIntentId,
+        field: invalidMoneyMetadataField,
+      });
+      return NextResponse.json(
+        {
+          // Deliberately says nothing about whether the card was charged. The
+          // status check above accepts BOTH "requires_capture" and "succeeded",
+          // so at this point the payment may be a hold or already captured —
+          // asserting either would be wrong for half of the cases, and a buyer
+          // who sees "not charged" next to a pending line on their statement
+          // opens a support ticket (or a dispute).
+          error:
+            "We could not complete this request due to a problem with the payment details. Please contact support with your payment reference.",
+          code: "INVALID_PAYMENT_METADATA",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: rsvpResult, error: rsvpError } = await supabaseAdmin.rpc(
       "create_rsvp_atomic",
       {
@@ -929,14 +1001,18 @@ export async function POST(req: NextRequest) {
           `Duplicate RSVP attempt blocked: User ${supabaseUser.id}, Event ${event_id}`
         );
 
-        // Cancel PaymentIntent to release customer funds immediately
-        if (paymentIntentId) {
-          await cancelPaymentIntentSafely(
-            paymentIntentId,
-            "RSVP creation failed: duplicate RSVP"
-          );
-        }
-
+        // DELIBERATELY NOT cancelling the PaymentIntent here.
+        //
+        // 23505 means the user already holds a pending RSVP for this event --
+        // i.e. an EARLIER request SUCCEEDED. The PaymentIntent in hand is the one
+        // attached to that good RSVP, so cancelling it destroys a live
+        // authorization the organizer still needs to capture on approval.
+        //
+        // This is how a client-side timeout turned into dead payments: the first
+        // request created the RSVP but exceeded the 15s client timeout, the buyer
+        // retried, and the retry cancelled the first attempt's money. The
+        // organizer then saw "Payment authorization status is canceled" and could
+        // never approve. A duplicate submission must be a no-op, not a rollback.
         return NextResponse.json(
           {
             error: "You already have an RSVP for this event",
@@ -1045,25 +1121,42 @@ export async function POST(req: NextRequest) {
       
       // Update price fields from metadata if available
       if (paymentMetadata) {
+        // W7-H6: these values are persisted as the order's revenue figures, so
+        // they are parsed strictly. `parseInt` would turn "100abc" into 100 and
+        // "12.9" into 12 — a wrong number written to the books with no error.
         if (paymentMetadata.basePriceCents) {
-          const basePrice = parseInt(paymentMetadata.basePriceCents, 10);
-          if (!isNaN(basePrice)) updateData.base_price_cents = basePrice;
+          const basePrice = parseMetadataCents(paymentMetadata.basePriceCents);
+          if (basePrice !== null) {
+            updateData.base_price_cents = basePrice;
+          } else {
+            console.error("Invalid basePriceCents in PaymentIntent metadata:", {
+              paymentIntentId,
+              rawValue: paymentMetadata.basePriceCents,
+            });
+          }
         }
         if (paymentMetadata.markupPercent) {
           const markupPercent = parseFloat(paymentMetadata.markupPercent);
           if (!isNaN(markupPercent)) updateData.markup_percent = markupPercent;
         }
         if (paymentMetadata.markupFixedCents) {
-          const markupFixed = parseInt(paymentMetadata.markupFixedCents, 10);
-          if (!isNaN(markupFixed)) updateData.markup_fixed_cents = markupFixed;
+          // markupPercent above stays parseFloat — it is a percentage, not cents.
+          const markupFixed = parseMetadataCents(paymentMetadata.markupFixedCents);
+          if (markupFixed !== null) updateData.markup_fixed_cents = markupFixed;
         }
         // Calculate total amount (base + markup)
         // Note: platformFeeCents in metadata is the total markup amount
         if (paymentMetadata.basePriceCents && paymentMetadata.platformFeeCents) {
-           const base = parseInt(paymentMetadata.basePriceCents, 10);
-           const fee = parseInt(paymentMetadata.platformFeeCents, 10);
-           if (!isNaN(base) && !isNaN(fee)) {
+           const base = parseMetadataCents(paymentMetadata.basePriceCents);
+           const fee = parseMetadataCents(paymentMetadata.platformFeeCents);
+           if (base !== null && fee !== null) {
              updateData.total_amount_cents = base + fee;
+           } else {
+             console.error("Invalid money metadata on PaymentIntent — total_amount_cents not set:", {
+               paymentIntentId,
+               rawBase: paymentMetadata.basePriceCents,
+               rawFee: paymentMetadata.platformFeeCents,
+             });
            }
         }
         // Explicit override for free promo
@@ -1196,148 +1289,161 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send pending confirmation email to user
-    try {
-      const clerkUser = await currentUser();
-      const organization = event.organizations as any;
-
-      await sendRsvpPendingConfirmation({
-        userEmail: clerkUser?.emailAddresses[0]?.emailAddress || "",
-        userName:
-          `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
-          "User",
-        eventName: event.name,
-        eventDate: event.starts_at,
-        eventVenue: event.venue,
-        ticketTierName: ticketTier.name,
-        quantity: quantity,
-        organizationName: organization?.name || "Organization",
-      });
-    } catch (confirmationError) {
-      // Log error but don't fail the RSVP creation
-      console.error(
-        "Error sending user pending confirmation email:",
-        confirmationError
-      );
-    }
-
-    // Send notification to organizers (gated by env var — set SEND_ORGANIZER_RSVP_EMAIL=true to enable)
-    if (process.env.SEND_ORGANIZER_RSVP_EMAIL === "true") {
+    // Deferred with after(): the RSVP is already committed, so email latency
+    // must not sit between the buyer and their response. Runs after the response
+    // is sent; failures stay non-fatal exactly as before.
+    after(async () => {
+      // Send pending confirmation email to user
       try {
         const clerkUser = await currentUser();
         const organization = event.organizations as any;
 
-        // Get owner+admin members for this event's org
-        const { data: organizationMembers, error: membersError } =
-          await supabaseAdmin
-            .from("organization_members")
-            .select(
-              `
-            user_id,
-            role,
-            users!user_id (
-              first_name,
-              last_name,
-              email
-            )
-          `
-            )
-            .eq("organization_id", event.organization_id)
-            .in("role", ["owner", "admin"]);
+        await sendRsvpPendingConfirmation({
+          userEmail: clerkUser?.emailAddresses[0]?.emailAddress || "",
+          userName:
+            `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+            "User",
+          eventName: event.name,
+          eventDate: event.starts_at,
+          eventVenue: event.venue,
+          ticketTierName: ticketTier.name,
+          quantity: quantity,
+          organizationName: organization?.name || "Organization",
+        });
+      } catch (confirmationError) {
+        // Log error but don't fail the RSVP creation
+        console.error(
+          "Error sending user pending confirmation email:",
+          confirmationError
+        );
+      }
 
-        // Also fetch organizers assigned to this specific event
-        const { data: assignedOrganizers, error: assignedOrganizersError } =
-          await supabaseAdmin
-            .from("event_assignments")
-            .select(
-              `
-            user_id,
-            users:user_id (
-              first_name,
-              last_name,
-              email
-            )
-          `
-            )
-            .eq("event_id", event.id)
-            .eq("organization_id", event.organization_id)
-            .not("user_id", "is", null);
+    });
 
-        if (assignedOrganizersError) {
-          console.error("[rsvp] event_assignments notification lookup failed:", {
-            action: "rsvp notification lookup",
-            eventId: event.id,
-            organizationId: event.organization_id,
-            error: assignedOrganizersError,
-          });
-        }
+    // Send notification to organizers (gated by env var — set SEND_ORGANIZER_RSVP_EMAIL=true to enable)
+    // Deferred with after(): this fans out one email per organizer in a
+    // sequential loop, so it scaled request latency by the number of organizers.
+    after(async () => {
+      // Re-assert inside the closure: the outer null-guard does not narrow here.
+      if (!supabaseAdmin) return;
+      if (process.env.SEND_ORGANIZER_RSVP_EMAIL === "true") {
+        try {
+          const clerkUser = await currentUser();
+          const organization = event.organizations as any;
 
-        if (membersError) {
-          console.error(
-            "[rsvp] organization_members notification lookup failed:",
-            {
+          // Get owner+admin members for this event's org
+          const { data: organizationMembers, error: membersError } =
+            await supabaseAdmin
+              .from("organization_members")
+              .select(
+                `
+              user_id,
+              role,
+              users!user_id (
+                first_name,
+                last_name,
+                email
+              )
+            `
+              )
+              .eq("organization_id", event.organization_id)
+              .in("role", ["owner", "admin"]);
+
+          // Also fetch organizers assigned to this specific event
+          const { data: assignedOrganizers, error: assignedOrganizersError } =
+            await supabaseAdmin
+              .from("event_assignments")
+              .select(
+                `
+              user_id,
+              users:user_id (
+                first_name,
+                last_name,
+                email
+              )
+            `
+              )
+              .eq("event_id", event.id)
+              .eq("organization_id", event.organization_id)
+              .not("user_id", "is", null);
+
+          if (assignedOrganizersError) {
+            console.error("[rsvp] event_assignments notification lookup failed:", {
               action: "rsvp notification lookup",
               eventId: event.id,
               organizationId: event.organization_id,
-              error: membersError,
-            }
-          );
-        }
-
-        // Merge owner/admin + assigned organizers, dedupe by user_id
-        const recipientMap = new Map<
-          string,
-          { first_name: string | null; last_name: string | null; email: string }
-        >();
-        if (!membersError && organizationMembers) {
-          for (const member of organizationMembers) {
-            const user = member.users as any;
-            if (user?.email) recipientMap.set(member.user_id, user);
-          }
-        }
-        if (assignedOrganizers) {
-          for (const assignment of assignedOrganizers) {
-            const user = assignment.users as any;
-            if (
-              user?.email &&
-              assignment.user_id &&
-              !recipientMap.has(assignment.user_id)
-            ) {
-              recipientMap.set(assignment.user_id, user);
-            }
-          }
-        }
-
-        const rsvpManagementUrl = `${getBaseUrl()}/organizer/rsvps/${event.id}`;
-        for (const [, organizer] of recipientMap) {
-          if (organizer?.email) {
-            await sendOrganizerRsvpNotification({
-              organizerEmail: organizer.email,
-              organizerName:
-                `${organizer.first_name || ""} ${organizer.last_name || ""}`.trim() ||
-                "Organizer",
-              userEmail: clerkUser?.emailAddresses[0]?.emailAddress || "",
-              userName:
-                `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
-                "User",
-              eventName: event.name,
-              eventDate: event.starts_at,
-              eventVenue: event.venue,
-              ticketTierName: ticketTier.name,
-              quantity: quantity,
-              organizationName: organization?.name || "Organization",
-              rsvpManagementUrl,
+              error: assignedOrganizersError,
             });
           }
+
+          if (membersError) {
+            console.error(
+              "[rsvp] organization_members notification lookup failed:",
+              {
+                action: "rsvp notification lookup",
+                eventId: event.id,
+                organizationId: event.organization_id,
+                error: membersError,
+              }
+            );
+          }
+
+          // Merge owner/admin + assigned organizers, dedupe by user_id
+          const recipientMap = new Map<
+            string,
+            { first_name: string | null; last_name: string | null; email: string }
+          >();
+          if (!membersError && organizationMembers) {
+            for (const member of organizationMembers) {
+              const user = member.users as any;
+              if (user?.email) recipientMap.set(member.user_id, user);
+            }
+          }
+          if (assignedOrganizers) {
+            for (const assignment of assignedOrganizers) {
+              const user = assignment.users as any;
+              if (
+                user?.email &&
+                assignment.user_id &&
+                !recipientMap.has(assignment.user_id)
+              ) {
+                recipientMap.set(assignment.user_id, user);
+              }
+            }
+          }
+
+          const rsvpManagementUrl = `${getBaseUrl()}/organizer/rsvps/${event.id}`;
+          for (const [, organizer] of recipientMap) {
+            if (organizer?.email) {
+              await sendOrganizerRsvpNotification({
+                organizerEmail: organizer.email,
+                organizerName:
+                  `${organizer.first_name || ""} ${organizer.last_name || ""}`.trim() ||
+                  "Organizer",
+                userEmail: clerkUser?.emailAddresses[0]?.emailAddress || "",
+                userName:
+                  `${clerkUser?.firstName || ""} ${clerkUser?.lastName || ""}`.trim() ||
+                  "User",
+                eventName: event.name,
+                eventDate: event.starts_at,
+                eventVenue: event.venue,
+                ticketTierName: ticketTier.name,
+                quantity: quantity,
+                organizationName: organization?.name || "Organization",
+                rsvpManagementUrl,
+              });
+            }
+          }
+        } catch (notificationError) {
+          // Non-fatal — log but don't fail the RSVP creation
+          console.error(
+            "Error sending organizer notification:",
+            notificationError
+          );
         }
-      } catch (notificationError) {
-        // Non-fatal — log but don't fail the RSVP creation
-        console.error(
-          "Error sending organizer notification:",
-          notificationError
-        );
       }
-    }
+
+    });
 
     if (pendingRsvpId) {
       const { error: cleanupError } = await supabaseAdmin

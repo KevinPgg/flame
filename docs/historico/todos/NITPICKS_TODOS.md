@@ -2249,3 +2249,13 @@ The realistic damage from a brute-force run is small (the QR payload itself is t
 **Reviewer suggestion:** replace the `as any` casts with a small local interface for the event/tier fields used, so the block stays type-safe (no `any`).
 
 **Why deferred:** The casts are **pre-existing** (the original `for` loop already had them; JULY_2026_FIXES.md #9 only converted the loop to `Promise.all` and preserved them). The entire `organizer/page.tsx` SSR file is pervasively `any` — the owned-event enrichment right below uses `.map((event: any) => …)`, `.reduce((acc, order: any) => …)`, `(tier: any)`, etc. Typing one small block in isolation would be inconsistent with the file and is a pure style change with zero behavioral impact. Revisit as one focused "type the organizer SSR page" pass (define shared `SsrOrgEvent`/`SsrTier`/`SsrOrder` shapes and apply uniformly to the owned + cohost enrichment), not a single-block island.
+
+## July 2026 PR Review — offline-aware auth gate (Jul 22, 2026)
+
+### Add focused `useRequireAuth` probe-contract tests (requires standing up mobile test infra first)
+
+**File:** `apps/mobile/hooks/useRequireAuth.tsx` (see `docs/fixes/JULY_2026_FIXES.md` #12 + 12a/12b).
+
+**Reviewer suggestion:** unit-test the probe contract — `ClerkRuntimeError { code: "network_error" }` stays on the retry path despite inheriting `clerkError: true`; definitive Clerk errors and non-network `TypeError`s redirect; cleanup cancels both timers on unmount and on `isSignedIn` changes.
+
+**Why deferred:** `apps/mobile` has **no test runner at all** — no jest/vitest config, no test script, zero test files (the monorepo's only test suite is `packages/lib` vitest). Testing this hook means standing up jest-expo + @testing-library/react-native plus mocks for Clerk, expo-router, and fake timers — new infrastructure, disproportionate as a rider on this fix. The classifier behavior was instead verified directly against the installed SDK bundle (`clerk-js` 6.7.0 `clerk.native.js`) and is documented in changelog #12a/12b. Revisit if/when a mobile test harness lands; `isNetworkProbeFailure` is a pure function and would be the first easy target.

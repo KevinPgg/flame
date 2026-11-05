@@ -1253,3 +1253,95 @@ The current check reads `COUNT(ticket_tiers WHERE event_id = ...)` and then inse
 **Deferral reason:** (1) The **owner** path has the identical shape — `enrichEventWithStats` (line ≈500/611) also calls `fetchEventPurchases` per event inside a `Promise.all`. Fixing only the cohost branch would leave the two inconsistent; they should be batched together. (2) The calls run in parallel, so wall-clock latency is ~1 round-trip, and cohost counts per org are small today (single digits). (3) **Correctness risk:** a naive DB-side `SUM`/RPC can't replicate `fetchEventPurchases`'s per-order base-price logic (`base_price_cents` when present, else `extractBasePriceHistorical` + proportional discount for legacy Datafast orders). Any batched replacement MUST reuse that shared logic, or it will diverge from the cohost detail view and the owner cards (the exact pricing-helper footgun class in `project-flame-master.mdc` §5).
 
 **Suggested fix (when needed):** Add a batched `fetchEventPurchasesForEvents(supabaseAdmin, eventIds)` in `apps/web/app/lib/utils/purchase-data.ts` that does a single `.in("event_id", …)` orders query + a single stages query, then groups per `event_id` reusing the existing per-order base-price computation. Switch the owner (`enrichEventWithStats`), the API cohost enrichment, AND the SSR cohost enrichment (`organizer/page.tsx`) paths to it so all three stay consistent and keep the shared calc.
+
+---
+
+## Bounded regression test for stalled response bodies (`apps/mobile/lib/api.ts`)
+
+**Deferred from:** CodeRabbit review of W7-H5 (Sep 6, 2026). See `docs/fixes/SEPTEMBER_2026_FIXES.md` #1.
+
+**What was fixed in code:** `clearTimeout(timeoutId)` used to run before `response.json()`, leaving body parsing unbounded — a response whose headers arrived but whose body stalled would hang forever rather than time out. The abort timer now stays armed through parsing in both `executeRequest` and `executeUpload`.
+
+**What is deferred:** the reviewer also asked for a regression test covering delayed JSON-body delivery.
+
+**Deferral reason:** `apps/mobile` has **no test infrastructure at all** — no test runner in `package.json`, no `__tests__` directory, zero `.test.ts*` files anywhere in the app. (`packages/lib` does have tests; the mobile app does not.) Adding this one test means first standing up a harness for the app, which is a separate piece of work and was not appropriate to start mid-incident.
+
+**Suggested fix (when needed):** Stand up Jest + `jest-expo` for `apps/mobile`, then test `executeRequest` against a mocked `fetch` that resolves headers immediately and returns a `json()` promise which never settles. Assert the call rejects with `ApiError` code `0` and the "timed out" message within `timeoutMs`, rather than hanging. Cover `executeUpload` with the same shape ("Upload timed out"). Would also give the `LONG_MUTATION_TIMEOUT_MS` vs server `maxDuration` relationship a place to be asserted.
+
+---
+
+## Superseded PaymentIntent is not cancelled when amount-driving inputs change
+
+**Deferred from:** CodeRabbit review of W7-H6 (Sep 6, 2026). See `docs/fixes/SEPTEMBER_2026_FIXES.md` #3.
+
+**The gap.** `POST /api/purchase/create-payment-intent` keys new-RSVP PaymentIntents on `create_pi_rsvp_new_${userId}_${eventId}_${ticketTierId}_${quantity}_${stage}_${clientKey}_${totalAmountCents}_...`. W7-H6 added `totalAmountCents` so a mid-checkout price edit mints a fresh key instead of returning Stripe's 400. But the **previous** PaymentIntent is not cancelled — if the buyer had already confirmed it, their authorization keeps holding funds with nothing attached to it.
+
+**Not a regression.** Before W7-H6 the same orphan existed; the request simply 400'd on top of it, so the buyer was blocked *and* the hold remained. The change removed the block, not the orphan. An uncaptured authorization still auto-expires within 7 days.
+
+**Why it was not fixed in that PR.** The route already has the machinery — it accepts `oldPaymentIntentId`, strips `holdId` from its metadata, and cancels it (≈ lines 934–961), used today when applying a promo code. What is missing is the **client** passing that id when the amount changes. The `create_pi_rsvp_new_*` path has no `rsvpId` and no DB row yet, so the server cannot discover the prior PaymentIntent on its own. (The `rsvpId` path is already covered by the `cancel_orphan_${rsvpId}_*` logic ≈ line 880.)
+
+Wiring it needs changes to the payment modal on **web and mobile**, plus an OTA. Shipping only the server half — refusing to create a replacement unless cancellation succeeds — would break checkout for every client that does not yet send the id.
+
+**Suggested fix (when scheduled):**
+1. Have the payment modal retain the last `paymentIntentId` it received and send it as `oldPaymentIntentId` on any re-request.
+2. In the route, when `oldPaymentIntentId` is present and differs from the intent about to be created, cancel it first; if it is not in a cancellable state, log and continue (do **not** block checkout on it).
+3. Consider requiring successful cancellation only once both clients are known to send the id.
+
+---
+
+## `createOrder` silently falls back to USD if the events currency lookup fails
+
+**Deferred from:** CodeRabbit review of the Spain/EUR PR (Oct 15, 2026). See `docs/fixes/OCTOBER_2026_FIXES.md` #1.
+
+**File:** `apps/web/app/lib/orders.ts` — `orderCurrency` resolution just before the `orders` insert.
+
+**The gap.** When `paymentInfo.currency` is missing, `createOrder` reads `events.currency` and falls back to `"USD"` without checking the query `error`. A transient Supabase error would record a non-USD order as USD (the bug class fixed in that PR).
+
+**Why deferred.** Unreachable today — every caller passes a currency: the Stripe webhook hold and RSVP paths (`paymentIntent.currency`) and the free RSVP approve path (`rsvp.events.currency`).
+
+**Suggested fix (if a caller ever omits currency):** destructure `error` from the lookup; on error, log and `return false` before inserting. Keep the `"USD"` fallback only for a successful lookup with a null currency.
+
+**Note:** `return false` only prevents the mislabeled order — it does **not** trigger a Stripe retry. The webhook's hold and RSVP callers log a critical `order_errors` row and `return` normally (the webhook responds 200), so the captured payment is left without an order and needs manual resolution from `order_errors`.
+
+---
+
+## Orders sold on manually-closed tiers before the hold-path sold-out guard
+
+**Deferred from:** hold-path `is_manually_sold_out` fix (Oct 16, 2026). See `docs/fixes/OCTOBER_2026_FIXES.md` #2.
+
+**What happened.** Before migration `20261017014559_hold_respect_manual_sold_out.sql`, `/api/holds/create` and `atomic_create_hold_with_stage_validation` ignored the organizer "mark as sold out" flag, so direct-purchase (hold-path) buyers could still pay on a closed tier. The guard is now live; these orders predate it.
+
+**Hold-path orders paid after the tier was closed** (as of Oct 17, 2026):
+
+| Event | Tier | Orders | Tickets | Closed at (UTC) | Orders between (UTC) |
+|---|---|---|---|---|---|
+| Atrio - Sinners Club | Tier 1 | 2 | 2 | Sep 30 13:42 | Oct 16 20:31 – 20:39 |
+| BLOOM EXP | TIER 2 | 5 | 12 | Oct 6 02:48 | Oct 10 01:18 – Oct 11 03:00 |
+| BLOOM EXP | VIP 2 | 1 | 2 | Oct 6 02:49 | Oct 11 00:34 |
+| ZULU: INDEPENDENCE WEEKEND | 3x2 | 1 | 1 | Oct 2 01:44 | Oct 10 21:53 |
+| SONORA 5.0 | TIER 2 | 4 | 7 | Sep 26 19:02 | Sep 26 22:01 – Sep 27 00:39 |
+
+**Decision needed (organizers, not engineering):** honor these tickets or refund them. **Nothing has been refunded or changed.** If a refund is chosen, refund through Stripe and void the tickets through the normal refund flow — do not edit `orders` directly.
+
+**Recorded, no action — RSVP-source orders after close (28 orders).** `source = 'rsvp'` orders paid on tiers after they closed: ABOVE THE CITY / EARLY BIRD (14), 3 DAY BUNDLE / Tier 1 (8) and Early Birds (1), 2 DAY PASS / Early Birds (2), EUPHORIA / EARLY BIRDS (2) and TIER 1 (1). All were created within minutes of the close, consistent with RSVPs approved/paid for requests made before it — expected under the "approved/pending RSVPs are unaffected" rule (W7-H4 gates RSVP *creation* only).
+
+**Excluded — organizer bank transfers (33 orders).** Orders with `source IS NULL` on the same tiers are all `payment_method = 'bank_transfer'` (no Stripe PaymentIntent) — organizer-issued, which is allowed on closed tiers by design.
+
+**Rerun query.** Only tiers with `sold_out_changed_at` after the Aug 27, 2026 review carry an exact close time (earlier flagged tiers were seeded to the review date — see `AUGUST_2026_FIXES.md`):
+
+```sql
+select e.name as event, t.name as tier, o.source, count(*) as orders,
+       sum(o.quantity) as tickets, min(o.created_at) as first_order,
+       max(o.created_at) as last_order, t.sold_out_changed_at
+from orders o
+join ticket_tiers t on t.id = o.ticket_tier_id
+join events e on e.id = o.event_id
+where t.is_manually_sold_out = true
+  and t.sold_out_changed_at > '2026-08-28'
+  and o.created_at > t.sold_out_changed_at
+  and o.status in ('paid', 'completed')
+group by e.name, t.name, o.source, t.sold_out_changed_at
+order by o.source, e.name, t.name;
+```
+
+Filter `o.source = 'hold'` for the actionable set. Note a tier can be reopened and re-closed, in which case `sold_out_changed_at` only reflects the latest close — check the organizer's timeline before refunding.

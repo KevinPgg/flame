@@ -9,6 +9,8 @@ import {
   cleanCedula,
   validateAndParseQuantity,
   validateQRCodeFormat,
+  parseMetadataCents,
+  isPresentMetadataValue,
 } from "../src";
 
 describe("Access Code Validator", () => {
@@ -288,5 +290,55 @@ describe("QR Code Validator", () => {
         "Found old format field: ticket_id (should not be present)"
       );
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stripe metadata cents parsing (W7-H6)
+// ---------------------------------------------------------------------------
+describe("parseMetadataCents", () => {
+  it("accepts plain non-negative integer strings", () => {
+    expect(parseMetadataCents("3000")).toBe(3000);
+    expect(parseMetadataCents("0")).toBe(0);
+    expect(parseMetadataCents("1")).toBe(1);
+  });
+
+  it("rejects trailing garbage that parseInt would silently accept", () => {
+    // parseInt("100abc") === 100 — the bug this validator exists to prevent.
+    expect(parseMetadataCents("100abc")).toBeNull();
+    expect(parseMetadataCents("3000 ")).toBeNull();
+    expect(parseMetadataCents("  3000")).toBeNull();
+  });
+
+  it("rejects decimals, signs and exponent notation", () => {
+    // parseInt("12.9") === 12 — a real price silently truncated.
+    expect(parseMetadataCents("12.9")).toBeNull();
+    expect(parseMetadataCents("-5")).toBeNull();
+    expect(parseMetadataCents("+5")).toBeNull();
+    expect(parseMetadataCents("3e3")).toBeNull();
+  });
+
+  it("rejects values beyond safe-integer range", () => {
+    // Number.isFinite would pass this; integer arithmetic would lose precision.
+    expect(parseMetadataCents("999999999999999999999")).toBeNull();
+  });
+
+  it("rejects empty, whitespace and absent values", () => {
+    expect(parseMetadataCents("")).toBeNull();
+    expect(parseMetadataCents(" ")).toBeNull();
+    expect(parseMetadataCents(undefined)).toBeNull();
+    expect(parseMetadataCents(null)).toBeNull();
+  });
+});
+
+describe("isPresentMetadataValue", () => {
+  it("distinguishes an absent key from a present but invalid one", () => {
+    // The distinction that matters: absent => legacy fallback is fine;
+    // present-but-invalid => corrupt money data, must be surfaced.
+    expect(isPresentMetadataValue(undefined)).toBe(false);
+    expect(isPresentMetadataValue(null)).toBe(false);
+    expect(isPresentMetadataValue("")).toBe(true);
+    expect(isPresentMetadataValue("100abc")).toBe(true);
+    expect(isPresentMetadataValue("3000")).toBe(true);
   });
 });

@@ -1083,6 +1083,7 @@ export const es: Messages = {
     connectLede: "Flame le paga a {org} a través de Stripe. Lo necesitas para vender tickets pagados y recibir pagos.",
     country: "País de operación",
     countryHint: "Donde tu organización opera legalmente. No se puede cambiar una vez iniciada la configuración.",
+    countryNotListed: "Mi país no está en la lista",
     connect: "Conectar con Stripe",
     incompleteTitle: "Termina la configuración de Stripe",
     incompleteLede: "Stripe necesita un poco más de información para que {org} pueda vender y cobrar.",

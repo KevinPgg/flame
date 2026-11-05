@@ -705,6 +705,13 @@ export async function POST(req: NextRequest) {
       // explicit values when the API consumer sets them.
       ...(tier.is_manually_sold_out !== undefined && {
         is_manually_sold_out: tier.is_manually_sold_out,
+        // W9-L5: this is the second tier-creation path (tiers born alongside a
+        // new event); api/ticket-tiers POST is the other. Both must stamp, or a
+        // tier created already closed here would read NULL forever. Created open
+        // stays NULL until it is actually marked sold out.
+        sold_out_changed_at: tier.is_manually_sold_out
+          ? new Date().toISOString()
+          : null,
       }),
       ...(tier.is_hidden !== undefined && { is_hidden: tier.is_hidden }),
       // W4-C2 (May 2026): tier-level description.

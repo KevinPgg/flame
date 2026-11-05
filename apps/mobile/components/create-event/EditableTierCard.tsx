@@ -121,6 +121,8 @@ interface EditableTierCardProps {
   canRemove: boolean;
   eventEndsAt?: string;
   eventTimezone?: string;
+  /** Event currency code (e.g. "EUR"), shown in the price placeholders. */
+  eventCurrency?: string;
   /** Event-level (non-archived) form fields for the per-tier subset picker.
    *  Empty/omitted → the row is hidden (no event form configured). */
   eventFormFields?: TierEventFormFieldLike[];
@@ -134,6 +136,7 @@ export function EditableTierCard({
   canRemove,
   eventEndsAt,
   eventTimezone,
+  eventCurrency = "USD",
   eventFormFields,
 }: EditableTierCardProps) {
   const [stagesExpanded, setStagesExpanded] = useState(true);
@@ -214,6 +217,36 @@ export function EditableTierCard({
     [tier.stages, updateTier]
   );
 
+  // Commit valid values on every keystroke: onBlur alone isn't enough because
+  // tapping "Create Event" while a field is still focused submits before the
+  // blur fires, which saved the tier with price 0. Blur still normalizes.
+  const handlePriceTextChange = useCallback(
+    (text: string) => {
+      setPriceText(text);
+      const cents = Math.round(parseFloat(text || "0") * 100);
+      const validated = isNaN(cents) || cents < 0 ? 0 : cents;
+      if (validated !== tier.price_cents) {
+        updateTier({ price_cents: validated });
+      }
+    },
+    [tier.price_cents, updateTier]
+  );
+
+  const handleQuantityTextChange = useCallback(
+    (text: string) => {
+      setQuantityText(text);
+      // Empty/invalid → 0 (not the previous value) so the tier can't be
+      // submitted with a stale quantity; create-event's validation rejects
+      // < 1 and blur still normalizes the field to 1.
+      const n = parseInt(text, 10);
+      const validated = isNaN(n) || n < 1 ? 0 : n;
+      if (validated !== tier.quantity_total) {
+        updateTier({ quantity_total: validated });
+      }
+    },
+    [tier.quantity_total, updateTier]
+  );
+
   const flushPriceToTier = useCallback(() => {
     const cents = Math.round(parseFloat(priceText || "0") * 100);
     const validated = isNaN(cents) || cents < 0 ? 0 : cents;
@@ -257,12 +290,25 @@ export function EditableTierCard({
     }
   }, [eventEndsAt, tier.sales_end, updateTier]);
 
+  // Sync text from tier state only when it no longer represents the stored
+  // value (external change); otherwise keep the user's in-progress text (e.g.
+  // "12." while typing "12.50") instead of reformatting it mid-keystroke.
   useEffect(() => {
-    setPriceText(tier.price_cents === 0 ? "" : (tier.price_cents / 100).toFixed(2));
+    setPriceText((prev) => {
+      const parsed = Math.round(parseFloat(prev || "0") * 100);
+      const prevCents = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+      if (prevCents === tier.price_cents) return prev;
+      return tier.price_cents === 0 ? "" : (tier.price_cents / 100).toFixed(2);
+    });
   }, [tier.price_cents]);
 
   useEffect(() => {
-    setQuantityText(tier.quantity_total ? String(tier.quantity_total) : "");
+    setQuantityText((prev) => {
+      const parsed = parseInt(prev, 10);
+      const prevQty = isNaN(parsed) || parsed < 1 ? 0 : parsed;
+      if (prevQty === tier.quantity_total) return prev;
+      return tier.quantity_total ? String(tier.quantity_total) : "";
+    });
   }, [tier.quantity_total]);
 
   const tz = eventTimezone || "America/Guayaquil";
@@ -323,16 +369,16 @@ export function EditableTierCard({
             <FormInput
               placeholder="Total tickets quantity"
               value={quantityText}
-              onChangeText={setQuantityText}
+              onChangeText={handleQuantityTextChange}
               onBlur={flushQuantityToTier}
               keyboardType="numeric"
               inputAccessoryViewID={NUMERIC_KEYBOARD_DONE_ID}
               icon={<Ionicons name="layers-outline" size={20} color="rgba(255,255,255,0.5)" />}
             />
             <FormInput
-              placeholder="Price (USD, e.g. 25.00)"
+              placeholder={`Price (${eventCurrency}, e.g. 25.00)`}
               value={priceText}
-              onChangeText={setPriceText}
+              onChangeText={handlePriceTextChange}
               onBlur={flushPriceToTier}
               keyboardType="numeric"
               inputAccessoryViewID={NUMERIC_KEYBOARD_DONE_ID}
@@ -501,7 +547,7 @@ export function EditableTierCard({
               icon={<Ionicons name="pricetag-outline" size={20} color="rgba(255,255,255,0.5)" />}
             />
             <FormInput
-              placeholder="Price (USD, e.g. 10.00)"
+              placeholder={`Price (${eventCurrency}, e.g. 10.00)`}
               value={stagePrice}
               onChangeText={setStagePrice}
               keyboardType="numeric"

@@ -5,13 +5,24 @@
  * because the service agreement (recipient vs full) is locked at creation time.
  * Renders a tappable field + bottom-sheet picker. Mirrors the native Modal
  * bottom-sheet pattern used elsewhere (EditRoleSheet). See JUNE_2026_FIXES.md.
+ * The last option, CONNECT_COUNTRY_NOT_LISTED, defers the choice to
+ * Stripe-hosted onboarding for countries outside our curated list.
  */
 
 import { useState } from "react";
 import { Modal, View, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { FlameText, colors } from "@project-flame/ui";
-import { STRIPE_CONNECT_COUNTRIES } from "@project-flame/lib";
+import {
+  STRIPE_CONNECT_COUNTRIES,
+  CONNECT_COUNTRY_NOT_LISTED,
+  CONNECT_COUNTRY_NOT_LISTED_LABEL,
+} from "@project-flame/lib";
+
+const COUNTRY_OPTIONS = [
+  ...STRIPE_CONNECT_COUNTRIES.map(({ code, name }) => ({ code, name })),
+  { code: CONNECT_COUNTRY_NOT_LISTED, name: CONNECT_COUNTRY_NOT_LISTED_LABEL },
+];
 
 interface ConnectCountrySelectorProps {
   value: string;
@@ -25,7 +36,7 @@ export function ConnectCountrySelector({
   disabled,
 }: ConnectCountrySelectorProps) {
   const [open, setOpen] = useState(false);
-  const selected = STRIPE_CONNECT_COUNTRIES.find((c) => c.code === value);
+  const selected = COUNTRY_OPTIONS.find((c) => c.code === value);
 
   return (
     <View className="gap-2">
@@ -56,8 +67,9 @@ export function ConnectCountrySelector({
       </Pressable>
 
       <FlameText variant="subtitle2-light" className="text-white-50">
-        Select where your organization legally operates. This can&apos;t be
-        changed after setup begins.
+        {value === CONNECT_COUNTRY_NOT_LISTED
+          ? "You'll choose your country on Stripe's secure setup page. It can't be changed after setup begins."
+          : "Select where your organization legally operates. This can't be changed after setup begins."}
       </FlameText>
 
       <Modal
@@ -94,7 +106,7 @@ export function ConnectCountrySelector({
                 className="max-h-[360px]"
               >
                 <View className="gap-2">
-                  {STRIPE_CONNECT_COUNTRIES.map((c) => {
+                  {COUNTRY_OPTIONS.map((c) => {
                     const isSelected = c.code === value;
                     return (
                       <Pressable

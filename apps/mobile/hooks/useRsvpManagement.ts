@@ -25,7 +25,7 @@ import {
   isValidIanaTimezone,
 } from "@project-flame/lib";
 import { getAuthenticatedClient } from "../lib/supabase-auth";
-import { apiPatch, ApiError } from "../lib/api";
+import { apiPatch, ApiError, LONG_MUTATION_TIMEOUT_MS } from "../lib/api";
 import { useOptionalAuth } from "./useOptionalAuth";
 import { useOrgData } from "./useOrgData";
 import { useMemberRoleContext } from "../contexts/MemberRoleContext";
@@ -628,7 +628,8 @@ export function useRsvpActions(eventId: string | undefined) {
       return apiPatch(
         `/api/organizer/rsvps/${rsvpId}/approve`,
         {},
-        getToken
+        getToken,
+        { timeoutMs: LONG_MUTATION_TIMEOUT_MS },
       );
     },
     onMutate: async (rsvpId) => {

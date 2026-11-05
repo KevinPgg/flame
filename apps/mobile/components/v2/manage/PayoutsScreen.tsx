@@ -11,6 +11,7 @@ import { useRouter, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  CONNECT_COUNTRY_NOT_LISTED,
   DEFAULT_CONNECT_COUNTRY,
   STRIPE_CONNECT_COUNTRIES,
   balanceRows,
@@ -21,6 +22,7 @@ import {
   payoutMinimumCents,
   payoutTone,
   type BalanceRow,
+  toConnectOnboardCountry,
   type StripeMoney,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
@@ -68,7 +70,7 @@ export function PayoutsScreen({ organization }: { organization: MyOrganization }
   if (!allowed) body = <ErrorBox message={t("payouts.ownersOnly")} onRetry={back} retryLabel={t("common.back")} />;
   else if (stripe.isLoading) body = <Skeleton width="100%" height={180} radius={16} />;
   else if (stripe.fetchError || !state) body = <ErrorBox onRetry={() => void stripe.refreshStatus()} />;
-  else if (state === "not_connected") body = <ConnectCard orgName={organization.name} opening={stripe.onboarding} error={stripe.onboardError} onConnect={(country) => void stripe.handleConnect(country)} />;
+  else if (state === "not_connected") body = <ConnectCard orgName={organization.name} opening={stripe.onboarding} error={stripe.onboardError} onConnect={(country) => void stripe.handleConnect(toConnectOnboardCountry(country))} />;
   else if (state === "incomplete")
     body = (
       <IncompleteCard
@@ -115,7 +117,7 @@ function ConnectCard({ orgName, opening, error, onConnect }: { orgName: string; 
       </View>
       <View className="overflow-hidden rounded-v2-md border border-v2-c10">
         <Group>
-          <SelectRow label={t("payouts.country")} value={country} options={STRIPE_CONNECT_COUNTRIES.map((x) => ({ value: x.code, label: x.name }))} onChange={setCountry} />
+          <SelectRow label={t("payouts.country")} value={country} options={[...STRIPE_CONNECT_COUNTRIES.map((x) => ({ value: x.code, label: x.name })), { value: CONNECT_COUNTRY_NOT_LISTED, label: t("payouts.countryNotListed") }]} onChange={setCountry} />
         </Group>
       </View>
       <Text className="font-v2-ui text-[12.5px] text-v2-c50">{t("payouts.countryHint")}</Text>

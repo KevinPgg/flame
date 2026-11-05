@@ -32,7 +32,7 @@ import {
   type RsvpTab,
 } from "@project-flame/lib";
 import { useI18n } from "../../../lib/i18n";
-import { apiClient, apiGet } from "../../../lib/api";
+import { apiClient, apiGet, LONG_MUTATION_TIMEOUT_MS } from "../../../lib/api";
 import { routes } from "../../../lib/v2/routes";
 import { apiErrorText, type MyOrganization, type OrgEventV2 } from "../../../lib/v2/organizer-api";
 import { exportPendingRsvpsXlsx } from "../../../lib/organizer-xlsx-export";
@@ -46,8 +46,12 @@ type Pending = { kind: "one"; action: "approve" | "reject"; rsvp: OrganizerRsvp 
 /** "unsure": no answer in time (approving captures a payment and sends email) — it may have gone through. */
 type Outcome = "ok" | "already" | "unsure" | { error: string };
 
-/** Approve captures the authorized payment and emails the tickets; give it time like Send tickets. */
-const DECIDE_TIMEOUT_MS = 60_000;
+/**
+ * Approve captures the authorized payment and emails the tickets. The server route allows up to
+ * 60 s (maxDuration), so the client must wait longer than that or a slow-but-successful approval
+ * is reported as failed (production W7-H5) → LONG_MUTATION_TIMEOUT_MS (75 s).
+ */
+const DECIDE_TIMEOUT_MS = LONG_MUTATION_TIMEOUT_MS;
 
 export function rsvpsKey(eventId: string) {
   return ["v2", "rsvps", eventId];

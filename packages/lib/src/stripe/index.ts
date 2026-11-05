@@ -19,6 +19,9 @@ export type { StripeConnectCountry } from "./connect-countries";
 export {
   STRIPE_CONNECT_COUNTRIES,
   DEFAULT_CONNECT_COUNTRY,
+  CONNECT_COUNTRY_NOT_LISTED,
+  CONNECT_COUNTRY_NOT_LISTED_LABEL,
   isSupportedConnectCountry,
   getConnectCountryDefaultCurrency,
+  toConnectOnboardCountry,
 } from "./connect-countries";

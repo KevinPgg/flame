@@ -14,3 +14,4 @@ Pruebas manuales que hay que hacer en el PC de Kevin con datos reales de desarro
 | [FASE_2_ASISTENTE.md](FASE_2_ASISTENTE.md) | Asistente web + app (fase 2): se llena con cada entrega (2.1 marco y campana web) | En curso |
 - [FASE_3_PAGOS.md](FASE_3_PAGOS.md) — fase 3 (pagos): 3.1 arreglos B2, B10, B3, B4.
 - [FASE_4_FUNCIONALIDAD_NUEVA.md](FASE_4_FUNCIONALIDAD_NUEVA.md) — fase 4: CSRF de pagos en la app, promotores en lote + QR, etiquetas de estado, 4.1 Guardar eventos, 4.2 Seguir organizadores, 4.3 Line-up, 4.4 Búsqueda, 4.5 Invitaciones de equipo.
+- [INTEGRACION_PRODUCCION_2026_11.md](INTEGRACION_PRODUCCION_2026_11.md) — integración de cambios de producción (11-05): sold out manual en servidor, RSVP duplicado/aprobación, moneda de la orden, "Mi país no está en la lista".

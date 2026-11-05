@@ -87,10 +87,11 @@ export async function POST(req: NextRequest) {
     // Check if ticket tier exists and belongs to this event
     // Include ticket_stages to validate stage-based availability if stage_id is provided
     // Include secret_code + is_hidden to gate hidden-tier purchases (W4-C3, Jun 2026)
+    // Include is_manually_sold_out to reject organizer-closed tiers (Oct 2026)
     const { data: ticketTier, error: tierError } = await supabaseAdmin
       .from("ticket_tiers")
       .select(
-        `id, name, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden,
+        `id, name, price_cents, quantity_total, quantity_sold, per_user_limit, sales_start, sales_end, secret_code, is_hidden, is_manually_sold_out,
          ticket_stages (
            id,
            name,
@@ -141,6 +142,17 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
+    }
+
+    // Organizer manual sold-out override (Oct 2026). Fast, explicit rejection;
+    // atomic_create_hold_with_stage_validation re-checks it under the tier row
+    // lock, which is what closes the race with a concurrent toggle. Holds that
+    // already exist are intentionally honored until they expire (≤30 min).
+    if (ticketTier.is_manually_sold_out) {
+      return NextResponse.json(
+        { error: "This ticket tier is sold out", code: "SOLD_OUT" },
+        { status: 400 }
+      );
     }
 
     // Validate and normalize promoter code if provided

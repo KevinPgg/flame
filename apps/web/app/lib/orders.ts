@@ -516,6 +516,19 @@ export async function createOrder(
     }
   }
 
+  // orders.currency defaults to 'USD' in the DB, so it must be set explicitly
+  // or non-USD (EUR, MXN, ...) orders are recorded as USD. Paid orders carry the
+  // PaymentIntent currency; free orders fall back to the event's currency.
+  let orderCurrency = paymentInfo.currency?.toUpperCase();
+  if (!orderCurrency) {
+    const { data: eventCurrencyRow } = await supabaseAdmin
+      .from("events")
+      .select("currency")
+      .eq("id", eventId)
+      .maybeSingle();
+    orderCurrency = eventCurrencyRow?.currency?.toUpperCase() ?? "USD";
+  }
+
   const { data: order, error: orderError } = await supabaseAdmin
     .from("orders")
     .insert({
@@ -535,6 +548,7 @@ export async function createOrder(
       markup_percent: safeMarkupPercent,
       markup_fixed_cents: safeMarkupFixed,
       total_paid_cents: totalCents,
+      currency: orderCurrency,
 
       stripe_payment_intent_id: paymentInfo.id.startsWith("free_")
         ? null
@@ -1081,7 +1095,7 @@ export async function createOrder(
               quantity: quantity,
               totalAmount: totalCents,
               orderId: order.id,
-              currency: eventData.currency ?? "USD",
+              currency: orderCurrency,
               tickets: emailTickets,
               promoCode: promoCode,
               discountAmount:

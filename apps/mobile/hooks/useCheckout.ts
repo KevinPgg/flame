@@ -11,7 +11,7 @@ import {
 } from "@project-flame/lib";
 import type { FeeCalculation } from "@project-flame/lib";
 import type { TicketTierWithStatus, EventDetail } from "./useEventDetails";
-import { apiPost, apiGet, apiGetPublic, ApiError } from "../lib/api";
+import { apiPost, apiGet, apiGetPublic, ApiError, LONG_MUTATION_TIMEOUT_MS } from "../lib/api";
 import { useOptionalAuth } from "./useOptionalAuth";
 
 // ---------------------------------------------------------------------------
@@ -553,6 +553,7 @@ export function useCheckout({
             ...(checkoutPromoter ? { promoter_code: checkoutPromoter } : {}),
           },
           getToken,
+          { timeoutMs: LONG_MUTATION_TIMEOUT_MS },
         );
         const rsvpResponse = rsvpResponseSchema.parse(rawRsvp);
         stepInProgressRef.current = "success";
@@ -609,6 +610,7 @@ export function useCheckout({
               ...(checkoutPromoter ? { promoter_code: checkoutPromoter } : {}),
             },
             getToken,
+            { timeoutMs: LONG_MUTATION_TIMEOUT_MS },
           );
           const rsvpResponse = rsvpResponseSchema.parse(rawRsvp);
           activeRsvpPiRef.current = null;
@@ -673,6 +675,7 @@ export function useCheckout({
             ...(checkoutPromoter ? { promoter_code: checkoutPromoter } : {}),
           },
           getToken,
+          { timeoutMs: LONG_MUTATION_TIMEOUT_MS },
         );
         const rsvpResponse = rsvpResponseSchema.parse(rawRsvp);
 

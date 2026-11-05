@@ -13,6 +13,8 @@ interface TicketTiersTabProps {
   isCreateEventDisabled: boolean;
   eventEndsAt?: string;
   eventTimezone?: string;
+  /** Event currency code (e.g. "EUR"), shown in tier price placeholders. */
+  eventCurrency?: string;
   /** Event-level form fields (non-archived) for the per-tier subset picker. */
   eventFormFields?: TierEventFormFieldLike[];
   submitError?: string;
@@ -28,6 +30,7 @@ export function TicketTiersTab({
   isCreateEventDisabled,
   eventEndsAt,
   eventTimezone,
+  eventCurrency,
   eventFormFields,
   submitError,
 }: TicketTiersTabProps) {
@@ -72,6 +75,7 @@ export function TicketTiersTab({
             canRemove={tiers.length > 1}
             eventEndsAt={eventEndsAt}
             eventTimezone={eventTimezone}
+            eventCurrency={eventCurrency}
             eventFormFields={eventFormFields}
           />
         ))}

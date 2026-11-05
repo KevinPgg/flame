@@ -383,6 +383,7 @@ async function handlePaymentIntentSucceeded(
             subtotal_cents: paymentIntent.amount, // Ensure subtotal + fees = total (fees=0 here)
             fees_cents: 0,
             total_cents: paymentIntent.amount,
+            currency: paymentIntent.currency.toUpperCase(),
             total_amount_cents: paymentIntent.amount,
             platform_fee_cents: 0,
             stripe_payment_intent_id: paymentIntent.id,
@@ -680,6 +681,7 @@ async function handlePaymentIntentSucceeded(
           subtotal_cents: paymentIntent.amount, // Ensure subtotal + fees = total (fees=0 here)
           fees_cents: 0,
           total_cents: paymentIntent.amount,
+          currency: paymentIntent.currency.toUpperCase(),
           total_amount_cents: paymentIntent.amount,
           platform_fee_cents: 0,
           stripe_payment_intent_id: paymentIntent.id,
@@ -843,6 +845,7 @@ async function createOrderAndTicketsFromHold(
           subtotal_cents: paymentIntent.amount, // Ensure subtotal matches total since fees are 0
           fees_cents: 0,
           total_cents: paymentIntent.amount,
+          currency: paymentIntent.currency.toUpperCase(),
           total_amount_cents: paymentIntent.amount,
           platform_fee_cents: 0,
           stripe_payment_intent_id: paymentIntent.id,

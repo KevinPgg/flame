@@ -54,6 +54,30 @@ export const STRIPE_CONNECT_COUNTRIES: readonly StripeConnectCountry[] = [
 /** Country pre-selected in the onboarding picker (platform's primary market). */
 export const DEFAULT_CONNECT_COUNTRY = "US";
 
+/**
+ * Picker value for organizers whose country isn't in STRIPE_CONNECT_COUNTRIES
+ * (e.g. Spain). Selecting it omits `country` from the onboard request, so the
+ * account is created without one and the organizer picks their country (and its
+ * service agreement) on Stripe-hosted onboarding, which lists every country
+ * Stripe supports. Never sent to the API.
+ */
+export const CONNECT_COUNTRY_NOT_LISTED = "NOT_LISTED";
+
+/** Display label for the CONNECT_COUNTRY_NOT_LISTED picker option. */
+export const CONNECT_COUNTRY_NOT_LISTED_LABEL = "My country isn't listed";
+
+/**
+ * Maps a country picker selection to the `country` sent to the onboard route:
+ * the code for a listed country, `undefined` for CONNECT_COUNTRY_NOT_LISTED so
+ * Stripe-hosted onboarding asks for the country instead.
+ */
+export function toConnectOnboardCountry(
+  selection: string | null | undefined
+): string | undefined {
+  if (!selection || selection === CONNECT_COUNTRY_NOT_LISTED) return undefined;
+  return selection;
+}
+
 /** Whether the given country code is offered in the onboarding selector. */
 export function isSupportedConnectCountry(
   code: string | null | undefined

@@ -1047,11 +1047,19 @@ export async function POST(req: NextRequest) {
           ? `create_pi_rsvp_${rsvpId}_${paymentAttemptVersion}_${PAYMENT_INTENT_VERSION}${promoSuffix}${promoterSuffix}${replaceSuffix}`
           : holdId
           ? `create_pi_hold_${holdId}_${PAYMENT_INTENT_VERSION}${promoSuffix}${promoterSuffix}${replaceSuffix}`
-          : `create_pi_rsvp_new_${userId}_${eventId}_${ticketTierId}_${parsedQuantity}_${
+          : // `totalAmountCents` is part of the key on purpose. An idempotency key
+            // identifies ONE request; reusing it with different parameters is an
+            // error by Stripe's definition and returns 400. Organizers edit tier
+            // prices during live sales, so a buyer who opens checkout at one
+            // price and submits after an edit would otherwise reuse this key with
+            // a different amount, get a 400, and be stranded — while their first
+            // PaymentIntent kept holding their money with no RSVP attached.
+            // Including the amount mints a fresh key instead. (W7-H6)
+            `create_pi_rsvp_new_${userId}_${eventId}_${ticketTierId}_${parsedQuantity}_${
               stageId || "no_stage"
             }_${
               clientProvidedIdempotencyKey || "default"
-            }_${PAYMENT_INTENT_VERSION}${promoSuffix}${promoterSuffix}${replaceSuffix}`,
+            }_${totalAmountCents}_${PAYMENT_INTENT_VERSION}${promoSuffix}${promoterSuffix}${replaceSuffix}`,
       }
     );
 

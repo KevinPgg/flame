@@ -9,7 +9,10 @@
 import { useEffect, useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { DEFAULT_CONNECT_COUNTRY } from "@project-flame/lib";
+import {
+  DEFAULT_CONNECT_COUNTRY,
+  toConnectOnboardCountry,
+} from "@project-flame/lib";
 import { useOrgData } from "../../hooks/useOrgData";
 import { useStripeConnect } from "../../hooks/useStripeConnect";
 import { useMemberRoleContext } from "../../contexts/MemberRoleContext";
@@ -234,7 +237,7 @@ export function PayoutsSettingsTab() {
           {displayError}
           <ConnectButton
             label="Connect with Stripe"
-            onPress={() => handleConnect(selectedCountry)}
+            onPress={() => handleConnect(toConnectOnboardCountry(selectedCountry))}
             loading={onboarding}
           />
         </View>

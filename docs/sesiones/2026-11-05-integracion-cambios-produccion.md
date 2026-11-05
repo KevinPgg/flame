@@ -1,6 +1,6 @@
 # Sesión 2026-11-05 — Integración de los cambios de producción (`Flame_cambios/`)
 
-Origen: `Flame_cambios/project-flame-main/` (producción nueva) comparado contra `Flme_comp/` (baseline anterior) y la copia de trabajo (Flame 2.0). **Análisis y merge de prueba solamente; todavía no se aplicó nada en la copia de trabajo.**
+Origen: `Flame_cambios/project-flame-main/` (producción nueva) comparado contra `Flme_comp/` (baseline anterior) y la copia de trabajo (Flame 2.0). **Aplicada el 2026-11-05 en la rama `integracion/prod-2026-11`** (ver §6).
 
 ## 1. Qué trae producción (43 diferencias)
 - **5 migraciones** (todas tocan "sold out manual"):
@@ -46,3 +46,13 @@ Producción resolvió lo mismo, y **mejor**:
 4. `pnpm -w test` (lib, web, mobile jest-expo) + `tsc --noEmit`.
 5. Pruebas reales: sold out manual (hold y RSVP), aprobar RSVP desde la app, orden en MXN/EUR con `currency` correcta, conectar Stripe con "no listado".
 6. Actualizar `Flme_comp/` al nuevo baseline (copiar `Flame_cambios/project-flame-main/`) una vez integrado.
+
+## 6. Aplicado (2026-11-05, rama `integracion/prod-2026-11`)
+- Antes: limpieza de `docs/notas.txt` del historial (`filter-branch` + borrado de `refs/original`, reflog y `gc`); push al repo personal de Kevin. El código pasará al repo de producción copiando el proyecto encima, sin traer los commits.
+- **Migraciones:** copiadas las 5 de producción; `20261008180000` queda como no-op (`SELECT 1` con comentario) para no descuadrar BD locales que ya la aplicaron; nueva `20261105120000_hold_rpc_service_role_and_drop_rsvp_overloads.sql` (REVOKE/GRANT del hold RPC + DROP de las sobrecargas 5/7).
+- **Código:** 13 archivos copiados de producción (local = baseline), nuevos `validators/stripe-metadata.ts` y `apps/web/__tests__/api/holds/create.test.ts`; 8 fusionados limpio; 4 conflictos resueltos (imports unidos en `useCheckout.ts` y `rsvp/route.ts` con `maxDuration`; `api.ts` versión de producción; webhook sin la función duplicada) + `currency` en la orden fantasma de `app/lib/stripe/rsvp-order.ts`.
+- **v2:** `RsvpEventDetail.tsx` aprueba con `LONG_MUTATION_TIMEOUT_MS` (75 s); "Mi país no está en la lista" en Pagos v2 web (`PayoutsView.tsx`) y app (`PayoutsScreen.tsx`) con `toConnectOnboardCountry`; i18n `payouts.countryNotListed` (en/es). Los editores de precio v2 ya guardan al escribir (sin cambio).
+- **Docs/config:** `AUGUST|SEPTEMBER|OCTOBER_2026_FIXES.md` y `JULY` actualizado en `historico/fixes/`; `EDGE_CASES_TODOS` y `NITPICKS_TODOS` fusionados; `guias/TICKET_VALIDATION_REFERENCE.md` y nuevo `guias/VERSIONING_AND_UPDATE_GATING.md`; `.gitignore` con `.claude/rules` y `.mcp.json`. `.cursor/rules/nextjs-typescript.mdc` no se tocó (local difiere; producción solo añadió `paths:`).
+- **Verificación:** `tsc` de `packages/lib` limpio en la VM; tests (vitest/jest) no corren en la VM (binarios de Windows) → correr en el PC. Pruebas en `PruebasReales/INTEGRACION_PRODUCCION_2026_11.md`.
+- **Observación (no tocada):** `SendTab.tsx` (enviar tickets) espera 60 s, pero `promotional-tickets` y `bank-transfer-tickets` no declaran `maxDuration`; si en Vercel caen al límite por defecto, el problema es el mismo que W7-H5. Revisar antes de producción.
+- **Pendiente antes de Vercel:** confirmar a qué Supabase apuntan las variables de Preview; no aplicar nuestras migraciones en la BD de producción para probar.

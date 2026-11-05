@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   STRIPE_CONNECT_COUNTRIES,
   DEFAULT_CONNECT_COUNTRY,
+  CONNECT_COUNTRY_NOT_LISTED,
   isSupportedConnectCountry,
   getConnectCountryDefaultCurrency,
+  toConnectOnboardCountry,
 } from "../src";
 
 describe("Stripe Connect countries", () => {
@@ -64,6 +66,24 @@ describe("Stripe Connect countries", () => {
       // (Jul 2026), so it is onboarded like any other recipient country.
       expect(isSupportedConnectCountry("MX")).toBe(true);
       expect(getConnectCountryDefaultCurrency("MX")).toBe("mxn");
+    });
+  });
+
+  describe("toConnectOnboardCountry", () => {
+    it("passes listed country codes through", () => {
+      expect(toConnectOnboardCountry("EC")).toBe("EC");
+      expect(toConnectOnboardCountry("MX")).toBe("MX");
+    });
+
+    it("omits the country when it isn't listed so Stripe asks for it", () => {
+      expect(toConnectOnboardCountry(CONNECT_COUNTRY_NOT_LISTED)).toBeUndefined();
+      expect(toConnectOnboardCountry("")).toBeUndefined();
+      expect(toConnectOnboardCountry(null)).toBeUndefined();
+      expect(toConnectOnboardCountry(undefined)).toBeUndefined();
+    });
+
+    it("the not-listed sentinel is never a supported country code", () => {
+      expect(isSupportedConnectCountry(CONNECT_COUNTRY_NOT_LISTED)).toBe(false);
     });
   });
 });

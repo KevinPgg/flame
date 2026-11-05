@@ -10,6 +10,26 @@ const API_BASE = (
 ).replace(/\/+$/, "");
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * Timeout for money-moving mutations (RSVP creation, organizer approval).
+ *
+ * A client that gives up while the server keeps working produces a "phantom
+ * failure": the request succeeds, the user is told it failed, and they retry.
+ * That loop is what created dead PaymentIntents in the Sep 2026 incident
+ * (W7-H5), so the client MUST outlast the server on these calls.
+ *
+ * `/api/rsvp` and `/api/organizer/rsvps/[id]/approve` both declare
+ * `maxDuration = 60` (seconds). This value must therefore exceed 60s, plus
+ * margin for the wall-clock the server budget does not cover — DNS, TLS, cold
+ * start queueing and response transfer. 75s = 60s server ceiling + 15s margin.
+ *
+ * Keep this in sync: if `maxDuration` on either route rises, raise this first.
+ *
+ * Deliberately NOT applied to reads — a list fetch on a dead network should
+ * fail fast at DEFAULT_TIMEOUT_MS rather than hang.
+ */
+export const LONG_MUTATION_TIMEOUT_MS = 75_000;
 const UPLOAD_TIMEOUT_MS = 30_000;
 
 /**
@@ -20,6 +40,15 @@ const UPLOAD_TIMEOUT_MS = 30_000;
  * option is simply ignored by those closures.
  */
 type GetTokenFn = (options?: { skipCache?: boolean }) => Promise<string | null>;
+
+/**
+ * Options shared by the authenticated request helpers. Named rather than
+ * inlined so the shape stays identical across helpers as more are added.
+ */
+export interface ApiRequestOptions {
+  /** Override the request timeout in ms. Defaults to DEFAULT_TIMEOUT_MS. */
+  timeoutMs?: number;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -76,6 +105,7 @@ async function executeRequest(
     });
   } catch (networkError) {
     if (networkError instanceof Error && networkError.name === "AbortError") {
+      clearTimeout(timeoutId);
       throw new ApiError(
         0,
         `Request timed out for ${endpoint}. Check that EXPO_PUBLIC_API_URL (${API_BASE}) is reachable.`,
@@ -87,22 +117,45 @@ async function executeRequest(
         networkError instanceof Error ? networkError.message : networkError,
       );
     }
+    clearTimeout(timeoutId);
     throw new ApiError(
       0,
       `Network request failed for ${endpoint}. Is the web server running and reachable?`,
     );
-  } finally {
-    clearTimeout(timeoutId);
   }
 
+  // The abort timer stays armed through body parsing on purpose. `fetch`
+  // resolves once headers arrive, so a response whose body then stalls would
+  // hang here forever if the timer were cleared above — and a never-settling
+  // promise is worse than a timeout: the caller's spinner never resolves and
+  // the user is stuck with no error to react to.
   let data: any = undefined;
-  if (
-    response.status !== 204 &&
-    response.status !== 205 &&
-    response.headers.get("content-length") !== "0" &&
-    response.headers.get("content-type")?.includes("application/json")
-  ) {
-    data = await response.json().catch(() => null);
+  try {
+    if (
+      response.status !== 204 &&
+      response.status !== 205 &&
+      response.headers.get("content-length") !== "0" &&
+      response.headers.get("content-type")?.includes("application/json")
+    ) {
+      data = await response.json().catch((bodyError: unknown) => {
+        // Re-throw aborts so they surface as a timeout below; every other
+        // parse failure keeps the existing contract and resolves to `null`.
+        if (bodyError instanceof Error && bodyError.name === "AbortError") {
+          throw bodyError;
+        }
+        return null;
+      });
+    }
+  } catch (bodyError) {
+    if (bodyError instanceof Error && bodyError.name === "AbortError") {
+      throw new ApiError(
+        0,
+        `Request timed out for ${endpoint}. Check that EXPO_PUBLIC_API_URL (${API_BASE}) is reachable.`,
+      );
+    }
+    throw bodyError;
+  } finally {
+    clearTimeout(timeoutId);
   }
   return { response, data };
 }
@@ -112,11 +165,16 @@ export async function apiClient<T>(
   options: Omit<RequestInit, "headers"> & {
     getToken: GetTokenFn;
     headers?: Record<string, string>;
-    /** Calls that do slow work before answering (e.g. sending tickets by e-mail). Default 15 s. */
+    /** Override the request timeout. Defaults to DEFAULT_TIMEOUT_MS. */
     timeoutMs?: number;
   },
 ): Promise<T> {
-  const { getToken, headers: customHeaders, timeoutMs = DEFAULT_TIMEOUT_MS, ...fetchOptions } = options;
+  const {
+    getToken,
+    headers: customHeaders,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    ...fetchOptions
+  } = options;
 
   let token: string | null;
   try {
@@ -212,11 +270,13 @@ export function apiPost<T>(
   endpoint: string,
   body: Record<string, unknown>,
   getToken: () => Promise<string | null>,
+  opts?: ApiRequestOptions,
 ): Promise<T> {
   return apiClient<T>(endpoint, {
     method: "POST",
     body: JSON.stringify(body),
     getToken,
+    timeoutMs: opts?.timeoutMs,
   });
 }
 
@@ -293,11 +353,13 @@ export function apiPatch<T>(
   endpoint: string,
   body: Record<string, unknown>,
   getToken: () => Promise<string | null>,
+  opts?: ApiRequestOptions,
 ): Promise<T> {
   return apiClient<T>(endpoint, {
     method: "PATCH",
     body: JSON.stringify(body),
     getToken,
+    timeoutMs: opts?.timeoutMs,
   });
 }
 
@@ -338,6 +400,7 @@ async function executeUpload(
     });
   } catch (networkError) {
     if (networkError instanceof Error && networkError.name === "AbortError") {
+      clearTimeout(timeoutId);
       throw new ApiError(
         0,
         `Upload timed out for ${endpoint}. Check that EXPO_PUBLIC_API_URL (${API_BASE}) is reachable.`,
@@ -349,22 +412,45 @@ async function executeUpload(
         networkError instanceof Error ? networkError.message : networkError,
       );
     }
+    clearTimeout(timeoutId);
     throw new ApiError(
       0,
       `Network request failed for ${endpoint}. Is the web server running and reachable?`,
     );
-  } finally {
-    clearTimeout(timeoutId);
   }
 
+  // The abort timer stays armed through body parsing on purpose. `fetch`
+  // resolves once headers arrive, so a response whose body then stalls would
+  // hang here forever if the timer were cleared above — and a never-settling
+  // promise is worse than a timeout: the caller's spinner never resolves and
+  // the user is stuck with no error to react to.
   let data: any = undefined;
-  if (
-    response.status !== 204 &&
-    response.status !== 205 &&
-    response.headers.get("content-length") !== "0" &&
-    response.headers.get("content-type")?.includes("application/json")
-  ) {
-    data = await response.json().catch(() => null);
+  try {
+    if (
+      response.status !== 204 &&
+      response.status !== 205 &&
+      response.headers.get("content-length") !== "0" &&
+      response.headers.get("content-type")?.includes("application/json")
+    ) {
+      data = await response.json().catch((bodyError: unknown) => {
+        // Re-throw aborts so they surface as a timeout below; every other
+        // parse failure keeps the existing contract and resolves to `null`.
+        if (bodyError instanceof Error && bodyError.name === "AbortError") {
+          throw bodyError;
+        }
+        return null;
+      });
+    }
+  } catch (bodyError) {
+    if (bodyError instanceof Error && bodyError.name === "AbortError") {
+      throw new ApiError(
+        0,
+        `Upload timed out for ${endpoint}. Check that EXPO_PUBLIC_API_URL (${API_BASE}) is reachable.`,
+      );
+    }
+    throw bodyError;
+  } finally {
+    clearTimeout(timeoutId);
   }
   return { response, data };
 }

@@ -10,6 +10,9 @@ import {
 import {
   STRIPE_CONNECT_COUNTRIES,
   DEFAULT_CONNECT_COUNTRY,
+  CONNECT_COUNTRY_NOT_LISTED,
+  CONNECT_COUNTRY_NOT_LISTED_LABEL,
+  toConnectOnboardCountry,
 } from "@project-flame/lib";
 
 interface StripeConnectStatusProps {
@@ -186,16 +189,20 @@ export default function StripeConnectStatus({
                   {c.name}
                 </option>
               ))}
+              <option value={CONNECT_COUNTRY_NOT_LISTED} className="bg-surface">
+                {CONNECT_COUNTRY_NOT_LISTED_LABEL}
+              </option>
             </select>
             <p className="text-white-50 text-xs font-poppins mt-2">
-              Select where your organization legally operates. This can&apos;t be
-              changed after setup begins.
+              {selectedCountry === CONNECT_COUNTRY_NOT_LISTED
+                ? "You'll choose your country on Stripe's secure setup page. It can't be changed after setup begins."
+                : "Select where your organization legally operates. This can't be changed after setup begins."}
             </p>
           </div>
 
           <div>
             <button
-              onClick={() => handleConnect(selectedCountry)}
+              onClick={() => handleConnect(toConnectOnboardCountry(selectedCountry))}
               disabled={onboarding}
               className="bg-white-100 text-dark font-poppins-semibold rounded-pill px-7 py-3 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >

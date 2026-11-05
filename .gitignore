@@ -79,7 +79,9 @@ expo-env.d.ts
 .clerk/
 
 # claude code local settings (personal, machine-specific paths)
-.claude/
+# .claude/rules holds symlinks to .cursor/rules so both tools share one source
+.claude/*
+!.claude/rules/
 
 # orphaned AI rule scaffolding (kept local, not handed off)
 /apps/web/mdc/
@@ -91,6 +93,9 @@ errors-log.json
 
 # supabase temp files
 supabase/.temp/
+
+# Local MCP server config (contains secrets)
+.mcp.json
 
 
 # Version base App

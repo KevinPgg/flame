@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   canAccessOrgSettings,
+  CONNECT_COUNTRY_NOT_LISTED,
   DEFAULT_CONNECT_COUNTRY,
   STRIPE_CONNECT_COUNTRIES,
   balanceRows,
@@ -14,6 +15,7 @@ import {
   type BalanceRow,
   type OrgMemberRole,
   type StripeMoney,
+  toConnectOnboardCountry,
 } from "@project-flame/lib";
 import { useStripeConnectStatus } from "../../../lib/hooks/useStripeConnectStatus";
 import { useI18n } from "../../../lib/i18n";
@@ -97,7 +99,7 @@ export default function PayoutsView({
   if (status.isLoading) body = <Skeleton className="h-40 rounded-v2-card" />;
   else if (status.isError || !state) body = <ErrorBox onRetry={() => void status.refetch()} />;
   else if (state === "not_connected")
-    body = <ConnectCard orgName={organization.name} opening={opening} error={onboardError} onConnect={(c) => void openStripe(c)} />;
+    body = <ConnectCard orgName={organization.name} opening={opening} error={onboardError} onConnect={(c) => void openStripe(toConnectOnboardCountry(c))} />;
   else if (state === "incomplete")
     body = (
       <IncompleteCard
@@ -173,6 +175,7 @@ function ConnectCard({ orgName, opening, error, onConnect }: { orgName: string; 
               {c.name}
             </option>
           ))}
+          <option value={CONNECT_COUNTRY_NOT_LISTED}>{t("payouts.countryNotListed")}</option>
         </select>
         <p className="mt-1.5 text-[12.5px] text-v2-c50">{t("payouts.countryHint")}</p>
       </div>

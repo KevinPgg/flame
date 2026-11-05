@@ -18,6 +18,9 @@ type TierWithEvent = {
   quantity_sold: number;
   sales_start: string;
   sales_end: string;
+  // W9-L5: needed to detect an actual change of the manual sold-out flag so
+  // sold_out_changed_at is only stamped on a real transition.
+  is_manually_sold_out: boolean | null;
   events: {
     id: string;
     organization_id: string;
@@ -329,6 +332,11 @@ export async function POST(req: NextRequest) {
       }
       if (is_manually_sold_out !== undefined) {
         postRpcUpdate.is_manually_sold_out = is_manually_sold_out;
+        // W9-L5: a tier created already closed gets its timestamp immediately;
+        // one created open stays NULL until it is actually marked sold out.
+        postRpcUpdate.sold_out_changed_at = is_manually_sold_out
+          ? new Date().toISOString()
+          : null;
       }
       if (is_hidden !== undefined) {
         postRpcUpdate.is_hidden = is_hidden;
@@ -431,6 +439,7 @@ export async function PATCH(req: NextRequest) {
           quantity_sold,
           sales_start,
           sales_end,
+          is_manually_sold_out,
           events!inner (
             id,
             organization_id,
@@ -605,6 +614,15 @@ export async function PATCH(req: NextRequest) {
       };
     }
 
+    // W9-L5: stamp `sold_out_changed_at` only when the manual sold-out flag
+    // actually flips. Writing it on every tier save would degrade the column
+    // straight back into a duplicate of `updated_at` — which is the exact
+    // problem it exists to solve (a price edit must not look like a re-close).
+    const soldOutFlagChanged =
+      updateData.is_manually_sold_out !== undefined &&
+      updateData.is_manually_sold_out !==
+        (tierCheckResult.data.is_manually_sold_out ?? false);
+
     // Build the update query with optimistic concurrency control
     let updateQuery = supabaseAdmin
       .from("ticket_tiers")
@@ -612,6 +630,15 @@ export async function PATCH(req: NextRequest) {
         ...Object.fromEntries(
           Object.entries(updateData).filter(([_, value]) => value !== undefined)
         ),
+        ...(soldOutFlagChanged
+          ? {
+              // Reopening a tier clears the timestamp: the column means "when it
+              // was marked sold out", so an open tier must read NULL, not a date.
+              sold_out_changed_at: updateData.is_manually_sold_out
+                ? new Date().toISOString()
+                : null,
+            }
+          : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", validatedData.id);

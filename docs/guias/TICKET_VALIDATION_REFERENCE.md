@@ -68,6 +68,14 @@ const available = tier.quantity_total - totalSoldAndReserved;
 - Approved RSVPs (status: 'approved')
 - Active holds (non-expired, not yet converted to orders)
 
+#### Organizer Manual Sold-Out (`ticket_tiers.is_manually_sold_out`):
+
+A tier the organizer marked sold out is unavailable **regardless of capacity**. Enforced server-side on both purchase paths, inside the tier row lock:
+
+- **RSVP:** `create_rsvp_atomic` (all overloads) raises `ERRCODE 23514` / `HINT 'SOLD_OUT'` (W7-H4, Aug 2026).
+- **Hold/direct purchase:** `POST /api/holds/create` rejects up front with `code: "SOLD_OUT"`, and `atomic_create_hold_with_stage_validation` returns `{success: false, error: 'This ticket tier is sold out'}` (Oct 2026).
+- **Not re-checked on completion:** holds created before the tier was closed are honored until they expire (≤30 min), and approved/pending RSVPs are unaffected. Organizer-issued tickets (bank transfer, promotional) bypass the flag by design.
+
 **Location**: `app/components/EventDetail.tsx` lines 176-199
 
 ---
@@ -349,7 +357,7 @@ This ensures:
 
 ### Flow Overview (for events with `requires_rsvp = false`):
 
-1. User clicks "Purchase" → Creates hold (15 min expiry)
+1. User clicks "Purchase" → Creates hold (30 min expiry)
 2. User completes payment → Hold converted to order
 
 ### Validation Points:
@@ -360,7 +368,10 @@ All tier/stage availability validations **PLUS**:
 
 ```sql
 -- Atomic validation with row locks
-SELECT * FROM ticket_tiers WHERE id = p_tier_id FOR UPDATE;
+SELECT ..., is_manually_sold_out FROM ticket_tiers WHERE id = p_tier_id FOR UPDATE;
+
+-- Organizer manual sold-out → {success: false, error: 'This ticket tier is sold out'}
+-- (checked before any writes; the route maps it to code SOLD_OUT)
 
 -- Count active (non-expired) holds
 SELECT COALESCE(SUM(quantity), 0) FROM holds
@@ -375,9 +386,9 @@ WHERE stage_id = p_stage_id
   AND order_id IS NULL;
 ```
 
-**Hold Expiry**: 15 minutes from creation
+**Hold Expiry**: 30 minutes from creation (`p_expires_minutes: 30` in the route)
 
-**Location**: `supabase/migrations/20251007000003_atomic_create_hold_with_stage_validation.sql`
+**Location**: `supabase/migrations/20261017014559_hold_respect_manual_sold_out.sql` (current definition)
 
 #### 2. **Hold Purchase Completion** (`POST /api/purchase/complete-hold`)
 

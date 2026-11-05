@@ -563,6 +563,7 @@ function CreateEventV1Screen() {
               isCreateEventDisabled={isCreateEventDisabled}
               eventEndsAt={eventForm.ends_at}
               eventTimezone={eventForm.timezone}
+              eventCurrency={eventForm.currency}
               eventFormFields={sanitizedEventFormFields}
               submitError={submitError}
             />

@@ -83,8 +83,11 @@ export {
   // Connect onboarding countries / service agreement
   STRIPE_CONNECT_COUNTRIES,
   DEFAULT_CONNECT_COUNTRY,
+  CONNECT_COUNTRY_NOT_LISTED,
+  CONNECT_COUNTRY_NOT_LISTED_LABEL,
   isSupportedConnectCountry,
   getConnectCountryDefaultCurrency,
+  toConnectOnboardCountry,
 } from "./stripe";
 
 export type {
@@ -106,6 +109,8 @@ export {
   formatCedula,
   cleanCedula,
   validateAndParseQuantity,
+  parseMetadataCents,
+  isPresentMetadataValue,
 } from "./validators";
 
 export type {

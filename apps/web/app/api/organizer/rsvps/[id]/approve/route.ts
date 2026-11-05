@@ -6,9 +6,21 @@ import { sendPushNotification } from "../../../../../lib/push-notifications";
 import { revalidatePath } from "next/cache";
 import { stripe } from "../../../../../lib/stripe/stripe";
 import { createOrder, generateTickets } from "../../../../../lib/orders";
+
+// Approving a paid RSVP retrieves + captures a PaymentIntent, creates the order
+// and generates tickets. With no maxDuration declared this ran on Vercel's ~15s
+// default -- the same value as the mobile client timeout
+// (DEFAULT_TIMEOUT_MS in apps/mobile/lib/api.ts) -- so under load both sides
+// aborted together and organizers saw a misleading "EXPO_PUBLIC_API_URL is
+// unreachable" error on a request the server was still processing.
+export const maxDuration = 60;
 import { isCancellableStatus } from "../../../../../lib/stripe/constants";
 import { canManageEventRsvps } from "../../../../../lib/utils/event-rsvp-authz";
 import Stripe from "stripe";
+import {
+  parseMetadataCents,
+  isPresentMetadataValue,
+} from "@project-flame/lib";
 
 interface RouteParams {
   params: Promise<{
@@ -418,19 +430,72 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
           rsvp.stripe_payment_intent_id
         );
 
-        // SECURITY: Validate PaymentIntent amount matches current effective price
-        // This prevents price manipulation attacks where price changes between RSVP creation and approval
-        
-        // Calculate base expected amount
-        let expectedAmountCents =
-          effectivePrice * (rsvp.requested_quantity || 1);
-          
-        // Deduct any applied discount from metadata
-        if (paymentIntent.metadata?.discountAmountCents) {
-          const discountCents = parseInt(paymentIntent.metadata.discountAmountCents, 10);
-          if (!isNaN(discountCents) && discountCents > 0) {
+        // SECURITY: the PaymentIntent must cover the price the buyer agreed to.
+        //
+        // W7-H6 — validate against the QUOTE, not the tier's current price.
+        // `metadata.basePriceCents` is written server-side at PaymentIntent
+        // creation from the tier price at that moment, already multiplied by
+        // quantity and already net of any discount. It is the price the buyer
+        // saw and authorized.
+        //
+        // Comparing against the tier's *current* price instead breaks the moment
+        // an organizer edits a live tier: every in-flight checkout authorized at
+        // the old price fails this check, and (before the change below) had its
+        // authorization cancelled. Honouring the quote is how Eventbrite, Dice
+        // and Ticketmaster behave — a price change applies to new checkouts only.
+        //
+        // Falls back to the tier price for PaymentIntents created before this
+        // metadata existed.
+        // The legacy fallback applies ONLY when the key is absent (PaymentIntents
+        // created before this metadata existed). If it is present but malformed
+        // we refuse rather than silently validating against the tier's current
+        // price — that would quietly restore the behaviour this check replaced,
+        // on money we are about to capture.
+        const rawQuote = paymentIntent.metadata?.basePriceCents;
+        const quotedBaseCents = parseMetadataCents(rawQuote);
+
+        if (isPresentMetadataValue(rawQuote) && quotedBaseCents === null) {
+          console.error(
+            "SECURITY: PaymentIntent metadata.basePriceCents is present but invalid:",
+            {
+              rsvpId,
+              paymentIntentId: rsvp.stripe_payment_intent_id,
+              rawValue: rawQuote,
+            }
+          );
+
+          // Not cancelling — same reasoning as the amount-mismatch branch below.
+          const { error: rollbackError } = await rollbackApproval(rsvpId);
+          if (rollbackError) {
+            console.error(
+              "CRITICAL: Rollback failed after invalid basePriceCents metadata:",
+              { rsvpId, rollbackError, rawValue: rawQuote }
+            );
+          }
+
+          return NextResponse.json(
+            {
+              error:
+                "Cannot approve: payment price data is invalid. Manual review required.",
+            },
+            { status: 400 }
+          );
+        }
+
+        const hasQuote = quotedBaseCents !== null;
+
+        let expectedAmountCents = hasQuote
+          ? quotedBaseCents
+          : effectivePrice * (rsvp.requested_quantity || 1);
+
+        // The quote is already discount-adjusted; only the fallback needs this.
+        if (!hasQuote && paymentIntent.metadata?.discountAmountCents) {
+          const discountCents = parseMetadataCents(
+            paymentIntent.metadata.discountAmountCents,
+          );
+          if (discountCents !== null && discountCents > 0) {
             expectedAmountCents = Math.max(0, expectedAmountCents - discountCents);
-          } else if (isNaN(discountCents)) {
+          } else if (discountCents === null) {
             console.warn("Invalid discountAmountCents in PaymentIntent metadata:", {
               rsvpId,
               paymentIntentId: rsvp.stripe_payment_intent_id,
@@ -453,25 +518,18 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
             }
           );
 
-          // Best-effort cancellation to release funds
-          try {
-            if (isCancellableStatus(paymentIntent.status)) {
-              await stripe.paymentIntents.cancel(rsvp.stripe_payment_intent_id);
-              console.log(
-                "Payment authorization cancelled due to amount mismatch:",
-                rsvpId
-              );
-            }
-          } catch (cancelError) {
-            console.error(
-              "Failed to cancel payment authorization after amount mismatch:",
-              {
-                rsvpId,
-                paymentIntentId: rsvp.stripe_payment_intent_id,
-                cancelError,
-              }
-            );
-          }
+          // W7-H6: DELIBERATELY NOT cancelling the authorization here.
+          //
+          // Cancelling is irreversible and destroys the buyer's money on what is
+          // usually OUR bug, not fraud — a mid-checkout price edit, a stale
+          // client, a race. The organizer is left with an RSVP they can never
+          // capture and the buyer has to re-purchase. Rolling the approval back
+          // is enough: the RSVP returns to `pending`, the authorization stays
+          // intact and can be captured once the mismatch is understood, and it
+          // expires on its own within 7 days if nobody acts.
+          //
+          // Genuine price-manipulation attempts are still refused — they simply
+          // are not punished by burning a real customer's authorization.
 
           // Roll back approval
           const { error: rollbackError } = await rollbackApproval(rsvpId);

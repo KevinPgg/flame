@@ -1085,6 +1085,7 @@ export const en = {
     connectLede: "Flame pays {org} through Stripe. You need it to sell paid tickets and receive payouts.",
     country: "Country of operation",
     countryHint: "Where your organization legally operates. It can’t be changed after setup starts.",
+    countryNotListed: "My country isn’t listed",
     connect: "Connect with Stripe",
     incompleteTitle: "Finish your Stripe setup",
     incompleteLede: "Stripe needs a bit more information before {org} can sell and get paid.",
